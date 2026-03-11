@@ -53,6 +53,9 @@ services:
 
             # OpenAI
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+            # Webhook
+            WEBHOOK_SECRET: ${WEBHOOK_SECRET:-sibedas-webhook-secret}
         volumes:
             # Bind mounts: public/ and storage/ live on VPS filesystem
             - ./public:/var/www/public
