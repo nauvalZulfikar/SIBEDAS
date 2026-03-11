@@ -29,10 +29,19 @@ class ImportDatasourceController extends Controller
 
     public function checkImportDatasource(){
         try{
-            $data = ImportDatasource::where("status",ImportDatasourceStatus::Processing->value )->count();
+            $active = ImportDatasource::whereIn("status", [
+                ImportDatasourceStatus::Processing->value,
+                ImportDatasourceStatus::Paused->value,
+            ])->latest('id')->first();
+
             $result = [
-                "can_execute" => $data === 0,
-                "total_processing" => $data
+                "can_execute" => is_null($active),
+                "total_processing" => $active ? 1 : 0,
+                "active_job" => $active ? [
+                    "id" => $active->id,
+                    "status" => $active->status,
+                    "message" => $active->message,
+                ] : null,
             ];
             return response()->json( $result , 200);
         }catch(Exception $ex){

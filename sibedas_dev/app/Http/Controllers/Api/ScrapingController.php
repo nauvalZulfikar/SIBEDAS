@@ -25,7 +25,10 @@ class ScrapingController extends Controller
      */
     public function index()
     {
-        $check_datasource = ImportDatasource::where("status", ImportDatasourceStatus::Processing->value)->count();
+        $check_datasource = ImportDatasource::whereIn("status", [
+            ImportDatasourceStatus::Processing->value,
+            ImportDatasourceStatus::Paused->value,
+        ])->count();
         if($check_datasource > 0){
             return $this->resError("Failed to execute while processing another scraping");
         }
@@ -36,6 +39,50 @@ class ScrapingController extends Controller
         // use new schema synchronization
         dispatch(new ScrapingDataJob());
         return $this->resSuccess(["message" => "Success execute scraping service on background, check status for more"]);
+    }
+
+    public function pause(string $id)
+    {
+        $import = ImportDatasource::find($id);
+        if (!$import) {
+            return $this->resError("Import datasource not found", null, 404);
+        }
+        if ($import->status !== ImportDatasourceStatus::Processing->value) {
+            return $this->resError("Can only pause a processing job");
+        }
+        $import->update(['status' => ImportDatasourceStatus::Paused->value, 'message' => 'Paused by user']);
+        return $this->resSuccess(["message" => "Scraping job paused"]);
+    }
+
+    public function resume(string $id)
+    {
+        $import = ImportDatasource::find($id);
+        if (!$import) {
+            return $this->resError("Import datasource not found", null, 404);
+        }
+        if ($import->status !== ImportDatasourceStatus::Paused->value) {
+            return $this->resError("Can only resume a paused job");
+        }
+        $import->update(['status' => ImportDatasourceStatus::Processing->value, 'message' => 'Resumed by user']);
+        dispatch(new ScrapingDataJob($import->id, $import->failed_uuid));
+        return $this->resSuccess(["message" => "Scraping job resumed"]);
+    }
+
+    public function cancel(string $id)
+    {
+        $import = ImportDatasource::find($id);
+        if (!$import) {
+            return $this->resError("Import datasource not found", null, 404);
+        }
+        if (!in_array($import->status, [ImportDatasourceStatus::Processing->value, ImportDatasourceStatus::Paused->value])) {
+            return $this->resError("Can only cancel a processing or paused job");
+        }
+        $import->update([
+            'status' => ImportDatasourceStatus::Cancelled->value,
+            'message' => 'Cancelled by user',
+            'finish_time' => now(),
+        ]);
+        return $this->resSuccess(["message" => "Scraping job cancelled"]);
     }
 
     public function retry_syncjob(string $import_datasource_id){

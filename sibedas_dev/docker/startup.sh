@@ -1,59 +1,53 @@
 #!/bin/bash
-
-# Enable error reporting
 set -e
-set -x
 
-# Create necessary directories with proper permissions as root
-mkdir -p /var/log/supervisor
-mkdir -p /var/run/supervisor
-chown -R www-data:www-data /var/log/supervisor
-chown -R www-data:www-data /var/run/supervisor
-chmod -R 775 /var/log/supervisor
-chmod -R 775 /var/run/supervisor
+echo "=== Sibedas Production Startup ==="
 
-# Create storage directories with proper permissions
+# Create necessary supervisor runtime directories
+mkdir -p /var/log/supervisor /var/run/supervisor
+
+# Create and set permissions for storage directories
 mkdir -p /var/www/storage/logs
-chown -R www-data:www-data /var/www/storage
-chmod -R 775 /var/www/storage
+mkdir -p /var/www/storage/framework/{sessions,views,cache}
+mkdir -p /var/www/storage/app/public
+mkdir -p /var/www/bootstrap/cache
 
-# Ensure Laravel storage and cache directories are writable
-chown -R www-data:www-data /var/www/bootstrap/cache
-chmod -R 775 /var/www/bootstrap/cache
+chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Wait for database to be ready (with increased timeout and better error handling)
-max_tries=30
+# Wait for database to be ready
+max_tries=40
 count=0
 echo "Waiting for database connection..."
-
-# First, wait a bit for the database container to fully initialize
-sleep 10
+sleep 5
 
 while ! php artisan db:monitor > /dev/null 2>&1; do
     count=$((count + 1))
     if [ $count -gt $max_tries ]; then
-        echo "Database connection timeout after $max_tries attempts"
-        echo "Checking database container status..."
-        # Try to connect directly to MySQL to get more detailed error
-        mysql -h db -u admindb_arifal -parifal201 -e "SELECT 1" || true
+        echo "ERROR: Database connection timeout after $max_tries attempts. Exiting."
         exit 1
     fi
     echo "Waiting for database... ($count/$max_tries)"
     sleep 5
 done
 
-echo "Database connection established!"
+echo "Database connected!"
 
-# Run database-dependent commands
-echo "Running database migrations..."
+# Run migrations (idempotent - safe to run on every startup)
+echo "Running migrations..."
 php artisan migrate --force
 
-echo "Running database seeders..."
-php artisan db:seed --force
+# Create storage symlink if not exists
+echo "Setting up storage link..."
+if [ ! -e /var/www/public/storage ]; then
+    php artisan storage:link --force 2>/dev/null || true
+fi
 
+# Optimize Laravel for production
 echo "Optimizing Laravel..."
-php artisan optimize:clear
-php artisan optimize
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
-# Start supervisor (which will manage PHP-FPM)
-exec /usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf 
+echo "=== Starting Supervisord (PHP-FPM + Queue + Scheduler) ==="
+exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf

@@ -47,32 +47,32 @@ class BigdataResume extends Model
 
     public static function generateResumeData($import_datasource_id, $year, $resume_type){
         // Get accurate counts without joins to avoid duplicates from multiple retributions
-        // Filter only valid data (is_valid = true)
+        // Filter only valid data (is_valid = true) and only the target year
         $verified_count = PbgTask::whereIn('status', PbgTaskStatus::getVerified())
             ->where('is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->count();
         $non_verified_count = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
             ->where('is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->count();
         $waiting_click_dpmptsp_count = PbgTask::whereIn('status', PbgTaskStatus::getWaitingClickDpmptsp())
             ->where('is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->count();
         $issuance_realization_pbg_count = PbgTask::whereIn('status', PbgTaskStatus::getIssuanceRealizationPbg())
             ->where('is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->count();
         $process_in_technical_office_count = PbgTask::whereIn('status', PbgTaskStatus::getProcessInTechnicalOffice())
             ->where('is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->count();
         $potention_count = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
             ->where('is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->count();
-        
+
         // Business count: function_type LIKE usaha OR (non-business with unit > 1)
         $business_count = PbgTask::where(function ($q) {
             $q->where(function ($q2) {
@@ -98,9 +98,9 @@ class BigdataResume extends Model
             ->whereIn("status", PbgTaskStatus::getNonVerified());
         })
         ->where('is_valid', true)
-        ->where('due_date', '>=', $year.'-02-01')
+        ->whereYear('task_created_at', $year)
         ->count();
-        
+
         // Non-business count: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1)
         $non_business_count = PbgTask::where(function ($q) {
             $q->where(function ($q2) {
@@ -120,7 +120,7 @@ class BigdataResume extends Model
             });
         })
         ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
+        ->whereYear('task_created_at', $year)
         ->count();
 
         // Business RAB count - for each business task with data_type=3:
@@ -134,7 +134,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -167,7 +167,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -200,7 +200,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -236,7 +236,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -272,7 +272,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
+            ->whereYear('task_created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -294,26 +294,6 @@ class BigdataResume extends Model
             ')
             ->value('total_count') ?? 0;
 
-        // Debug: Check if there are non-verified tasks and their retribution data
-        $debug_non_verified = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
-            ->where('is_valid', true)
-            ->where('due_date', '>=', $year.'-02-01')
-            ->with('pbg_task_retributions')
-            ->get();
-            
-        \Log::info('Non-verified tasks debug', [
-            'year' => $year,
-            'non_verified_statuses' => PbgTaskStatus::getNonVerified(),
-            'tasks_count' => $debug_non_verified->count(),
-            'tasks_with_retribution' => $debug_non_verified->filter(fn($task) => $task->pbg_task_retributions)->count(),
-            'sample_retribution_values' => $debug_non_verified->take(3)->map(fn($task) => [
-                'uuid' => $task->uuid,
-                'status' => $task->status,
-                'has_retribution' => !is_null($task->pbg_task_retributions),
-                'retribution_value' => $task->pbg_task_retributions?->nilai_retribusi_bangunan ?? 'NULL'
-            ])
-        ]);
-
         // Calculate totals using count-based formula
         // Business: $business_count * 200 * 44300
         // Non-Business: $non_business_count * 72 * 16000
@@ -324,7 +304,7 @@ class BigdataResume extends Model
         // Get other sum values using proper aggregation to handle multiple retributions
         $stats = PbgTask::leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
             ->where('pbg_task.is_valid', true)
-            ->where('pbg_task.due_date', '>=', $year.'-02-01')
+            ->whereYear('pbg_task.task_created_at', $year)
             ->selectRaw("
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getVerified()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS verified_total,
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getWaitingClickDpmptsp()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS waiting_click_dpmptsp_total,
@@ -335,16 +315,6 @@ class BigdataResume extends Model
                 COUNT(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getNonVerified()).") AND ptr.nilai_retribusi_bangunan IS NOT NULL THEN 1 END) AS non_verified_with_retribution_count
             ")
             ->first();
-            
-        \Log::info('Stats calculation result', [
-            'business_count' => $business_count,
-            'non_business_count' => $non_business_count,
-            'business_total' => $business_total,
-            'non_business_total' => $non_business_total,
-            'non_verified_total' => $non_verified_total,
-            'non_verified_tasks_count' => $stats->non_verified_tasks_count ?? 'NULL', 
-            'non_verified_with_retribution_count' => $stats->non_verified_with_retribution_count ?? 'NULL'
-        ]);
 
         $service_google_sheet = app(ServiceGoogleSheet::class);
 

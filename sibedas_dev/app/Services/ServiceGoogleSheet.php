@@ -562,7 +562,7 @@ class ServiceGoogleSheet
 
     public function sync_pbg_task_payments(){
         try {
-            $sheetName = 'Data';
+            $sheetName = 'MASTER DATABASE PBG 2026 (v1)';
             $startLetter = 'A';
             $endLetter = 'AX';
             $extraLetters = ['BF'];
@@ -601,20 +601,19 @@ class ServiceGoogleSheet
 
             // Validate that expected headers exist after normalization before truncating table
             $expectedHeaders = [
-                'no','jenis_konsultasi','no_registrasi','nama_pemilik','lokasi_bg','fungsi_bg','nama_bangunan',
-                'tgl_permohonan','status_verifikasi','status_permohonan','alamat_pemilik','no_hp','email',
-                'tanggal_catatan','catatan_kekurangan_dokumen','gambar','krkkkpr','no_krk','lh','ska','keterangan',
-                'helpdesk','pj','operator_pbg','kepemilikan','potensi_taru','validasi_dinas','kategori_retribusi',
-                'no_urut_ba_tpt_20250001','tanggal_ba_tpt','no_urut_ba_tpa','tanggal_ba_tpa','no_urut_skrd_20250001',
-                'tanggal_skrd','ptsp','selesai_terbit','tanggal_pembayaran_yyyymmdd','format_sts','tahun_terbit',
-                'tahun_berjalan','kelurahan','kecamatan','lb','tb','jlb','unit','usulan_retribusi',
-                'nilai_retribusi_keseluruhan_simbg','nilai_retribusi_keseluruhan_pad','denda','usaha__non_usaha'
+                'no','nomor_register','no_registrasi','nama_pemilik','lokasi_bg','fungsi_bg','nama_bangunan',
+                'alamat_pemilik','luas_bangunan','usulan_retribusi','status','usaha__non_usaha',
+                'kategori_data','keterangan','pjverifikator','pj','krk','dokumen_lingkungan','gambar',
+                'skkska','ska','kontak','luas_lahan',
+                'jenis_konsultasi','tgl_permohonan','status_verifikasi','status_permohonan','no_hp','email',
+                'tanggal_pembayaran_yyyymmdd','no_urut_skrd_20250001',
+                'nilai_retribusi_keseluruhan_simbg','nilai_retribusi_keseluruhan_pad','denda'
             ];
 
             $normalizedHeaderValues = array_values($headers);
             $overlap = array_intersect($expectedHeaders, $normalizedHeaderValues);
 
-            if (count($overlap) < 10) { // too few matching headers, likely wrong sheet or headers changed
+            if (count($overlap) < 5) { // too few matching headers, likely wrong sheet or headers changed
                 Log::error('sync_pbg_task_payments: header mismatch detected', [
                     'expected_sample' => array_slice($expectedHeaders, 0, 15),
                     'found_sample' => array_slice($normalizedHeaderValues, 0, 30),
@@ -628,11 +627,12 @@ class ServiceGoogleSheet
             DB::table('pbg_task_payments')->truncate();
             Schema::enableForeignKeyConstraints();
 
-            // Map header -> db column
+            // Map header -> db column (supports both old and current sheet layouts)
             $map = [
                 'no' => 'row_no',
                 'jenis_konsultasi' => 'consultation_type',
                 'no_registrasi' => 'source_registration_number',
+                'nomor_register' => 'source_registration_number',
                 'nama_pemilik' => 'owner_name',
                 'lokasi_bg' => 'building_location',
                 'fungsi_bg' => 'building_function',
@@ -640,24 +640,31 @@ class ServiceGoogleSheet
                 'tgl_permohonan' => 'application_date_raw',
                 'status_verifikasi' => 'verification_status',
                 'status_permohonan' => 'application_status',
+                'status' => 'application_status',
                 'alamat_pemilik' => 'owner_address',
                 'no_hp' => 'owner_phone',
+                'kontak' => 'owner_phone',
                 'email' => 'owner_email',
                 'tanggal_catatan' => 'note_date_raw',
                 'catatan_kekurangan_dokumen' => 'document_shortage_note',
                 'gambar' => 'image_url',
                 'krkkkpr' => 'krk_kkpr',
+                'krk' => 'krk_kkpr',
                 'no_krk' => 'krk_number',
                 'lh' => 'lh',
+                'dokumen_lingkungan' => 'lh',
                 'ska' => 'ska',
+                'skkska' => 'ska',
                 'keterangan' => 'remarks',
                 'helpdesk' => 'helpdesk',
                 'pj' => 'person_in_charge',
+                'pjverifikator' => 'person_in_charge',
                 'operator_pbg' => 'pbg_operator',
                 'kepemilikan' => 'ownership',
                 'potensi_taru' => 'taru_potential',
                 'validasi_dinas' => 'agency_validation',
                 'kategori_retribusi' => 'retribution_category',
+                'kategori_data' => 'retribution_category',
                 'no_urut_ba_tpt_20250001' => 'ba_tpt_number',
                 'tanggal_ba_tpt' => 'ba_tpt_date_raw',
                 'no_urut_ba_tpa' => 'ba_tpa_number',
@@ -673,6 +680,7 @@ class ServiceGoogleSheet
                 'kelurahan' => 'village',
                 'kecamatan' => 'district',
                 'lb' => 'building_area',
+                'luas_bangunan' => 'building_area',
                 'tb' => 'building_height',
                 'jlb' => 'floor_count',
                 'unit' => 'unit_count',
@@ -681,6 +689,7 @@ class ServiceGoogleSheet
                 'nilai_retribusi_keseluruhan_pad' => 'retribution_total_pad',
                 'denda' => 'penalty_amount',
                 'usaha__non_usaha' => 'business_category',
+                'luas_lahan' => 'building_height',
             ];
 
             // We'll build registration map lazily per chunk to limit memory
@@ -703,7 +712,9 @@ class ServiceGoogleSheet
                 if (empty($values)) {
                     break; // no more rows
                 }
-                
+
+                $fetchedCount = count($values);
+
                 Log::info('Chunk fetched', [
                     'rowStart' => $rowStart,
                     'rowEnd'   => $rowEnd,
@@ -715,7 +726,7 @@ class ServiceGoogleSheet
                     foreach ($selected_indices as $colIdx) {
                         // find normalized header for this index
                         $h = $headers[$colIdx] ?? null;
-                        if ($h === 'no_registrasi') {
+                        if ($h === 'no_registrasi' || $h === 'nomor_register') {
                             $val = isset($row[$colIdx]) ? trim((string) $row[$colIdx]) : '';
                             if ($val !== '') { $chunkRegs[$val] = true; }
                         }
@@ -821,7 +832,7 @@ class ServiceGoogleSheet
                     }
 
                     // Resolve relation
-                    $sourceReg = $rowByHeader['no_registrasi'] ?? null;
+                    $sourceReg = $rowByHeader['no_registrasi'] ?? $rowByHeader['nomor_register'] ?? null;
                     if (is_string($sourceReg)) { $sourceReg = trim($sourceReg); }
                     if (!empty($sourceReg) && isset($regToTask[$sourceReg])) {
                         $record['pbg_task_id'] = $regToTask[$sourceReg]['id'];
@@ -837,6 +848,11 @@ class ServiceGoogleSheet
                 if (!empty($batch)) {
                     \App\Models\PbgTaskPayment::insert($batch);
                     $inserted += count($batch);
+                }
+
+                // If we got fewer rows than chunk size, we've reached the end
+                if ($fetchedCount < $chunkRowSize) {
+                    break;
                 }
 
                 // next chunk

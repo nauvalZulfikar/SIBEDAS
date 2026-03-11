@@ -77,6 +77,9 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
     // scraping
     Route::controller(ScrapingController::class)->group(function (){
         Route::get('/scraping','index')->name('scraping');
+        Route::post('/scraping/{id}/pause','pause')->name('scraping.pause');
+        Route::post('/scraping/{id}/resume','resume')->name('scraping.resume');
+        Route::post('/scraping/{id}/cancel','cancel')->name('scraping.cancel');
         Route::get('/retry-scraping/{id}','retry_syncjob')->name('retry-scraping');
     });
 

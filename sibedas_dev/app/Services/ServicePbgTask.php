@@ -36,9 +36,9 @@ class ServicePbgTask
 
     public function run_service()
     {
-        try{
+        try {
             $this->fetch_pbg_task();
-        }catch(Exception $e){
+        } catch (Exception $e) {
             throw $e;
         }
     }
@@ -106,7 +106,7 @@ class ServicePbgTask
             };
 
             do {
-                $url = "{$this->simbg_host}/api/pbg/v1/list/?page={$currentPage}&size={$this->fetch_per_page}&sort=ASC&date&search&status&slf_status&type=task&sort_by=created_at&application_type=1&start_date&end_date";
+                $url = "{$this->simbg_host}/api/pbg/v1/list/?page={$currentPage}&size={$this->fetch_per_page}&sort=ASC&date&search&status&slf_status&type&sort_by=created_at&application_type=1&start_date&end_date";
 
                 $fetch_data = $fetchData($url);
                 if (!$fetch_data) {
@@ -153,10 +153,24 @@ class ServicePbgTask
 
                 if (!empty($saved_data)) {
                     PbgTask::upsert($saved_data, ['uuid'], [
-                        'name', 'owner_name', 'application_type', 'application_type_name', 'condition',
-                        'registration_number', 'document_number', 'address', 'status', 'status_name',
-                        'slf_status', 'slf_status_name', 'function_type', 'consultation_type', 'due_date',
-                        'land_certificate_phase', 'task_created_at', 'updated_at'
+                        'name',
+                        'owner_name',
+                        'application_type',
+                        'application_type_name',
+                        'condition',
+                        'registration_number',
+                        'document_number',
+                        'address',
+                        'status',
+                        'status_name',
+                        'slf_status',
+                        'slf_status_name',
+                        'function_type',
+                        'consultation_type',
+                        'due_date',
+                        'land_certificate_phase',
+                        'task_created_at',
+                        'updated_at'
                     ]);
                 }
 

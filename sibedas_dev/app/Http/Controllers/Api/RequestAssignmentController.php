@@ -31,7 +31,7 @@ class RequestAssignmentController extends Controller
         // Apply year filter if provided (to match BigdataResume behavior)
         if ($request->has('year') && !empty($request->get('year'))) {
             $year = $request->get('year');
-            $baseQuery->where('due_date', '>=', $year.'-02-01');
+            $baseQuery->whereYear('created_at', $year);
             Log::info('RequestAssignmentController year filter applied', ['year' => $year]);
         }
         

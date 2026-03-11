@@ -16,7 +16,8 @@ WORKDIR /var/www
 # Install PHP extensions
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && rm -rf /var/lib/apt/lists/*
 
 # Override PHP memory limit
 COPY docker/php/memory-limit.ini /usr/local/etc/php/conf.d/memory-limit.ini
@@ -61,55 +62,49 @@ CMD ["php-fpm"]
 FROM php:8.2-fpm AS production
 WORKDIR /var/www
 
-# Install PHP extensions
+# Install PHP extensions + supervisor
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
     supervisor \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# PHP-FPM: listen on TCP port 9000
+RUN sed -i 's/listen = .*/listen = 9000/' /usr/local/etc/php-fpm.d/www.conf
 
 # Override PHP memory limit
 COPY docker/php/memory-limit.ini /usr/local/etc/php/conf.d/memory-limit.ini
 
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application files
+# Copy application files (node_modules, .env, sibedas.sql excluded via .dockerignore)
 COPY . .
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Install PHP dependencies (production, no dev)
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-# Install and build frontend assets
-RUN npm install \
-    && npm run build \
-    && ls -la public/build \
-    && mkdir -p public/assets \
-    && cp -r public/build/* public/assets/ \
-    && ls -la public/assets \
-    && rm -rf node_modules \
-    && rm -rf public/build
+# Create required storage directories (will be overridden by bind mount on VPS)
+RUN mkdir -p storage/framework/{sessions,views,cache} \
+    && mkdir -p storage/logs \
+    && mkdir -p storage/app/public \
+    && mkdir -p bootstrap/cache
 
-# Laravel caches
-RUN php artisan config:clear \
-    && php artisan route:clear \
-    && php artisan view:clear \
-    && php artisan optimize
-
-RUN php artisan storage:link
-
-# Create supervisor directories
+# Supervisor directories
 RUN mkdir -p /var/log/supervisor /var/run/supervisor
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 COPY docker/supervisor/laravel-production.conf /etc/supervisor/conf.d/laravel-production.conf
 
-# Permissions
-RUN chown -R www-data:www-data /var/www && chmod -R 755 /var/www/storage /var/www/public
+# Copy startup entrypoint
+COPY docker/startup.sh /startup.sh
+RUN chmod +x /startup.sh
+
+# Set permissions (will be re-applied at startup for mounted volumes)
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 755 /var/www/storage \
+    && chmod -R 755 /var/www/bootstrap/cache
 
 EXPOSE 9000
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+ENTRYPOINT ["/startup.sh"]

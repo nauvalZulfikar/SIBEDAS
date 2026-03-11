@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ImportDatasourceStatus;
 use App\Jobs\ScrapingDataJob;
+use App\Models\ImportDatasource;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -43,6 +45,17 @@ class StartScrapingData extends Command
                 $this->info('Operation cancelled.');
                 return 0;
             }
+        }
+
+        $active = ImportDatasource::whereIn('status', [
+            ImportDatasourceStatus::Processing->value,
+            ImportDatasourceStatus::Paused->value,
+        ])->count();
+
+        if ($active > 0) {
+            $this->warn('Scraping already running or paused. Skipping dispatch.');
+            Log::info('StartScrapingData skipped — another job is active');
+            return 0;
         }
 
         try {

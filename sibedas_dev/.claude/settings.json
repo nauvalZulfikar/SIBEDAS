@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scp /tmp/sibedas_deploy.tar.gz root@72.60.196.21:/tmp/sibedas_deploy.tar.gz)"
+    ]
+  }
+}

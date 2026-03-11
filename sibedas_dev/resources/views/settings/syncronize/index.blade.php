@@ -15,7 +15,7 @@
                 <div class="d-flex flex-wrap justify-content-end gap-2">
                     @if ($creator)
                         <button type="button" class="btn btn-success btn-sm d-block d-sm-inline w-auto" id="btn-sync-submit">
-                            <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>    
+                            <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
                             Sync SIMBG
                         </button>
                     @endif

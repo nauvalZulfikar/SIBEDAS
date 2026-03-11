@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command:*)",
+      "Bash(ssh:*)",
+      "Bash(ping:*)"
+    ]
+  }
+}
