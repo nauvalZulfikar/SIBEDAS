@@ -61,10 +61,11 @@ services:
             - ./public:/var/www/public
             - ./storage:/var/www/storage
             - ./bootstrap/cache:/var/www/bootstrap/cache
-            # Docker socket for webhook auto-deploy
-            - /var/run/docker.sock:/var/run/docker.sock
-            # Repo dir for git pull + docker cp
-            - /var/www/SIBEDAS/sibedas_dev:/var/www/SIBEDAS/sibedas_dev
+            # Mount app code from host so git pull on host auto-updates container
+            - /var/www/SIBEDAS/sibedas_dev/sibedas_dev/app:/var/www/app
+            - /var/www/SIBEDAS/sibedas_dev/sibedas_dev/routes:/var/www/routes
+            - /var/www/SIBEDAS/sibedas_dev/sibedas_dev/config:/var/www/config
+            - /var/www/SIBEDAS/sibedas_dev/sibedas_dev/resources:/var/www/resources
         depends_on:
             db:
                 condition: service_healthy
