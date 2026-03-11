@@ -29,7 +29,7 @@ class WebhookController extends Controller
         }
 
         $appDir = '/var/www';
-        $repoDir = '/var/www/SIBEDAS/sibedas_dev';
+        $repoDir = '/var/www/SIBEDAS/sibedas_dev/sibedas_dev';
 
         Log::info('Webhook: deploy triggered', [
             'commit' => $data['head_commit']['message'] ?? 'unknown',
