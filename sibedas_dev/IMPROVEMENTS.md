@@ -22,3 +22,4 @@
 | 18 | **DevOps** | Automated deploy pipeline | Sekarang deploy manual (rsync + scp + rebuild). Perlu simple CI/CD supaya deploy lebih cepat dan tidak error-prone |
 # webhook test
 # auto-deploy test Thu Mar 12 05:54:21 SEAST 2026
+# webhook test 2
