@@ -20,3 +20,4 @@
 | 16 | **UX** | Tampilkan waktu terakhir scraping berhasil | Dashboard tidak menampilkan kapan data terakhir diupdate. Operator tidak tahu apakah data yang dilihat masih fresh atau sudah lama |
 | 17 | **Performance** | Cache dashboard per request | `BigdataResume` sudah pre-computed, tapi endpoint masih query tambahan (spatial planning, payments) setiap request. Bisa di-cache dengan TTL pendek |
 | 18 | **DevOps** | Automated deploy pipeline | Sekarang deploy manual (rsync + scp + rebuild). Perlu simple CI/CD supaya deploy lebih cepat dan tidak error-prone |
+# webhook test
