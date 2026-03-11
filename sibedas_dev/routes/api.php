@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BigDataResumeController;
+use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\BusinessOrIndustriesController;
 use App\Http\Controllers\Api\CustomersController;
 use App\Http\Controllers\Api\DashboardController;
@@ -201,3 +202,6 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
 
     // TODO: Implement new retribution calculation API endpoints using the new schema
 });
+
+// GitHub webhook — no auth middleware
+Route::post('/webhook/github', [WebhookController::class, 'github'])->name('webhook.github');

@@ -99,6 +99,8 @@ return [
 
     'key' => env('APP_KEY'),
 
+    'webhook_secret' => env('WEBHOOK_SECRET', 'sibedas-webhook-secret'),
+
     'previous_keys' => [
         ...array_filter(
             explode(',', env('APP_PREVIOUS_KEYS', ''))
