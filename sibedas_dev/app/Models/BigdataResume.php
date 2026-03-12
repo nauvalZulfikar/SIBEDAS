@@ -50,27 +50,27 @@ class BigdataResume extends Model
         // Filter only valid data (is_valid = true) and only the target year
         $verified_count = PbgTask::whereIn('status', PbgTaskStatus::getVerified())
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->count();
         $non_verified_count = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->count();
         $waiting_click_dpmptsp_count = PbgTask::whereIn('status', PbgTaskStatus::getWaitingClickDpmptsp())
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->count();
         $issuance_realization_pbg_count = PbgTask::whereIn('status', PbgTaskStatus::getIssuanceRealizationPbg())
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->count();
         $process_in_technical_office_count = PbgTask::whereIn('status', PbgTaskStatus::getProcessInTechnicalOffice())
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->count();
         $potention_count = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->count();
 
         // Business count: function_type LIKE usaha OR (non-business with unit > 1)
@@ -98,7 +98,7 @@ class BigdataResume extends Model
             ->whereIn("status", PbgTaskStatus::getNonVerified());
         })
         ->where('is_valid', true)
-        ->whereYear('task_created_at', $year)
+        ->whereYear('created_at', $year)
         ->count();
 
         // Non-business count: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1)
@@ -120,7 +120,7 @@ class BigdataResume extends Model
             });
         })
         ->where('is_valid', true)
-        ->whereYear('task_created_at', $year)
+        ->whereYear('created_at', $year)
         ->count();
 
         // Business RAB count - for each business task with data_type=3:
@@ -134,7 +134,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -167,7 +167,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -200,7 +200,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -236,7 +236,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -272,7 +272,7 @@ class BigdataResume extends Model
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->whereYear('task_created_at', $year)
+            ->whereYear('created_at', $year)
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -304,7 +304,7 @@ class BigdataResume extends Model
         // Get other sum values using proper aggregation to handle multiple retributions
         $stats = PbgTask::leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
             ->where('pbg_task.is_valid', true)
-            ->whereYear('pbg_task.task_created_at', $year)
+            ->whereYear('pbg_task.created_at', $year)
             ->selectRaw("
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getVerified()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS verified_total,
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getWaitingClickDpmptsp()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS waiting_click_dpmptsp_total,
