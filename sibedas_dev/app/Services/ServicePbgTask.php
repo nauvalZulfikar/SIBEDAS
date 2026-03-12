@@ -175,6 +175,7 @@ class ServicePbgTask
                 }
 
                 $currentPage++;
+                sleep(1);
             } while ($currentPage <= $totalPage);
 
             return true;
