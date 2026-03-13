@@ -8,9 +8,7 @@ Dropzone.autoDiscover = false;
 class PbgTasks {
     constructor() {
         this.table = null;
-        this.allData = [];
-        this.filteredData = [];
-        this.columnFilters = { task_created_at_year: "2026" };
+        this.selectedYear = new Date().getFullYear().toString();
         this.toastMessage = document.getElementById("toast-message");
         this.toastElement = document.getElementById("toastNotification");
     }
@@ -40,149 +38,60 @@ class PbgTasks {
             bindFlag: "uploadHandlerBoundBeritaAcara",
         });
 
-        this.loadAllData();
+        this.renderYearFilter();
+        this.renderTable();
         this.handleSendNotification();
         this.handleExportExcel();
     }
 
-    async loadAllData() {
-        const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
-        const urlBase = `${GlobalConfig.apiHost}/api/request-assignments`;
+    renderYearFilter() {
         const tableContainer = document.getElementById("table-pbg-tasks");
-
-        tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
-
-        let allItems = [];
-        let page = 1;
-        let totalPages = 1;
-
-        try {
-            do {
-                const resp = await fetch(`${urlBase}?page=${page}&per_page=100`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                });
-                const data = await resp.json();
-                allItems = allItems.concat(data.data);
-                totalPages = data.meta.last_page;
-                page++;
-            } while (page <= totalPages);
-
-            this.allData = allItems;
-            this.applyColumnFilters();
-        } catch (e) {
-            tableContainer.innerHTML = `<div class="alert alert-danger">Gagal memuat data: ${e.message}</div>`;
-        }
-    }
-
-    getUniqueValues(key) {
-        const values = new Set();
-        this.allData.forEach(item => {
-            const val = item[key];
-            if (val) values.add(val);
-        });
-        return [...values].sort();
-    }
-
-    applyColumnFilters() {
-        this.filteredData = this.allData.filter(item => {
-            return Object.entries(this.columnFilters).every(([key, val]) => {
-                if (!val) return true;
-                if (key === "task_created_at_year") {
-                    const year = item.task_created_at ? item.task_created_at.toString().slice(0, 4) : "";
-                    return year === val;
-                }
-                const itemVal = (item[key] || "").toString().toLowerCase();
-                return itemVal.includes(val.toLowerCase());
-            });
-        });
-        this.renderTable();
-    }
-
-    makeYearDropdown() {
-        const years = [...new Set(this.allData
-            .map(item => item.task_created_at ? item.task_created_at.toString().slice(0, 4) : null)
-            .filter(Boolean)
-        )].sort((a, b) => b - a);
+        const wrapper = document.createElement("div");
+        wrapper.className = "d-flex align-items-center gap-2 mb-3";
+        wrapper.innerHTML = `<label class="mb-0 fw-semibold">Tahun:</label>`;
 
         const select = document.createElement("select");
-        select.className = "form-select form-select-sm mt-1";
-        select.style.fontSize = "11px";
+        select.className = "form-select form-select-sm w-auto";
+        select.id = "year-filter-select";
 
         const allOpt = document.createElement("option");
         allOpt.value = "";
-        allOpt.textContent = "-- Semua --";
+        allOpt.textContent = "Semua";
         select.appendChild(allOpt);
 
-        years.forEach(y => {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= currentYear - 5; y--) {
             const opt = document.createElement("option");
-            opt.value = y;
-            opt.textContent = y;
-            if (y === "2026") opt.selected = true;
+            opt.value = y.toString();
+            opt.textContent = y.toString();
+            if (y.toString() === this.selectedYear) opt.selected = true;
             select.appendChild(opt);
-        });
+        }
 
         select.addEventListener("change", () => {
-            this.columnFilters["task_created_at_year"] = select.value;
-            this.applyColumnFilters();
+            this.selectedYear = select.value;
+            if (this.table) {
+                this.table.destroy();
+                this.table = null;
+            }
+            this.renderTable();
         });
 
-        return select;
-    }
-
-    makeDropdown(key, placeholder) {
-        const values = this.getUniqueValues(key);
-        const select = document.createElement("select");
-        select.className = "form-select form-select-sm mt-1";
-        select.style.fontSize = "11px";
-
-        const defaultOpt = document.createElement("option");
-        defaultOpt.value = "";
-        defaultOpt.textContent = placeholder;
-        select.appendChild(defaultOpt);
-
-        values.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v;
-            opt.textContent = v;
-            select.appendChild(opt);
-        });
-
-        select.addEventListener("change", () => {
-            this.columnFilters[key] = select.value;
-            this.applyColumnFilters();
-        });
-
-        return select;
+        wrapper.appendChild(select);
+        tableContainer.parentNode.insertBefore(wrapper, tableContainer);
     }
 
     renderTable() {
+        const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
         const tableContainer = document.getElementById("table-pbg-tasks");
         const canUpdate = tableContainer.getAttribute("data-updater") === "1";
+        const year = this.selectedYear;
 
-        const rows = this.filteredData.map(item => [
-            item.id,
-            item.name,
-            item.owner_name,
-            item.condition,
-            item.registration_number,
-            item.document_number || "-",
-            item.address,
-            item.status_name,
-            item.function_type,
-            item.pbg_task_detail ? item.pbg_task_detail.name_building : "-",
-            item.consultation_type,
-            item.due_date,
-            item.task_created_at ? item.task_created_at.toString().slice(0, 10) : "-",
-            item.pbg_task_retributions
-                ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan)
-                : "-",
-            item.pbg_status ? item.pbg_status.note : "-",
-            item,
-        ]);
+        const buildUrl = (page, limit) => {
+            let url = `${GlobalConfig.apiHost}/api/request-assignments?page=${page}&per_page=${limit}`;
+            if (year) url += `&year=${year}`;
+            return url;
+        };
 
         const config = {
             columns: [
@@ -198,7 +107,6 @@ class PbgTasks {
                 { name: "Nama Bangunan" },
                 { name: "Jenis Konsultasi" },
                 { name: "Tanggal Jatuh Tempo" },
-                { name: "Tanggal Permohonan" },
                 { name: "Retribusi" },
                 { name: "Catatan Kekurangan Dokumen" },
                 {
@@ -224,59 +132,60 @@ class PbgTasks {
                     },
                 },
             ],
-            data: rows,
+            server: {
+                url: buildUrl(1, 15),
+                then: (data) => data.data.map(item => [
+                    item.id,
+                    item.name,
+                    item.owner_name,
+                    item.condition,
+                    item.registration_number,
+                    item.document_number || "-",
+                    item.address,
+                    item.status_name,
+                    item.function_type,
+                    item.pbg_task_detail ? item.pbg_task_detail.name_building : "-",
+                    item.consultation_type,
+                    item.due_date,
+                    item.pbg_task_retributions
+                        ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan)
+                        : "-",
+                    item.pbg_status ? item.pbg_status.note : "-",
+                    item,
+                ]),
+                total: (data) => data.meta.total,
+            },
+            pagination: {
+                limit: 15,
+                server: {
+                    url: (prev, page, limit) => buildUrl(page + 1, limit),
+                },
+            },
+            search: {
+                server: {
+                    url: (prev, keyword) => {
+                        let url = buildUrl(1, 15);
+                        if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
+                        return url;
+                    },
+                },
+            },
             sort: true,
-            search: true,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            fetchOptions: {
+                credentials: "include",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            },
         };
 
         tableContainer.innerHTML = "";
         this.table = new Grid(config).render(tableContainer);
-
-        // Add column filter dropdowns after table renders
-        this.table.on("ready", () => this.addColumnDropdowns());
-        setTimeout(() => this.addColumnDropdowns(), 500);
-    }
-
-    addColumnDropdowns() {
-        const thead = document.querySelector("#table-pbg-tasks thead tr");
-        if (!thead) return;
-
-        const filterRow = document.createElement("tr");
-        const dropdownCols = [
-            null,           // ID - no filter
-            null,           // Nama Pemohon
-            null,           // Nama Pemilik
-            { key: "condition", placeholder: "Kondisi" },
-            null,           // Nomor Registrasi
-            null,           // Nomor Dokumen
-            null,           // Alamat
-            { key: "status_name", placeholder: "Status" },
-            { key: "function_type", placeholder: "Fungsi" },
-            null,           // Nama Bangunan
-            { key: "consultation_type", placeholder: "Konsultasi" },
-            null,           // Tanggal Jatuh Tempo
-            "year",         // Tanggal Permohonan - year filter
-            null,           // Retribusi
-            null,           // Catatan
-            null,           // Aksi
-        ];
-
-        dropdownCols.forEach(col => {
-            const td = document.createElement("th");
-            td.style.padding = "2px 4px";
-            if (col === "year") {
-                td.appendChild(this.makeYearDropdown());
-            } else if (col) {
-                td.appendChild(this.makeDropdown(col.key, `-- ${col.placeholder} --`));
-            }
-            filterRow.appendChild(td);
-        });
-
-        // Prevent duplicate filter rows
-        const existing = document.querySelector("#table-pbg-tasks thead tr.filter-row");
-        if (existing) existing.remove();
-        filterRow.classList.add("filter-row");
-        thead.parentNode.insertBefore(filterRow, thead.nextSibling);
     }
 
     handleExportExcel() {
@@ -396,7 +305,7 @@ class PbgTasks {
                         setTimeout(() => { document.body.focus(); modalInstance.hide(); }, 50);
                         self.toastMessage.innerText = "File uploaded successfully!";
                         self.toast.show();
-                        self.loadAllData();
+                        self.renderTable();
                     });
                     dz.on("error", (file, message) => {
                         self.toastMessage.innerText = message || "Upload failed!";
