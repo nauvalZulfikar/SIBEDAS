@@ -10,7 +10,7 @@ class PbgTasks {
         this.table = null;
         this.allData = [];
         this.filteredData = [];
-        this.columnFilters = {};
+        this.columnFilters = { task_created_at_year: "2026" };
         this.toastMessage = document.getElementById("toast-message");
         this.toastElement = document.getElementById("toastNotification");
     }
@@ -72,8 +72,7 @@ class PbgTasks {
             } while (page <= totalPages);
 
             this.allData = allItems;
-            this.filteredData = allItems;
-            this.renderTable();
+            this.applyColumnFilters();
         } catch (e) {
             tableContainer.innerHTML = `<div class="alert alert-danger">Gagal memuat data: ${e.message}</div>`;
         }
@@ -92,11 +91,46 @@ class PbgTasks {
         this.filteredData = this.allData.filter(item => {
             return Object.entries(this.columnFilters).every(([key, val]) => {
                 if (!val) return true;
+                if (key === "task_created_at_year") {
+                    const year = item.task_created_at ? item.task_created_at.toString().slice(0, 4) : "";
+                    return year === val;
+                }
                 const itemVal = (item[key] || "").toString().toLowerCase();
                 return itemVal.includes(val.toLowerCase());
             });
         });
         this.renderTable();
+    }
+
+    makeYearDropdown() {
+        const years = [...new Set(this.allData
+            .map(item => item.task_created_at ? item.task_created_at.toString().slice(0, 4) : null)
+            .filter(Boolean)
+        )].sort((a, b) => b - a);
+
+        const select = document.createElement("select");
+        select.className = "form-select form-select-sm mt-1";
+        select.style.fontSize = "11px";
+
+        const allOpt = document.createElement("option");
+        allOpt.value = "";
+        allOpt.textContent = "-- Semua --";
+        select.appendChild(allOpt);
+
+        years.forEach(y => {
+            const opt = document.createElement("option");
+            opt.value = y;
+            opt.textContent = y;
+            if (y === "2026") opt.selected = true;
+            select.appendChild(opt);
+        });
+
+        select.addEventListener("change", () => {
+            this.columnFilters["task_created_at_year"] = select.value;
+            this.applyColumnFilters();
+        });
+
+        return select;
     }
 
     makeDropdown(key, placeholder) {
@@ -142,6 +176,7 @@ class PbgTasks {
             item.pbg_task_detail ? item.pbg_task_detail.name_building : "-",
             item.consultation_type,
             item.due_date,
+            item.task_created_at ? item.task_created_at.toString().slice(0, 10) : "-",
             item.pbg_task_retributions
                 ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan)
                 : "-",
@@ -163,6 +198,7 @@ class PbgTasks {
                 { name: "Nama Bangunan" },
                 { name: "Jenis Konsultasi" },
                 { name: "Tanggal Jatuh Tempo" },
+                { name: "Tanggal Permohonan" },
                 { name: "Retribusi" },
                 { name: "Catatan Kekurangan Dokumen" },
                 {
@@ -218,7 +254,8 @@ class PbgTasks {
             { key: "function_type", placeholder: "Fungsi" },
             null,           // Nama Bangunan
             { key: "consultation_type", placeholder: "Konsultasi" },
-            null,           // Tanggal
+            null,           // Tanggal Jatuh Tempo
+            "year",         // Tanggal Permohonan - year filter
             null,           // Retribusi
             null,           // Catatan
             null,           // Aksi
@@ -227,12 +264,18 @@ class PbgTasks {
         dropdownCols.forEach(col => {
             const td = document.createElement("th");
             td.style.padding = "2px 4px";
-            if (col) {
+            if (col === "year") {
+                td.appendChild(this.makeYearDropdown());
+            } else if (col) {
                 td.appendChild(this.makeDropdown(col.key, `-- ${col.placeholder} --`));
             }
             filterRow.appendChild(td);
         });
 
+        // Prevent duplicate filter rows
+        const existing = document.querySelector("#table-pbg-tasks thead tr.filter-row");
+        if (existing) existing.remove();
+        filterRow.classList.add("filter-row");
         thead.parentNode.insertBefore(filterRow, thead.nextSibling);
     }
 
