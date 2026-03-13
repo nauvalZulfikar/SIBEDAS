@@ -1,4 +1,3 @@
-import { Grid, html } from "gridjs/dist/gridjs.umd.js";
 import GlobalConfig from "../global-config";
 import { Dropzone } from "dropzone";
 import { addThousandSeparators } from "../global-config";
@@ -7,7 +6,6 @@ Dropzone.autoDiscover = false;
 
 class PbgTasks {
     constructor() {
-        this.table = null;
         this.selectedYear = new Date().getFullYear().toString();
         this.toastMessage = document.getElementById("toast-message");
         this.toastElement = document.getElementById("toastNotification");
@@ -103,64 +101,6 @@ class PbgTasks {
         let currentSearch = "";
         let totalPages = 1;
 
-        const mapRows = (items) => items.map(item => [
-            item.id,
-            item.name,
-            item.owner_name,
-            item.condition,
-            item.registration_number,
-            item.document_number || "-",
-            item.address,
-            item.status_name,
-            item.function_type,
-            item.pbg_task_detail ? item.pbg_task_detail.name_building : "-",
-            item.consultation_type,
-            item.due_date,
-            item.pbg_task_retributions
-                ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan)
-                : "-",
-            item.pbg_status ? item.pbg_status.note : "-",
-            item,
-        ]);
-
-        const columns = [
-            { name: "ID" },
-            { name: "Nama Pemohon" },
-            { name: "Nama Pemilik" },
-            { name: "Kondisi" },
-            { name: "Nomor Registrasi" },
-            { name: "Nomor Dokumen" },
-            { name: "Alamat" },
-            { name: "Status" },
-            { name: "Jenis Fungsi" },
-            { name: "Nama Bangunan" },
-            { name: "Jenis Konsultasi" },
-            { name: "Tanggal Jatuh Tempo" },
-            { name: "Retribusi" },
-            { name: "Catatan Kekurangan Dokumen" },
-            {
-                name: "Aksi",
-                formatter: (cell) => {
-                    if (!canUpdate) return html(`<span class="text-muted">No Privilege</span>`);
-                    return html(`
-                    <div class="d-flex justify-content-center align-items-center gap-2">
-                        <a href="/pbg-task/${cell.id}"
-                        class="btn btn-yellow btn-sm d-inline-flex align-items-center justify-content-center"
-                        style="white-space: nowrap; line-height: 1;">
-                            <iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon>
-                        </a>
-                        ${cell.attachment_berita_acara
-                            ? `<a href="/pbg-task-attachment/${cell.attachment_berita_acara.id}?type=berita-acara" class="btn btn-success btn-sm d-inline-flex align-items-center justify-content-center" style="white-space: nowrap; line-height: 1;" target="_blank"><iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1">Berita Acara</span></a>`
-                            : `<button class="btn btn-sm btn-info d-inline-flex align-items-center justify-content-center upload-btn-berita-acara" data-id="${cell.id}" style="white-space: nowrap; line-height: 1;"><iconify-icon icon="mingcute:upload-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1" style="line-height: 1;">Berita Acara</span></button>`
-                        }
-                        ${cell.attachment_bukti_bayar
-                            ? `<a href="/pbg-task-attachment/${cell.attachment_bukti_bayar.id}?type=bukti-bayar" class="btn btn-success btn-sm d-inline-flex align-items-center justify-content-center" style="white-space: nowrap; line-height: 1;" target="_blank"><iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1">Bukti Bayar</span></a>`
-                            : `<button class="btn btn-sm btn-info d-inline-flex align-items-center justify-content-center upload-btn-bukti-bayar" data-id="${cell.id}" style="white-space: nowrap; line-height: 1;"><iconify-icon icon="mingcute:upload-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1" style="line-height: 1;">Bukti Bayar</span></button>`
-                        }
-                    </div>`);
-                },
-            },
-        ];
 
         const loadPage = async (page, search) => {
             tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
@@ -168,14 +108,40 @@ class PbgTasks {
             totalPages = data.meta.last_page;
             currentPage = page;
 
-            if (self.table) { self.table.destroy(); self.table = null; }
+            const headers = ["ID","Nama Pemohon","Nama Pemilik","Kondisi","Nomor Registrasi","Nomor Dokumen","Alamat","Status","Jenis Fungsi","Nama Bangunan","Jenis Konsultasi","Tanggal Jatuh Tempo","Retribusi","Catatan","Aksi"];
+            const thead = `<thead><tr>${headers.map(h => `<th style="white-space:nowrap;font-size:12px;padding:6px 8px">${h}</th>`).join("")}</tr></thead>`;
+            const tbody = `<tbody>${data.data.map(item => {
+                const ret = item.pbg_task_retributions ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan) : "-";
+                const aksi = canUpdate ? `
+                    <div class="d-flex gap-1">
+                        <a href="/pbg-task/${item.id}" class="btn btn-yellow btn-sm"><iconify-icon icon="mingcute:eye-2-fill" width="13"></iconify-icon></a>
+                        ${item.attachment_berita_acara
+                            ? `<a href="/pbg-task-attachment/${item.attachment_berita_acara.id}?type=berita-acara" class="btn btn-success btn-sm" target="_blank" style="font-size:11px">BA</a>`
+                            : `<button class="btn btn-sm btn-info upload-btn-berita-acara" data-id="${item.id}" style="font-size:11px">BA</button>`}
+                        ${item.attachment_bukti_bayar
+                            ? `<a href="/pbg-task-attachment/${item.attachment_bukti_bayar.id}?type=bukti-bayar" class="btn btn-success btn-sm" target="_blank" style="font-size:11px">BB</a>`
+                            : `<button class="btn btn-sm btn-info upload-btn-bukti-bayar" data-id="${item.id}" style="font-size:11px">BB</button>`}
+                    </div>` : `<span class="text-muted">No Privilege</span>`;
+                return `<tr style="font-size:12px">
+                    <td style="padding:5px 8px">${item.id}</td>
+                    <td style="padding:5px 8px">${item.name || "-"}</td>
+                    <td style="padding:5px 8px">${item.owner_name || "-"}</td>
+                    <td style="padding:5px 8px">${item.condition || "-"}</td>
+                    <td style="padding:5px 8px">${item.registration_number || "-"}</td>
+                    <td style="padding:5px 8px">${item.document_number || "-"}</td>
+                    <td style="padding:5px 8px">${item.address || "-"}</td>
+                    <td style="padding:5px 8px">${item.status_name || "-"}</td>
+                    <td style="padding:5px 8px">${item.function_type || "-"}</td>
+                    <td style="padding:5px 8px">${item.pbg_task_detail ? item.pbg_task_detail.name_building : "-"}</td>
+                    <td style="padding:5px 8px">${item.consultation_type || "-"}</td>
+                    <td style="padding:5px 8px">${item.due_date || "-"}</td>
+                    <td style="padding:5px 8px">${ret}</td>
+                    <td style="padding:5px 8px">${item.pbg_status ? item.pbg_status.note : "-"}</td>
+                    <td style="padding:5px 8px">${aksi}</td>
+                </tr>`;
+            }).join("")}</tbody>`;
 
-            self.table = new Grid({
-                columns,
-                data: mapRows(data.data),
-                sort: true,
-            }).render(tableContainer);
-
+            tableContainer.innerHTML = `<div class="table-responsive"><table class="table table-bordered table-hover">${thead}${tbody}</table></div>`;
             renderPagination(page, totalPages, data.meta.total);
         };
 
