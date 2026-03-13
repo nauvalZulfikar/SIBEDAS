@@ -81,111 +81,140 @@ class PbgTasks {
         tableContainer.parentNode.insertBefore(wrapper, tableContainer);
     }
 
-    renderTable() {
+    async fetchPage(page, search) {
         const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
+        let url = `${GlobalConfig.apiHost}/api/request-assignments?page=${page}&per_page=15`;
+        if (this.selectedYear) url += `&year=${this.selectedYear}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+
+        const resp = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            credentials: "include",
+        });
+        return resp.json();
+    }
+
+    renderTable() {
         const tableContainer = document.getElementById("table-pbg-tasks");
         const canUpdate = tableContainer.getAttribute("data-updater") === "1";
-        const year = this.selectedYear;
 
-        const buildUrl = (page, limit) => {
-            let url = `${GlobalConfig.apiHost}/api/request-assignments?page=${page}&per_page=${limit}`;
-            if (year) url += `&year=${year}`;
-            return url;
+        const self = this;
+        let currentPage = 1;
+        let currentSearch = "";
+        let totalPages = 1;
+
+        const mapRows = (items) => items.map(item => [
+            item.id,
+            item.name,
+            item.owner_name,
+            item.condition,
+            item.registration_number,
+            item.document_number || "-",
+            item.address,
+            item.status_name,
+            item.function_type,
+            item.pbg_task_detail ? item.pbg_task_detail.name_building : "-",
+            item.consultation_type,
+            item.due_date,
+            item.pbg_task_retributions
+                ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan)
+                : "-",
+            item.pbg_status ? item.pbg_status.note : "-",
+            item,
+        ]);
+
+        const columns = [
+            { name: "ID" },
+            { name: "Nama Pemohon" },
+            { name: "Nama Pemilik" },
+            { name: "Kondisi" },
+            { name: "Nomor Registrasi" },
+            { name: "Nomor Dokumen" },
+            { name: "Alamat" },
+            { name: "Status" },
+            { name: "Jenis Fungsi" },
+            { name: "Nama Bangunan" },
+            { name: "Jenis Konsultasi" },
+            { name: "Tanggal Jatuh Tempo" },
+            { name: "Retribusi" },
+            { name: "Catatan Kekurangan Dokumen" },
+            {
+                name: "Aksi",
+                formatter: (cell) => {
+                    if (!canUpdate) return html(`<span class="text-muted">No Privilege</span>`);
+                    return html(`
+                    <div class="d-flex justify-content-center align-items-center gap-2">
+                        <a href="/pbg-task/${cell.id}"
+                        class="btn btn-yellow btn-sm d-inline-flex align-items-center justify-content-center"
+                        style="white-space: nowrap; line-height: 1;">
+                            <iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon>
+                        </a>
+                        ${cell.attachment_berita_acara
+                            ? `<a href="/pbg-task-attachment/${cell.attachment_berita_acara.id}?type=berita-acara" class="btn btn-success btn-sm d-inline-flex align-items-center justify-content-center" style="white-space: nowrap; line-height: 1;" target="_blank"><iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1">Berita Acara</span></a>`
+                            : `<button class="btn btn-sm btn-info d-inline-flex align-items-center justify-content-center upload-btn-berita-acara" data-id="${cell.id}" style="white-space: nowrap; line-height: 1;"><iconify-icon icon="mingcute:upload-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1" style="line-height: 1;">Berita Acara</span></button>`
+                        }
+                        ${cell.attachment_bukti_bayar
+                            ? `<a href="/pbg-task-attachment/${cell.attachment_bukti_bayar.id}?type=bukti-bayar" class="btn btn-success btn-sm d-inline-flex align-items-center justify-content-center" style="white-space: nowrap; line-height: 1;" target="_blank"><iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1">Bukti Bayar</span></a>`
+                            : `<button class="btn btn-sm btn-info d-inline-flex align-items-center justify-content-center upload-btn-bukti-bayar" data-id="${cell.id}" style="white-space: nowrap; line-height: 1;"><iconify-icon icon="mingcute:upload-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1" style="line-height: 1;">Bukti Bayar</span></button>`
+                        }
+                    </div>`);
+                },
+            },
+        ];
+
+        const loadPage = async (page, search) => {
+            tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
+            const data = await self.fetchPage(page, search);
+            totalPages = data.meta.last_page;
+            currentPage = page;
+
+            if (self.table) { self.table.destroy(); self.table = null; }
+
+            self.table = new Grid({
+                columns,
+                data: mapRows(data.data),
+                sort: true,
+            }).render(tableContainer);
+
+            renderPagination(page, totalPages, data.meta.total);
         };
 
-        const config = {
-            columns: [
-                { name: "ID" },
-                { name: "Nama Pemohon" },
-                { name: "Nama Pemilik" },
-                { name: "Kondisi" },
-                { name: "Nomor Registrasi" },
-                { name: "Nomor Dokumen" },
-                { name: "Alamat" },
-                { name: "Status" },
-                { name: "Jenis Fungsi" },
-                { name: "Nama Bangunan" },
-                { name: "Jenis Konsultasi" },
-                { name: "Tanggal Jatuh Tempo" },
-                { name: "Retribusi" },
-                { name: "Catatan Kekurangan Dokumen" },
-                {
-                    name: "Aksi",
-                    formatter: (cell) => {
-                        if (!canUpdate) return html(`<span class="text-muted">No Privilege</span>`);
-                        return html(`
-                        <div class="d-flex justify-content-center align-items-center gap-2">
-                            <a href="/pbg-task/${cell.id}"
-                            class="btn btn-yellow btn-sm d-inline-flex align-items-center justify-content-center"
-                            style="white-space: nowrap; line-height: 1;">
-                                <iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon>
-                            </a>
-                            ${cell.attachment_berita_acara
-                                ? `<a href="/pbg-task-attachment/${cell.attachment_berita_acara.id}?type=berita-acara" class="btn btn-success btn-sm d-inline-flex align-items-center justify-content-center" style="white-space: nowrap; line-height: 1;" target="_blank"><iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1">Berita Acara</span></a>`
-                                : `<button class="btn btn-sm btn-info d-inline-flex align-items-center justify-content-center upload-btn-berita-acara" data-id="${cell.id}" style="white-space: nowrap; line-height: 1;"><iconify-icon icon="mingcute:upload-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1" style="line-height: 1;">Berita Acara</span></button>`
-                            }
-                            ${cell.attachment_bukti_bayar
-                                ? `<a href="/pbg-task-attachment/${cell.attachment_bukti_bayar.id}?type=bukti-bayar" class="btn btn-success btn-sm d-inline-flex align-items-center justify-content-center" style="white-space: nowrap; line-height: 1;" target="_blank"><iconify-icon icon="mingcute:eye-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1">Bukti Bayar</span></a>`
-                                : `<button class="btn btn-sm btn-info d-inline-flex align-items-center justify-content-center upload-btn-bukti-bayar" data-id="${cell.id}" style="white-space: nowrap; line-height: 1;"><iconify-icon icon="mingcute:upload-2-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon><span class="ms-1" style="line-height: 1;">Bukti Bayar</span></button>`
-                            }
-                        </div>`);
-                    },
-                },
-            ],
-            server: {
-                url: buildUrl(1, 15),
-                then: (data) => data.data.map(item => [
-                    item.id,
-                    item.name,
-                    item.owner_name,
-                    item.condition,
-                    item.registration_number,
-                    item.document_number || "-",
-                    item.address,
-                    item.status_name,
-                    item.function_type,
-                    item.pbg_task_detail ? item.pbg_task_detail.name_building : "-",
-                    item.consultation_type,
-                    item.due_date,
-                    item.pbg_task_retributions
-                        ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan)
-                        : "-",
-                    item.pbg_status ? item.pbg_status.note : "-",
-                    item,
-                ]),
-                total: (data) => data.meta.total,
-            },
-            pagination: {
-                limit: 15,
-                server: {
-                    url: (prev, page, limit) => buildUrl(page + 1, limit),
-                },
-            },
-            search: {
-                server: {
-                    url: (prev, keyword) => {
-                        let url = buildUrl(1, 15);
-                        if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
-                        return url;
-                    },
-                },
-            },
-            sort: true,
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            fetchOptions: {
-                credentials: "include",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            },
+        const renderPagination = (page, total, totalRecords) => {
+            let pag = document.getElementById("custom-pagination");
+            if (!pag) {
+                pag = document.createElement("div");
+                pag.id = "custom-pagination";
+                pag.className = "d-flex align-items-center justify-content-between mt-2 px-1";
+                tableContainer.parentNode.insertBefore(pag, tableContainer.nextSibling);
+            }
+            pag.innerHTML = `
+                <small class="text-muted">Total: ${totalRecords} data</small>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="pag-prev" ${page <= 1 ? "disabled" : ""}>Previous</button>
+                    <span class="text-muted" style="font-size:13px">Halaman ${page} / ${total}</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="pag-next" ${page >= total ? "disabled" : ""}>Next</button>
+                </div>`;
+
+            document.getElementById("pag-prev").addEventListener("click", () => loadPage(currentPage - 1, currentSearch));
+            document.getElementById("pag-next").addEventListener("click", () => loadPage(currentPage + 1, currentSearch));
         };
 
-        tableContainer.innerHTML = "";
-        this.table = new Grid(config).render(tableContainer);
+        // Search input
+        const searchWrap = document.createElement("div");
+        searchWrap.className = "mb-2";
+        searchWrap.innerHTML = `<input type="text" id="pbg-search" class="form-control form-control-sm w-auto" placeholder="Cari..." style="max-width:250px">`;
+        tableContainer.parentNode.insertBefore(searchWrap, tableContainer);
+
+        let searchTimer;
+        document.getElementById("pbg-search").addEventListener("input", (e) => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                currentSearch = e.target.value;
+                loadPage(1, currentSearch);
+            }, 400);
+        });
+
+        loadPage(1, "");
     }
 
     handleExportExcel() {
