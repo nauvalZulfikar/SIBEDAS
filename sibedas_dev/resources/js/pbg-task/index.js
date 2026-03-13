@@ -198,6 +198,7 @@ class PbgTasks {
 
         // Add column filter dropdowns after table renders
         this.table.on("ready", () => this.addColumnDropdowns());
+        setTimeout(() => this.addColumnDropdowns(), 500);
     }
 
     addColumnDropdowns() {
