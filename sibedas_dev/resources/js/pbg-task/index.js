@@ -100,17 +100,78 @@ class PbgTasks {
         let currentPage = 1;
         let currentSearch = "";
         let totalPages = 1;
+        let currentData = [];
+        let sortCol = null;
+        let sortDir = "asc";
+        let colFilters = {};
 
+        const columns = [
+            { label: "ID",               key: "id" },
+            { label: "Nama Pemohon",      key: "name" },
+            { label: "Nama Pemilik",      key: "owner_name" },
+            { label: "Kondisi",           key: "condition",        filterable: true },
+            { label: "Nomor Registrasi",  key: "registration_number" },
+            { label: "Nomor Dokumen",     key: "document_number" },
+            { label: "Alamat",            key: "address" },
+            { label: "Status",            key: "status_name",      filterable: true },
+            { label: "Jenis Fungsi",      key: "function_type",    filterable: true },
+            { label: "Nama Bangunan",     key: "_name_building" },
+            { label: "Jenis Konsultasi",  key: "consultation_type", filterable: true },
+            { label: "Tanggal Jatuh Tempo", key: "due_date" },
+            { label: "Retribusi",         key: "_retribusi" },
+            { label: "Catatan",           key: "_catatan" },
+            { label: "Aksi",              key: "_aksi",            nosort: true },
+        ];
 
-        const loadPage = async (page, search) => {
-            tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
-            const data = await self.fetchPage(page, search);
-            totalPages = data.meta.last_page;
-            currentPage = page;
+        const getVal = (item, key) => {
+            if (key === "_name_building") return item.pbg_task_detail ? item.pbg_task_detail.name_building : "";
+            if (key === "_retribusi") return item.pbg_task_retributions ? item.pbg_task_retributions.nilai_retribusi_bangunan : "";
+            if (key === "_catatan") return item.pbg_status ? item.pbg_status.note : "";
+            if (key === "_aksi") return "";
+            return item[key] || "";
+        };
 
-            const headers = ["ID","Nama Pemohon","Nama Pemilik","Kondisi","Nomor Registrasi","Nomor Dokumen","Alamat","Status","Jenis Fungsi","Nama Bangunan","Jenis Konsultasi","Tanggal Jatuh Tempo","Retribusi","Catatan","Aksi"];
-            const thead = `<thead><tr>${headers.map(h => `<th style="white-space:nowrap;font-size:12px;padding:6px 8px">${h}</th>`).join("")}</tr></thead>`;
-            const tbody = `<tbody>${data.data.map(item => {
+        const renderRows = (items) => {
+            // apply col filters
+            let filtered = items.filter(item =>
+                Object.entries(colFilters).every(([key, val]) => {
+                    if (!val) return true;
+                    return (getVal(item, key) || "").toString().toLowerCase().includes(val.toLowerCase());
+                })
+            );
+            // apply sort
+            if (sortCol) {
+                filtered = [...filtered].sort((a, b) => {
+                    const av = (getVal(a, sortCol) || "").toString().toLowerCase();
+                    const bv = (getVal(b, sortCol) || "").toString().toLowerCase();
+                    return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+                });
+            }
+            return filtered;
+        };
+
+        const buildTable = (items) => {
+            const filtered = renderRows(items);
+
+            // header row
+            const headerHtml = columns.map((col, i) => {
+                if (col.nosort) return `<th style="white-space:nowrap;font-size:12px;padding:6px 8px">${col.label}</th>`;
+                const arrow = sortCol === col.key ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+                return `<th data-colidx="${i}" style="white-space:nowrap;font-size:12px;padding:6px 8px;cursor:pointer">${col.label}${arrow}</th>`;
+            }).join("");
+
+            // filter row
+            const filterHtml = columns.map((col, i) => {
+                if (col.nosort) return `<th></th>`;
+                if (col.filterable) {
+                    const unique = [...new Set(items.map(item => getVal(item, col.key)).filter(Boolean))].sort();
+                    const opts = unique.map(v => `<option value="${v}" ${colFilters[col.key] === v ? "selected" : ""}>${v}</option>`).join("");
+                    return `<th style="padding:2px 4px"><select class="form-select form-select-sm col-filter" data-key="${col.key}" style="font-size:11px"><option value="">-- Semua --</option>${opts}</select></th>`;
+                }
+                return `<th style="padding:2px 4px"><input type="text" class="form-control form-control-sm col-filter" data-key="${col.key}" value="${colFilters[col.key] || ""}" placeholder="..." style="font-size:11px;min-width:60px"></th>`;
+            }).join("");
+
+            const tbodyHtml = filtered.map(item => {
                 const ret = item.pbg_task_retributions ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan) : "-";
                 const aksi = canUpdate ? `
                     <div class="d-flex gap-1">
@@ -139,9 +200,40 @@ class PbgTasks {
                     <td style="padding:5px 8px">${item.pbg_status ? item.pbg_status.note : "-"}</td>
                     <td style="padding:5px 8px">${aksi}</td>
                 </tr>`;
-            }).join("")}</tbody>`;
+            }).join("");
 
-            tableContainer.innerHTML = `<div class="table-responsive"><table class="table table-bordered table-hover">${thead}${tbody}</table></div>`;
+            tableContainer.innerHTML = `<div class="table-responsive"><table class="table table-bordered table-hover">
+                <thead><tr>${headerHtml}</tr><tr>${filterHtml}</tr></thead>
+                <tbody>${tbodyHtml}</tbody>
+            </table></div>`;
+
+            // sort click
+            tableContainer.querySelectorAll("th[data-colidx]").forEach(th => {
+                th.addEventListener("click", () => {
+                    const col = columns[th.getAttribute("data-colidx")];
+                    if (sortCol === col.key) sortDir = sortDir === "asc" ? "desc" : "asc";
+                    else { sortCol = col.key; sortDir = "asc"; }
+                    buildTable(currentData);
+                });
+            });
+
+            // col filter change
+            tableContainer.querySelectorAll(".col-filter").forEach(el => {
+                el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => {
+                    colFilters[el.getAttribute("data-key")] = el.value;
+                    buildTable(currentData);
+                });
+            });
+        };
+
+        const loadPage = async (page, search) => {
+            tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
+            const data = await self.fetchPage(page, search);
+            totalPages = data.meta.last_page;
+            currentPage = page;
+            currentData = data.data;
+            colFilters = {};
+            buildTable(currentData);
             renderPagination(page, totalPages, data.meta.total);
         };
 
