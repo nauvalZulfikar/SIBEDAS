@@ -34,54 +34,18 @@
   <div class="col-12">
     <div class="card w-100">
       <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-end">
-          <button class="btn btn-sm btn-info btn-send-notification me-3" data-bs-toggle="modal" data-bs-target="#sendNotificationModal">
+        <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+          <button id="export-excel-btn" class="btn btn-sm btn-success">
+            <iconify-icon icon="mingcute:file-excel-fill" width="15" height="15" style="vertical-align: middle;"></iconify-icon>
+            Export Excel
+          </button>
+          <button class="btn btn-sm btn-info btn-send-notification" data-bs-toggle="modal" data-bs-target="#sendNotificationModal">
             Kirim Notifikasi
           </button>
           @if ($creator)
             <a href="{{ route('pbg-task.create')}}" class="btn btn-success btn-sm d-block d-sm-inline w-auto">Create</a>
           @endif
         </div>
-
-        <form id="filter-form">
-          <div class="row pb-3 align-items-end">
-            <div class="col-lg-3 col-md-4 mb-2">
-              <label for="filter-select" class="form-label fw-semibold text-dark">Filter Type</label>
-              <select name="filter" id="filter-select" class="form-select form-select-sm border-2">
-                @foreach ($filterOptions as $key => $label)
-                  <option value="{{ $key }}" {{ request('filter') == $key ? 'selected' : '' }}>
-                    {{ $label }}
-                  </option>
-                @endforeach
-              </select>
-              <input name="menu_id" value="13" type="hidden" />
-            </div>
-            <div class="col-lg-2 col-md-3 mb-2">
-              <label for="year-select" class="form-label fw-semibold text-dark">Tahun</label>
-              <select name="year" id="year-select" class="form-select form-select-sm border-2">
-                @php
-                  $currentYear = date('Y');
-                  $selectedYear = request('year', 2025); // Default to 2025
-                @endphp
-                @for ($year = $currentYear; $year >= 2020; $year--)
-                  <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
-                    {{ $year }}
-                  </option>
-                @endfor
-              </select>
-            </div>
-            <div class="col-lg-4 col-md-4 mb-2">
-              <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary btn-sm py-2 fw-semibold shadow-sm">
-                  Terapkan
-                </button>
-              </div>
-            </div>
-            <div class="col-lg-1 col-md-0">
-              <!-- Space for additional controls if needed -->
-            </div>
-          </div>
-        </form>
 
         <!-- Table or Data Display Area -->
         <div id="table-pbg-tasks"

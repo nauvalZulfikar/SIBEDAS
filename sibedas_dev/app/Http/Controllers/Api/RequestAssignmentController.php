@@ -406,6 +406,10 @@ class RequestAssignmentController extends Controller
         }
     }
 
+    public function export_excel_pbg_tasks(){
+        return Excel::download(new \App\Exports\PbgTaskExport('all', 0), 'data-pbg-' . date('Y-m-d') . '.xlsx');
+    }
+
     public function export_excel_district_payment_recaps(){
         return Excel::download(new DistrictPaymentRecapExport, 'laporan-rekap-data-pembayaran.xlsx');
     }

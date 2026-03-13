@@ -61,6 +61,7 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
     Route::get('/report-payment-recaps',[RequestAssignmentController::class, 'report_payment_recaps'])->name('api.report-payment-recaps');
     Route::get('/report-pbg-ptsp',[RequestAssignmentController::class, 'report_pbg_ptsp'])->name('api.report-pbg-ptsp');
     Route::controller(RequestAssignmentController::class)->group( function (){
+        Route::get('/pbg-task/export-excel', 'export_excel_pbg_tasks')->name('api.pbg-task.export-excel');
         Route::get('/district-payment-report/excel', 'export_excel_district_payment_recaps')->name('api.district-payment-report.excel');
         Route::get('/district-payment-report/pdf', 'export_pdf_district_payment_recaps')->name('api.district-payment-report.pdf');
     });

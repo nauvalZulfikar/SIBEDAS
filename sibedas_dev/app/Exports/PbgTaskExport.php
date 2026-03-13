@@ -12,7 +12,7 @@ class PbgTaskExport implements FromCollection, WithHeadings
     protected $category;
     protected $year;
 
-    public function __construct(string $category, int $year)
+    public function __construct(string $category, int $year = 0)
     {
         $this->category = $category;
         $this->year = $year;
@@ -23,8 +23,11 @@ class PbgTaskExport implements FromCollection, WithHeadings
     */
     public function collection()
     {
-        $query = PbgTask::query()
-            ->whereYear('task_created_at', $this->year);
+        $query = PbgTask::query();
+
+        if ($this->year > 0) {
+            $query->whereYear('task_created_at', $this->year);
+        }
 
         // Menggunakan switch case karena lebih readable dan maintainable
         // untuk multiple conditions yang berbeda
@@ -96,23 +99,50 @@ class PbgTaskExport implements FromCollection, WithHeadings
         }
 
         return $query->select([
+            'id',
             'registration_number',
-            'document_number', 
+            'document_number',
+            'name as pemohon',
             'owner_name',
             'address',
-            'name as building_name',
-            'function_type'
-        ])->get();
+            'function_type',
+            'consultation_type',
+            'condition',
+            'due_date',
+            'task_created_at',
+            'created_at',
+        ])->get()->map(function ($item) {
+            return [
+                $item->id,
+                $item->registration_number,
+                $item->document_number,
+                $item->pemohon,
+                $item->owner_name,
+                $item->address,
+                $item->function_type,
+                $item->consultation_type,
+                $item->condition,
+                $item->due_date,
+                $item->task_created_at,
+                $item->created_at,
+            ];
+        });
     }
 
     public function headings(): array{
         return [
+            'ID',
             'Nomor Registrasi',
             'Nomor Dokumen',
+            'Nama Pemohon',
             'Nama Pemilik',
-            'Alamat Pemilik',
-            'Nama Bangunan',
+            'Alamat',
             'Fungsi Bangunan',
+            'Jenis Konsultasi',
+            'Kondisi',
+            'Tanggal Jatuh Tempo',
+            'Tanggal SIMBG',
+            'Tanggal Input',
         ];
     }
 }
