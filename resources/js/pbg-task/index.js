@@ -106,13 +106,18 @@ class PbgTasks {
         tableContainer.parentNode.insertBefore(wrapper, tableContainer);
     }
 
-    async fetchPage(page, search, sort, dir) {
+    async fetchPage(page, search, sort, dir, colFilters) {
         const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
         let url = `${GlobalConfig.apiHost}/api/request-assignments?page=${page}&per_page=15`;
         if (this.selectedYear) url += `&year=${this.selectedYear}`;
         if (this.selectedFilter) url += `&filter=${encodeURIComponent(this.selectedFilter)}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (sort) url += `&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir || 'asc')}`;
+        if (colFilters) {
+            Object.entries(colFilters).forEach(([key, val]) => {
+                if (val) url += `&cf[${encodeURIComponent(key)}]=${encodeURIComponent(val)}`;
+            });
+        }
         const resp = await fetch(url, {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             credentials: "include",
@@ -193,15 +198,9 @@ class PbgTasks {
             return item[key] || "";
         };
 
-        const renderRows = (items) => {
-            let filtered = items.filter(item =>
-                Object.entries(colFilters).every(([key, val]) => {
-                    if (!val) return true;
-                    return (getVal(item, key) || "").toString().toLowerCase().includes(val.toLowerCase());
-                })
-            );
-            return filtered;
-        };
+        let filterDebounceTimer = null;
+
+        const renderRows = (items) => items;
 
         const buildTable = (items) => {
             const filtered = renderRows(items);
@@ -285,15 +284,15 @@ class PbgTasks {
             });
 
             tableContainer.querySelectorAll(".col-filter").forEach(el => {
-                el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => {
+                const isSelect = el.tagName === "SELECT";
+                el.addEventListener(isSelect ? "change" : "input", () => {
                     const key = el.getAttribute("data-key");
-                    const cursorPos = el.selectionStart;
                     colFilters[key] = el.value;
-                    buildTable(currentData);
-                    const restored = tableContainer.querySelector(`.col-filter[data-key="${key}"]`);
-                    if (restored && restored.tagName !== "SELECT") {
-                        restored.focus();
-                        restored.setSelectionRange(cursorPos, cursorPos);
+                    if (isSelect) {
+                        loadPage(1, currentSearch);
+                    } else {
+                        clearTimeout(filterDebounceTimer);
+                        filterDebounceTimer = setTimeout(() => loadPage(1, currentSearch), 400);
                     }
                 });
             });
@@ -301,7 +300,7 @@ class PbgTasks {
 
         const loadPage = async (page, search) => {
             tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
-            const data = await self.fetchPage(page, search, sortCol, sortDir);
+            const data = await self.fetchPage(page, search, sortCol, sortDir, colFilters);
             totalPages = data.meta.last_page;
             currentPage = page;
             currentData = data.data;

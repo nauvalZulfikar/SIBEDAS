@@ -95,6 +95,11 @@ class RequestAssignmentController extends Controller
         if ($request->has('search') && !empty($request->get("search"))) {
             $this->applySearch($dataQuery, $request->get('search'));
         }
+
+        // Apply column filters
+        if ($request->has('cf') && is_array($request->get('cf'))) {
+            $this->applyColumnFilters($dataQuery, $request->get('cf'));
+        }
         
         // Additional logging for potention filter
         if ($filter === 'potention') {
@@ -395,6 +400,39 @@ class RequestAssignmentController extends Controller
         // If we found matching name_building records, include them in the search
         if (!empty($namesBuildingUuids)) {
             $query->orWhereIn('uuid', $namesBuildingUuids);
+        }
+    }
+
+    /**
+     * Apply per-column filters to the query
+     */
+    private function applyColumnFilters($query, array $filters)
+    {
+        $directColumns = [
+            'id', 'name', 'owner_name', 'condition', 'registration_number',
+            'document_number', 'address', 'status_name', 'function_type',
+            'consultation_type', 'task_created_at', 'start_date', 'due_date',
+            'total_area', 'unit',
+        ];
+
+        foreach ($filters as $key => $value) {
+            if (empty($value)) continue;
+
+            if (in_array($key, $directColumns)) {
+                $query->where($key, 'LIKE', "%{$value}%");
+            } elseif ($key === '_name_building') {
+                $query->whereHas('pbg_task_detail', function ($q) use ($value) {
+                    $q->where('name_building', 'LIKE', "%{$value}%");
+                });
+            } elseif ($key === '_retribusi') {
+                $query->whereHas('pbg_task_retributions', function ($q) use ($value) {
+                    $q->where('nilai_retribusi_bangunan', 'LIKE', "%{$value}%");
+                });
+            } elseif ($key === '_catatan') {
+                $query->whereHas('pbg_status', function ($q) use ($value) {
+                    $q->where('note', 'LIKE', "%{$value}%");
+                });
+            }
         }
     }
 
