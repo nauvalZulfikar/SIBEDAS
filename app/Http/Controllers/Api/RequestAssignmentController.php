@@ -406,8 +406,10 @@ class RequestAssignmentController extends Controller
         }
     }
 
-    public function export_excel_pbg_tasks(){
-        return Excel::download(new \App\Exports\PbgTaskExport('all', 0), 'data-pbg-' . date('Y-m-d') . '.xlsx');
+    public function export_excel_pbg_tasks(Request $request){
+        $filter = $request->get('filter', 'all');
+        $year = (int) $request->get('year', 0);
+        return Excel::download(new \App\Exports\PbgTaskExport($filter, $year), 'data-pbg-' . date('Y-m-d') . '.xlsx');
     }
 
     public function export_excel_district_payment_recaps(){
