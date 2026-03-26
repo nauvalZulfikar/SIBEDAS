@@ -646,8 +646,22 @@ class RequestAssignmentController extends Controller
                 case 'business-rab':
                     $bigdataResumeCount = PbgTask::where(function ($q) {
                         $q->where(function ($q2) {
-                            $q2->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                            $q2->where(function ($q3) {
+                                $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
+                                ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                            })
+                            ->orWhere(function ($q3) {
+                                $q3->where(function ($q4) {
+                                    $q4->where(function ($q5) {
+                                        $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                                        ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                                    })
+                                    ->orWhereNull('function_type');
+                                })
+                                ->whereHas('pbg_task_detail', function ($q4) {
+                                    $q4->where('unit', '>', 1);
+                                });
+                            });
                         })
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
@@ -666,8 +680,22 @@ class RequestAssignmentController extends Controller
                 case 'business-krk':
                     $bigdataResumeCount = PbgTask::where(function ($q) {
                         $q->where(function ($q2) {
-                            $q2->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                            $q2->where(function ($q3) {
+                                $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
+                                ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                            })
+                            ->orWhere(function ($q3) {
+                                $q3->where(function ($q4) {
+                                    $q4->where(function ($q5) {
+                                        $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                                        ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                                    })
+                                    ->orWhereNull('function_type');
+                                })
+                                ->whereHas('pbg_task_detail', function ($q4) {
+                                    $q4->where('unit', '>', 1);
+                                });
+                            });
                         })
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
@@ -686,8 +714,22 @@ class RequestAssignmentController extends Controller
                 case 'business-dlh':
                     $bigdataResumeCount = PbgTask::where(function ($q) {
                         $q->where(function ($q2) {
-                            $q2->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                            $q2->where(function ($q3) {
+                                $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
+                                ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                            })
+                            ->orWhere(function ($q3) {
+                                $q3->where(function ($q4) {
+                                    $q4->where(function ($q5) {
+                                        $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                                        ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                                    })
+                                    ->orWhereNull('function_type');
+                                })
+                                ->whereHas('pbg_task_detail', function ($q4) {
+                                    $q4->where('unit', '>', 1);
+                                });
+                            });
                         })
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
