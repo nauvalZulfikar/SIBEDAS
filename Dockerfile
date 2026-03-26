@@ -78,11 +78,19 @@ COPY docker/php/memory-limit.ini /usr/local/etc/php/conf.d/memory-limit.ini
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Install Node.js for building frontend assets
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy application files (node_modules, .env, sibedas.sql excluded via .dockerignore)
 COPY . .
 
 # Install PHP dependencies (production, no dev)
 RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Build frontend assets
+RUN npm install && npm run build
 
 # Create required storage directories (will be overridden by bind mount on VPS)
 RUN mkdir -p storage/framework/{sessions,views,cache} \
