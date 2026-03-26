@@ -19,9 +19,10 @@ class DashboardController extends Controller
             "year" => "required|integer"
         ]);
 
-        $year = $request->get('year');
+        $year = (int) $request->get('year');
 
         // Business: function_type LIKE usaha OR (non-business with unit > 1), status non-verified
+        // Dashboard shows combined 2 years: ($year-1) + $year
         $query = PbgTask::where(function ($q) {
                 $q->where(function ($q2) {
                     $q2->where(function ($q3) {
@@ -44,7 +45,7 @@ class DashboardController extends Controller
                 ->whereIn("status", PbgTaskStatus::getNonVerified());
             })
             ->where('is_valid', true)
-            ->whereYear('start_date', $year);
+            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31']);
 
         $taskCount = $query->count();
         $taskTotal = (clone $query)
@@ -61,9 +62,10 @@ class DashboardController extends Controller
             "year" => "required|integer"
         ]);
 
-        $year = $request->get('year');
+        $year = (int) $request->get('year');
 
         // Non-business: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1), status non-verified
+        // Dashboard shows combined 2 years: ($year-1) + $year
         $query = PbgTask::where(function ($q) {
                 $q->where(function ($q2) {
                     $q2->where(function ($q3) {
@@ -81,7 +83,7 @@ class DashboardController extends Controller
                 });
             })
             ->where('is_valid', true)
-            ->whereYear('start_date', $year);
+            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31']);
 
         $taskCount = $query->count();
         $taskTotal = (clone $query)
