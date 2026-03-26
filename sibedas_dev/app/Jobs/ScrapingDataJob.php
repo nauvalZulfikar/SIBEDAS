@@ -23,6 +23,7 @@ class ScrapingDataJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+    public int $timeout = 18000; // 5 hours — job will be killed and failed() called if exceeded
 
     protected ?int $resumeImportId;
     protected ?string $resumeFromUuid;
@@ -264,6 +265,32 @@ class ScrapingDataJob implements ShouldQueue
         $service->scraping_task_retributions($uuid);
         $service->scraping_task_integrations($uuid);
         $service->scraping_task_detail_status($uuid);
+    }
+
+    /**
+     * Handle a job failure (called by Laravel when worker dies, timeout, etc.)
+     */
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error('=== SCRAPING DATA JOB FAILED (worker-level) ===', [
+            'error' => $exception?->getMessage(),
+            'resume_import_id' => $this->resumeImportId,
+        ]);
+
+        // Find the active import datasource and mark it as failed
+        $import = $this->resumeImportId
+            ? ImportDatasource::find($this->resumeImportId)
+            : ImportDatasource::where('status', ImportDatasourceStatus::Processing->value)
+                ->latest()
+                ->first();
+
+        if ($import) {
+            $import->update([
+                'status' => ImportDatasourceStatus::Failed->value,
+                'message' => 'Job failed unexpectedly: ' . ($exception?->getMessage() ?? 'Unknown error'),
+                'finish_time' => now(),
+            ]);
+        }
     }
 
     /**

@@ -47,6 +47,24 @@ class StartScrapingData extends Command
             }
         }
 
+        // Auto-mark stale jobs as failed (processing for more than 6 hours)
+        $staleThreshold = now()->subHours(6);
+        $staleJobs = ImportDatasource::where('status', ImportDatasourceStatus::Processing->value)
+            ->where('updated_at', '<', $staleThreshold)
+            ->get();
+
+        foreach ($staleJobs as $staleJob) {
+            $staleJob->update([
+                'status' => ImportDatasourceStatus::Failed->value,
+                'message' => "Auto-marked as failed: no progress since {$staleJob->updated_at}",
+                'finish_time' => now(),
+            ]);
+            Log::warning("Stale scraping job #{$staleJob->id} auto-marked as failed", [
+                'last_updated' => $staleJob->updated_at,
+            ]);
+            $this->warn("Stale job #{$staleJob->id} auto-marked as failed.");
+        }
+
         $active = ImportDatasource::whereIn('status', [
             ImportDatasourceStatus::Processing->value,
             ImportDatasourceStatus::Paused->value,
