@@ -69,9 +69,21 @@ enum PbgTaskStatus: int
     public static function getIssuanceRealizationPbg(): array
     {
         return [
-            self::PENERBITAN_SK_PBG->value, 
-            self::SK_PBG_TERBIT->value, 
-            self::VERIFIKASI_SK_PBG->value
+            self::VERIFIKASI_SK_PBG->value,
+            self::PENERBITAN_SK_PBG->value,
+            self::SK_PBG_TERBIT->value,
+        ];
+    }
+
+    public static function getIssuanceRealizationPbgPrev(): array
+    {
+        return [
+            self::MENUNGGU_PENUGASAN_TPT_TPA->value,
+            self::MENUNGGU_JADWAL_KONSULTASI->value,
+            self::PELAKSANAAN_KONSULTASI->value,
+            self::PERBAIKAN_DOKUMEN_KONSULTASI->value,
+            self::PERHITUNGAN_RETRIBUSI->value,
+            self::MENUNGGU_PEMBAYARAN_RETRIBUSI->value,
         ];
     }
 

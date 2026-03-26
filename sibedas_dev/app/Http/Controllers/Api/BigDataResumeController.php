@@ -28,7 +28,7 @@ class BigDataResumeController extends Controller
             $type = trim($request->get("type"));
 
             if (!$filterDate || $filterDate === "latest") {
-                $big_data_resume = BigdataResume::where('resume_type', $type)->latest()->first();
+                $big_data_resume = BigdataResume::where('resume_type', $type)->where('year', date('Y'))->latest()->first();
                 if (!$big_data_resume) {
                     return $this->response_empty_resume();
                 }

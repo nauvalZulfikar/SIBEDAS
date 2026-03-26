@@ -105,13 +105,17 @@ class PbgTaskExport implements FromCollection, WithHeadings
             'name as pemohon',
             'owner_name',
             'address',
+            'status_name',
             'function_type',
             'consultation_type',
             'condition',
+            'start_date',
             'due_date',
             'task_created_at',
             'created_at',
-        ])->get()->map(function ($item) {
+            'total_area',
+            'unit',
+        ])->with(['pbg_task_retributions'])->get()->map(function ($item) {
             return [
                 $item->id,
                 $item->registration_number,
@@ -119,12 +123,17 @@ class PbgTaskExport implements FromCollection, WithHeadings
                 $item->pemohon,
                 $item->owner_name,
                 $item->address,
+                $item->status_name,
                 $item->function_type,
                 $item->consultation_type,
                 $item->condition,
+                $item->start_date,
                 $item->due_date,
                 $item->task_created_at,
                 $item->created_at,
+                $item->total_area,
+                $item->unit,
+                $item->pbg_task_retributions ? $item->pbg_task_retributions->nilai_retribusi_bangunan : null,
             ];
         });
     }
@@ -137,12 +146,17 @@ class PbgTaskExport implements FromCollection, WithHeadings
             'Nama Pemohon',
             'Nama Pemilik',
             'Alamat',
+            'Status',
             'Fungsi Bangunan',
             'Jenis Konsultasi',
             'Kondisi',
+            'Tanggal Mulai',
             'Tanggal Jatuh Tempo',
             'Tanggal SIMBG',
             'Tanggal Input',
+            'Luas (m2)',
+            'Unit',
+            'Retribusi',
         ];
     }
 }

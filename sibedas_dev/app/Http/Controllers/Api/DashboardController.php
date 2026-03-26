@@ -25,7 +25,7 @@ class DashboardController extends Controller
             return DB::table('pbg_task AS pt')
                 ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
                 ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid')
-                ->whereBetween("pt.task_created_at", [$startOfYear, $endOfYear])
+                ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
                 ->where(function ($query) {
                     $query->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) != ?', [strtolower(trim('Selesai Verifikasi'))])
                         ->orWhereNull('ptgs.status_verifikasi');
@@ -60,7 +60,7 @@ class DashboardController extends Controller
             return DB::table('pbg_task AS pt')
             ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
             ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid') // Join ke pbg_task_retributions
-            ->whereBetween("pt.task_created_at", [$startOfYear, $endOfYear])
+            ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
             ->where(function ($query) {
                 $query->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) != ?', [strtolower(trim('Selesai Verifikasi'))])
                     ->orWhereNull('ptgs.status_verifikasi'); // Include NULL values
@@ -92,7 +92,7 @@ class DashboardController extends Controller
         $query = once( function () use ($startOfYear, $endOfYear) {
             return DB::table('pbg_task as pt')
             ->leftJoin('pbg_task_retributions as ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid')
-            ->whereBetween("pt.task_created_at", [$startOfYear, $endOfYear])
+            ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
             ->select(
                 DB::raw('COUNT(DISTINCT pt.id) as task_count'),
                 DB::raw('SUM(ptr.nilai_retribusi_bangunan) as total_retribution')
@@ -120,7 +120,7 @@ class DashboardController extends Controller
             return DB::table('pbg_task AS pt')
                 ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
                 ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid')
-                ->whereBetween("pt.task_created_at", [$startOfYear, $endOfYear])
+                ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
                 ->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) = ?', [strtolower(trim('Selesai Verifikasi'))])
                 ->selectRaw('COUNT(pt.id) AS total_data, 
                             SUM(ptr.nilai_retribusi_bangunan) AS total_retribution') 
@@ -150,7 +150,7 @@ class DashboardController extends Controller
             return DB::table('pbg_task AS pt')
             ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
             ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid') // Join tabel pbg_task_retributions
-            ->whereBetween("pt.task_created_at", [$startOfYear, $endOfYear])
+            ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
             ->where(function ($query) {
                 $query->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) != ?', [strtolower(trim('Selesai Verifikasi'))])
                     ->orWhereNull('ptgs.status_verifikasi'); // Include NULL values

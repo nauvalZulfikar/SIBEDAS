@@ -31,7 +31,7 @@ class RequestAssignmentController extends Controller
         // Apply year filter if provided (to match BigdataResume behavior)
         if ($request->has('year') && !empty($request->get('year'))) {
             $year = $request->get('year');
-            $baseQuery->whereYear('created_at', $year);
+            $baseQuery->whereYear('start_date', $year);
             Log::info('RequestAssignmentController year filter applied', ['year' => $year]);
         }
         
@@ -506,14 +506,14 @@ class RequestAssignmentController extends Controller
                 case 'verified':
                     $bigdataResumeCount = PbgTask::whereIn('status', PbgTaskStatus::getVerified())
                         ->where('is_valid', true)
-                        ->whereYear('task_created_at', $year)
+                        ->whereYear('start_date', $year)
                         ->count();
                     break;
                     
                 case 'non-verified':
                     $bigdataResumeCount = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
                         ->where('is_valid', true)
-                        ->whereYear('task_created_at', $year)
+                        ->whereYear('start_date', $year)
                         ->count();
                     break;
                     
@@ -542,7 +542,7 @@ class RequestAssignmentController extends Controller
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->count();
                     break;
                     
@@ -565,35 +565,35 @@ class RequestAssignmentController extends Controller
                         });
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->count();
                     break;
                     
                 case 'potention':
                     $bigdataResumeCount = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
                         ->where('is_valid', true)
-                        ->whereYear('task_created_at', $year)
+                        ->whereYear('start_date', $year)
                         ->count();
                     break;
                     
                 case 'waiting-click-dpmptsp':
                     $bigdataResumeCount = PbgTask::whereIn('status', PbgTaskStatus::getWaitingClickDpmptsp())
                         ->where('is_valid', true)
-                        ->whereYear('task_created_at', $year)
+                        ->whereYear('start_date', $year)
                         ->count();
                     break;
                     
                 case 'issuance-realization-pbg':
                     $bigdataResumeCount = PbgTask::whereIn('status', PbgTaskStatus::getIssuanceRealizationPbg())
                         ->where('is_valid', true)
-                        ->whereYear('task_created_at', $year)
+                        ->whereYear('start_date', $year)
                         ->count();
                     break;
                     
                 case 'process-in-technical-office':
                     $bigdataResumeCount = PbgTask::whereIn('status', PbgTaskStatus::getProcessInTechnicalOffice())
                         ->where('is_valid', true)
-                        ->whereYear('task_created_at', $year)
+                        ->whereYear('start_date', $year)
                         ->count();
                     break;
 
@@ -609,7 +609,7 @@ class RequestAssignmentController extends Controller
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->whereExists(function ($query) {
                         $query->select(DB::raw(1))
                               ->from('pbg_task_detail_data_lists')
@@ -632,7 +632,7 @@ class RequestAssignmentController extends Controller
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->whereExists(function ($query) {
                         $query->select(DB::raw(1))
                               ->from('pbg_task_detail_data_lists')
@@ -652,7 +652,7 @@ class RequestAssignmentController extends Controller
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->whereExists(function ($query) {
                         $query->select(DB::raw(1))
                               ->from('pbg_task_detail_data_lists')
@@ -672,7 +672,7 @@ class RequestAssignmentController extends Controller
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->whereExists(function ($query) {
                         $query->select(DB::raw(1))
                               ->from('pbg_task_detail_data_lists')
@@ -692,7 +692,7 @@ class RequestAssignmentController extends Controller
                         ->whereIn("status", PbgTaskStatus::getNonVerified());
                     })
                     ->where('is_valid', true)
-                    ->whereYear('task_created_at', $year)
+                    ->whereYear('start_date', $year)
                     ->whereExists(function ($query) {
                         $query->select(DB::raw(1))
                               ->from('pbg_task_detail_data_lists')
