@@ -47,8 +47,8 @@ class StartScrapingData extends Command
             }
         }
 
-        // Auto-mark stale jobs as failed (processing for more than 6 hours)
-        $staleThreshold = now()->subHours(6);
+        // Auto-mark stale jobs as failed (no progress for more than 30 minutes)
+        $staleThreshold = now()->subMinutes(30);
         $staleJobs = ImportDatasource::where('status', ImportDatasourceStatus::Processing->value)
             ->where('updated_at', '<', $staleThreshold)
             ->get();

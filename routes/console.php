@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command("app:start-scraping-data --confirm")->dailyAt("00:00");
+Schedule::command("app:monitor-scraping")->everyThirtyMinutes();
 
