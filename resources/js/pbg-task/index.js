@@ -106,12 +106,13 @@ class PbgTasks {
         tableContainer.parentNode.insertBefore(wrapper, tableContainer);
     }
 
-    async fetchPage(page, search) {
+    async fetchPage(page, search, sort, dir) {
         const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
         let url = `${GlobalConfig.apiHost}/api/request-assignments?page=${page}&per_page=15`;
         if (this.selectedYear) url += `&year=${this.selectedYear}`;
         if (this.selectedFilter) url += `&filter=${encodeURIComponent(this.selectedFilter)}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (sort) url += `&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir || 'asc')}`;
         const resp = await fetch(url, {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             credentials: "include",
@@ -199,13 +200,6 @@ class PbgTasks {
                     return (getVal(item, key) || "").toString().toLowerCase().includes(val.toLowerCase());
                 })
             );
-            if (sortCol) {
-                filtered = [...filtered].sort((a, b) => {
-                    const av = (getVal(a, sortCol) || "").toString().toLowerCase();
-                    const bv = (getVal(b, sortCol) || "").toString().toLowerCase();
-                    return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-                });
-            }
             return filtered;
         };
 
@@ -286,7 +280,7 @@ class PbgTasks {
                     const col = columns[parseInt(th.getAttribute("data-colidx"))];
                     if (sortCol === col.key) sortDir = sortDir === "asc" ? "desc" : "asc";
                     else { sortCol = col.key; sortDir = "asc"; }
-                    buildTable(currentData);
+                    loadPage(1, currentSearch);
                 });
             });
 
@@ -307,11 +301,10 @@ class PbgTasks {
 
         const loadPage = async (page, search) => {
             tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
-            const data = await self.fetchPage(page, search);
+            const data = await self.fetchPage(page, search, sortCol, sortDir);
             totalPages = data.meta.last_page;
             currentPage = page;
             currentData = data.data;
-            colFilters = {};
             buildTable(currentData);
             renderPagination(page, totalPages, data.meta.total);
         };

@@ -59,7 +59,22 @@ class RequestAssignmentController extends Controller
             'pbg_task_retributions',
             'pbg_task_detail',
             'pbg_status'
-        ])->orderBy('id', 'desc');
+        ]);
+
+        // Server-side sorting
+        $sortCol = $request->get('sort');
+        $sortDir = $request->get('dir', 'asc') === 'desc' ? 'desc' : 'asc';
+        $sortableColumns = [
+            'id', 'name', 'owner_name', 'condition', 'registration_number',
+            'document_number', 'address', 'status_name', 'function_type',
+            'consultation_type', 'task_created_at', 'start_date', 'due_date',
+            'total_area', 'unit',
+        ];
+        if ($sortCol && in_array($sortCol, $sortableColumns)) {
+            $dataQuery->orderBy($sortCol, $sortDir);
+        } else {
+            $dataQuery->orderBy('id', 'desc');
+        }
     
         // Log final query count for debugging
         Log::info('RequestAssignmentController final result', [
