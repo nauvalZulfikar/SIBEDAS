@@ -553,7 +553,7 @@ class ServiceTabPbgTask
     {
         // Skip API call for cancelled tasks — force retribusi to 0
         $task = PbgTask::where('uuid', $uuid)->first();
-        if ($task && $task->status == 3) {
+        if ($task && in_array($task->status, [3, 9])) {
             PbgTaskRetributions::where('pbg_task_uid', $uuid)->update([
                 'nilai_retribusi_bangunan' => 0,
                 'nilai_prasarana' => 0,
