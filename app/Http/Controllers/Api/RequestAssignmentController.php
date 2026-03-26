@@ -68,7 +68,7 @@ class RequestAssignmentController extends Controller
             'id', 'name', 'owner_name', 'condition', 'registration_number',
             'document_number', 'address', 'status_name', 'function_type',
             'consultation_type', 'task_created_at', 'start_date', 'due_date',
-            'total_area', 'unit',
+            'total_area', 'unit', 'usulan_retribusi',
         ];
         if ($sortCol && in_array($sortCol, $sortableColumns)) {
             $dataQuery->orderBy($sortCol, $sortDir);
@@ -412,7 +412,7 @@ class RequestAssignmentController extends Controller
             'id', 'name', 'owner_name', 'condition', 'registration_number',
             'document_number', 'address', 'status_name', 'function_type',
             'consultation_type', 'task_created_at', 'start_date', 'due_date',
-            'total_area', 'unit',
+            'total_area', 'unit', 'usulan_retribusi',
         ];
 
         foreach ($filters as $key => $value) {

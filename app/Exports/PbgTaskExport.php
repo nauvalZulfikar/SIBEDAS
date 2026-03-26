@@ -55,6 +55,7 @@ class PbgTaskExport implements FromCollection, WithHeadings
                     $item->pbg_task_detail?->total_area ? number_format($item->pbg_task_detail->total_area, 0, ',', '.') : '-',
                     $item->pbg_task_detail?->unit ?: '-',
                     $retribusi ? number_format($retribusi, 0, ',', '.') : '-',
+                    $item->usulan_retribusi ? number_format($item->usulan_retribusi, 0, ',', '.') : '0',
                     $item->pbg_status?->note ?: '-',
                 ];
             });
@@ -80,6 +81,7 @@ class PbgTaskExport implements FromCollection, WithHeadings
             'Luas (m²)',
             'Unit',
             'Retribusi',
+            'Usulan Retribusi',
             'Catatan',
         ];
     }

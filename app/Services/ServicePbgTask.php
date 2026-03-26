@@ -7,6 +7,7 @@ use App\Models\PbgTask;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ServicePbgTask
@@ -40,6 +41,36 @@ class ServicePbgTask
             $this->fetch_pbg_task();
         } catch (Exception $e) {
             throw $e;
+        }
+    }
+
+    /**
+     * Calculate usulan_retribusi for upserted tasks.
+     * Formula: retribusi_per_m2 (from retribution_estimates by function_type) × total_area × unit
+     * Auto 0 for status 3 (dibatalkan) and 9 (ditolak), or if no match found.
+     */
+    private function calculateUsulanRetribusi(array $savedData): void
+    {
+        $estimates = DB::table('retribution_estimates')
+            ->whereNotNull('usulan_retribusi_per_m2')
+            ->where('is_active', true)
+            ->pluck('usulan_retribusi_per_m2', 'fungsi_bg');
+
+        $uuids = array_column($savedData, 'uuid');
+        $tasks = PbgTask::whereIn('uuid', $uuids)->get();
+
+        foreach ($tasks as $task) {
+            if (in_array((int) $task->status, [3, 9])) {
+                $task->usulan_retribusi = 0;
+            } else {
+                $perM2 = $estimates[$task->function_type] ?? null;
+                if ($perM2 && $task->total_area && $task->unit) {
+                    $task->usulan_retribusi = $perM2 * $task->total_area * (int) $task->unit;
+                } else {
+                    $task->usulan_retribusi = 0;
+                }
+            }
+            $task->save();
         }
     }
 
@@ -180,6 +211,8 @@ class ServicePbgTask
                         'task_created_at',
                         'updated_at'
                     ]);
+
+                    $this->calculateUsulanRetribusi($saved_data);
                 }
 
                 $currentPage++;

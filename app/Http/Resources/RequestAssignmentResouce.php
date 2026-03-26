@@ -42,6 +42,7 @@ class RequestAssignmentResouce extends JsonResource
                 ->where('pbg_type', 'bukti_bayar')
                 ->sortByDesc('created_at')
                 ->first(),
+            'usulan_retribusi' => $this->usulan_retribusi,
             'pbg_task_retributions' => $this->pbg_task_retributions,
             'pbg_task_detail' => $this->pbg_task_detail,
             'pbg_status' => $this->pbg_status,

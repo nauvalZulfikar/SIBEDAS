@@ -186,6 +186,7 @@ class PbgTasks {
             { label: "Luas (m²)",           key: "total_area",          width: "90px",  nowrap: true },
             { label: "Unit",                key: "unit",                width: "70px",  nowrap: true, filterable: true },
             { label: "Retribusi",           key: "_retribusi",          width: "125px", nowrap: true },
+            { label: "Usulan Retribusi",   key: "usulan_retribusi",    width: "140px", nowrap: true },
             { label: "Catatan",             key: "_catatan",            width: "180px" },
             { label: "Aksi",                key: "_aksi",               width: "135px", nowrap: true, nosort: true },
         ];
@@ -261,6 +262,7 @@ class PbgTasks {
                     <td style="${tdnw}">${item.total_area ? addThousandSeparators(item.total_area) : "-"}</td>
                     <td style="${tdnw}">${item.unit || "-"}</td>
                     <td style="${tdnw}">${ret}</td>
+                    <td style="${tdnw}">${item.usulan_retribusi ? addThousandSeparators(item.usulan_retribusi) : "0"}</td>
                     <td style="${td}">${item.pbg_status ? item.pbg_status.note : "-"}</td>
                     <td style="${tdnw}">${aksi}</td>
                 </tr>`;
