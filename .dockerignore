@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+.env
+.env.*
+*.zip
+sibedas.sql
+struktur.txt
+teak-banner-*.json
+docker-compose.local.yml
+docs
+tests
+phpunit.xml
+README.md
+.editorconfig
+.lesshst
+app.zip

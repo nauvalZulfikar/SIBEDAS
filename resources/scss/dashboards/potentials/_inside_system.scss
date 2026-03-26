@@ -1,0 +1,250 @@
+//
+// inside_system.scss
+//
+
+.square {
+    height: 100px;
+    width: 100px;
+    position: absolute;
+    z-index: -1;
+}
+
+.dia-top-left-bottom-right:after {
+    content: "";
+    width: 100%;
+    height: 100%;
+    position: absolute;
+
+    top: 0;
+    left: 0;
+    background: linear-gradient(
+        to top right,
+        transparent calc(50% - 2px),
+        black,
+        transparent calc(50% + 2px)
+    );
+}
+
+.dia-top-right-bottom-left:after {
+    content: "";
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: linear-gradient(
+        to top left,
+        transparent calc(50% - 2px),
+        black,
+        transparent calc(50% + 2px)
+    );
+}
+
+.lack-of-potential-wrapper {
+    background-image: url("/public/images/bg-dashboard.jpg");
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(255, 255, 255, 0.7);
+    max-width: 100vw;
+}
+
+// Fix for SVG scaling issue
+#lack-of-potential-fixed-container svg {
+    width: 17px !important;
+    height: 17px !important;
+    max-width: 17px !important;
+    max-height: 17px !important;
+    transform: none !important;
+}
+
+// Flatpickr CSS removed - using native HTML date input
+
+.lack-of-potential-wrapper::before {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+// #lack-of-potential-fixed-container {
+//     min-width: 1110px;
+//     max-width: unset; /* Allow it to grow if needed */
+// }
+
+// @media (max-width: 768px) {
+//     #lack-of-potential-fixed-container {
+//         transform: scale(0.8); /* Adjust the scale as needed */
+//     }
+// }
+
+// line degrees
+.line {
+    background: linear-gradient(
+        to top right,
+        transparent calc(50% - 2px),
+        black,
+        transparent calc(50% + 2px)
+    );
+    position: absolute;
+    height: 3px;
+}
+.home-to-non-usaha {
+    width: 100px;
+    top: 13%;
+    left: 38%;
+    transform: rotate(90deg);
+}
+.restoran-to-bapenda {
+    width: 110px;
+    top: 14%;
+    left: 60%;
+    transform: rotate(40deg);
+}
+.pbb-to-bapenda {
+    width: 80px;
+    top: 21%;
+    left: 80%;
+}
+.reklame-to-bapenda {
+    width: 120px;
+    left: 75%;
+    top: 30%;
+    transform: rotateZ(142deg);
+}
+.non-usaha-to-bapenda {
+    width: 116px;
+    left: 18%;
+    top: 33%;
+    transform: rotateZ(124deg);
+}
+.non-usaha-to-pdam {
+    width: 100px;
+    left: 38%;
+    top: 34%;
+    transform: rotateZ(90deg);
+}
+.non-usaha-to-kecamatan {
+    width: 140px;
+    left: 55%;
+    top: 33%;
+    transform: rotateZ(237deg);
+}
+.bapenda-to-usaha {
+    width: 114px;
+    left: 18%;
+    top: 49%;
+    transform: rotateZ(56deg);
+}
+.pdam-to-usaha {
+    width: 88px;
+    left: 39%;
+    top: 49%;
+    transform: rotateZ(90deg);
+}
+.kecamatan-to-usaha {
+    width: 118px;
+    left: 56%;
+    top: 50%;
+    transform: rotateZ(117deg);
+}
+.usaha-to-villa {
+    width: 100px;
+    left: 10%;
+    top: 63%;
+    transform: rotateZ(143deg);
+}
+.usaha-to-pabrik {
+    width: 150px;
+    left: 15%;
+    top: 70%;
+    transform: rotateZ(143deg);
+}
+.usaha-to-pariwisata {
+    width: 150px;
+    left: 43%;
+    top: 70%;
+    transform: rotateZ(38deg);
+}
+.usaha-to-protocol {
+    width: 106px;
+    left: 36%;
+    top: 71%;
+    transform: rotateZ(86deg);
+}
+.pariwisata-to-disbudpar {
+    width: 86px;
+    left: 54%;
+    top: 83%;
+    transform: rotateZ(150deg);
+}
+.non-usaha-to-wasdal {
+    width: 300px;
+    left: -32%;
+    top: 34%;
+    transform: rotateZ(226deg);
+}
+.usaha-to-wasdal {
+    width: 300px;
+    left: -34%;
+    top: 50%;
+    transform: rotateZ(129deg);
+}
+.wasdal-to-upt {
+    width: 155px;
+    left: 3%;
+    top: -67%;
+    transform: rotateZ(127deg);
+}
+.wasdal-to-satpol {
+    width: 155px;
+    left: 19%;
+    top: -52%;
+    transform: rotateZ(76deg);
+}
+.wasdal-to-kejari {
+    width: 182px;
+    left: 25%;
+    top: -55%;
+    transform: rotateZ(51deg);
+}
+.wasdal-to-tni {
+    width: 260px;
+    left: 29%;
+    top: -62%;
+    transform: rotateZ(30deg);
+}
+.wasdal-to-potential {
+    width: 50px;
+    left: 28%;
+    top: 41%;
+}
+.potential-to-tata-ruang {
+    width: 50px;
+    left: 72%;
+    top: 41%;
+}
+.tata-ruang-to-non-usaha {
+    width: 220px;
+    left: 0%;
+    top: 30%;
+    transform: rotateZ(144deg);
+}
+.tata-ruang-to-usaha {
+    width: 280px;
+    left: 0%;
+    top: 52%;
+    transform: rotateZ(224deg);
+}
+.tata-ruang-to-peta {
+    width: 122px;
+    left: 8%;
+    top: 41%;
+}
+.peta-to-tapak {
+    width: 30px;
+    left: 47%;
+    top: 41%;
+}

@@ -1,0 +1,14 @@
+# SSL Certificates - Do not commit these files
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Let's Encrypt
+letsencrypt/
+live/
+archive/
+
+# Keep this directory in git but ignore certificate files
+!.gitignore 

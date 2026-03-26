@@ -1,0 +1,281 @@
+.qs-wrapper {
+    padding: 20px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.qs-toolbar {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.qs-search-form {
+    width: 100%;
+
+    .gsp-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+
+        &:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        &:invalid {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+
+        &::placeholder {
+            color: #6c757d;
+        }
+
+        // Style untuk input yang valid
+        &.valid {
+            border-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+        }
+
+        // Style untuk input yang warning
+        &.warning {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
+        }
+    }
+
+    .gsp-btn {
+        padding: 12px 24px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+    }
+}
+
+.qs-header {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #007bff;
+
+    h2 {
+        color: #2c3e50;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    p {
+        color: #6c757d;
+        margin: 0;
+        font-size: 16px;
+    }
+}
+
+.qs-table-wrapper {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.qs-empty-state {
+    background: white;
+    border-radius: 8px;
+    padding: 60px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    .empty-icon {
+        color: #dee2e6;
+
+        i {
+            opacity: 0.7;
+
+            &.text-warning {
+                color: #ffc107 !important;
+            }
+        }
+    }
+
+    h4 {
+        font-weight: 500;
+        margin-bottom: 12px;
+    }
+
+    p {
+        font-size: 16px;
+        line-height: 1.5;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+}
+
+// GridJS customization
+.gridjs-wrapper {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.gridjs-table {
+    border: none !important;
+    width: 100% !important;
+    table-layout: auto !important;
+}
+
+// Ensure table cells don't wrap unnecessarily
+.gridjs-td {
+    border-bottom: 1px solid #e9ecef !important;
+    padding: 16px 12px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 200px !important;
+}
+
+// Allow specific columns to wrap if needed
+.gridjs-td:nth-child(4), // Kondisi
+.gridjs-td:nth-child(7), // Jenis Fungsi
+.gridjs-td:nth-child(8), // Nama Bangunan
+.gridjs-td:nth-child(9), // Jenis Konsultasi
+.gridjs-td:nth-child(10) {
+    // Tanggal Jatuh Tempo
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    max-width: 150px !important;
+}
+
+.gridjs-th {
+    background: #f8f9fa !important;
+    border-bottom: 2px solid #dee2e6 !important;
+    font-weight: 600 !important;
+    color: #495057 !important;
+    padding: 16px 12px !important;
+}
+
+.gridjs-td {
+    border-bottom: 1px solid #e9ecef !important;
+    padding: 16px 12px !important;
+    vertical-align: middle !important;
+}
+
+.gridjs-pagination {
+    border-top: 1px solid #e9ecef !important;
+    padding: 20px !important;
+
+    .gridjs-pages {
+        button {
+            border: 1px solid #dee2e6 !important;
+            border-radius: 4px !important;
+            padding: 8px 12px !important;
+            margin: 0 2px !important;
+
+            &:hover {
+                background: #e9ecef !important;
+            }
+
+            &.gridjs-currentPage {
+                background: #007bff !important;
+                color: white !important;
+                border-color: #007bff !important;
+            }
+        }
+    }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+    .qs-wrapper {
+        padding: 15px;
+    }
+
+    .qs-toolbar {
+        padding: 15px;
+    }
+
+    .qs-search-form {
+        flex-direction: column;
+        gap: 15px;
+
+        .gsp-input {
+            width: 100%;
+        }
+
+        .gsp-btn {
+            width: 100%;
+        }
+    }
+
+    .qs-header {
+        padding: 15px;
+
+        h2 {
+            font-size: 20px;
+        }
+    }
+
+    .qs-empty-state {
+        padding: 40px 15px;
+
+        .empty-icon i {
+            font-size: 2.5rem !important;
+        }
+
+        h4 {
+            font-size: 18px;
+        }
+
+        p {
+            font-size: 14px;
+        }
+    }
+}
+
+// Table responsive improvements
+@media (max-width: 1200px) {
+    .gridjs-wrapper {
+        overflow-x: auto !important;
+    }
+
+    .gridjs-table {
+        min-width: 1000px !important;
+    }
+}
+
+// Ensure full width on larger screens
+@media (min-width: 1201px) {
+    .qs-wrapper {
+        padding: 20px 40px;
+    }
+
+    .gridjs-wrapper {
+        max-width: none !important;
+    }
+}

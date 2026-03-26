@@ -1,0 +1,78 @@
+.gsp-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; // ensures full vertical centering
+    background: #f0f2f5;
+}
+
+.gsp-icon {
+    width: 180px; // slightly smaller for better mobile view
+    height: auto;
+    margin-bottom: 15px;
+}
+
+.gsp-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #333;
+}
+
+.gsp-input {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+    padding: 0 20px;
+    border-radius: 24px;
+    border: 1px solid #dfe1e5;
+    background-color: #fff;
+    box-shadow: none;
+    transition: box-shadow 0.2s ease-in-out, border-color 0.2s;
+
+    &:focus {
+        border-color: transparent;
+        box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+        outline: none;
+    }
+}
+
+.gsp-btn {
+    height: 44px;
+    padding: 0 24px;
+    font-size: 16px;
+    border: none;
+    border-radius: 24px;
+    background-color: #1a73e8;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+
+    &:hover {
+        background-color: #1558d6;
+    }
+}
+
+@media (max-width: 576px) {
+    .gsp-input-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gsp-btn {
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    .gsp-input {
+        padding: 0 20px;
+        font-size: 16px;
+    }
+
+    .gsp-title {
+        font-size: 28px;
+    }
+
+    .gsp-icon {
+        width: 140px;
+    }
+}
