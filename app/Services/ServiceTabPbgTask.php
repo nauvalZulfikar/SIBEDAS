@@ -551,6 +551,18 @@ class ServiceTabPbgTask
 
     public function scraping_task_retributions($uuid)
     {
+        // Skip API call for cancelled tasks — force retribusi to 0
+        $task = PbgTask::where('uuid', $uuid)->first();
+        if ($task && $task->status == 3) {
+            PbgTaskRetributions::where('pbg_task_uid', $uuid)->update([
+                'nilai_retribusi_bangunan' => 0,
+                'nilai_prasarana' => 0,
+                'skrd_amount' => 0,
+                'underpayment' => 0,
+            ]);
+            return true;
+        }
+
         $url = "{$this->simbg_host}/api/pbg/v1/detail/" . $uuid . "/retribution/submit/";
         $options = [
             'headers' => [
