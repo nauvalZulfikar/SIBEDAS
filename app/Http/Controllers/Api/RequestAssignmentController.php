@@ -68,10 +68,18 @@ class RequestAssignmentController extends Controller
             'id', 'name', 'owner_name', 'condition', 'registration_number',
             'document_number', 'address', 'status_name', 'function_type',
             'consultation_type', 'task_created_at', 'start_date', 'due_date',
-            'total_area', 'unit', 'usulan_retribusi',
+            'usulan_retribusi',
         ];
+        $detailSortColumns = ['total_area', 'unit'];
         if ($sortCol && in_array($sortCol, $sortableColumns)) {
             $dataQuery->orderBy($sortCol, $sortDir);
+        } elseif ($sortCol && in_array($sortCol, $detailSortColumns)) {
+            $dataQuery->orderBy(
+                \App\Models\PbgTaskDetail::select($sortCol)
+                    ->whereColumn('pbg_task_details.pbg_task_uid', 'pbg_task.uuid')
+                    ->limit(1),
+                $sortDir
+            );
         } else {
             $dataQuery->orderBy('id', 'desc');
         }
@@ -412,14 +420,19 @@ class RequestAssignmentController extends Controller
             'id', 'name', 'owner_name', 'condition', 'registration_number',
             'document_number', 'address', 'status_name', 'function_type',
             'consultation_type', 'task_created_at', 'start_date', 'due_date',
-            'total_area', 'unit', 'usulan_retribusi',
+            'usulan_retribusi',
         ];
+        $detailColumns = ['total_area', 'unit'];
 
         foreach ($filters as $key => $value) {
             if (empty($value)) continue;
 
             if (in_array($key, $directColumns)) {
                 $query->where($key, 'LIKE', "%{$value}%");
+            } elseif (in_array($key, $detailColumns)) {
+                $query->whereHas('pbg_task_detail', function ($q) use ($key, $value) {
+                    $q->where($key, 'LIKE', "%{$value}%");
+                });
             } elseif ($key === '_name_building') {
                 $query->whereHas('pbg_task_detail', function ($q) use ($value) {
                     $q->where('name_building', 'LIKE', "%{$value}%");

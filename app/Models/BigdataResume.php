@@ -62,12 +62,22 @@ class BigdataResume extends Model
             ->count();
         $issuance_realization_pbg_count = PbgTask::where('is_valid', true)
             ->where(function ($q) use ($year) {
+                // 1. SK Terbit: data tahun sebelumnya yang document_number tanggalnya di tahun ini
                 $q->where(function ($q2) use ($year) {
-                    $q2->whereIn('status', PbgTaskStatus::getIssuanceRealizationPbg())
+                    $q2->where('status', PbgTaskStatus::SK_PBG_TERBIT->value)
+                        ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
+                        ->whereNotNull('document_number')
+                        ->whereRaw("CAST(RIGHT(REGEXP_SUBSTR(document_number, '[0-9]{8}'), 4) AS UNSIGNED) = ?", [$year]);
+                })
+                // 2. Pengambilan SK PBG tahun ini
+                ->orWhere(function ($q2) use ($year) {
+                    $q2->where('status', PbgTaskStatus::PENERBITAN_SK_PBG->value)
                         ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31']);
-                })->orWhere(function ($q2) use ($year) {
-                    $q2->whereIn('status', PbgTaskStatus::getIssuanceRealizationPbgPrev())
-                        ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31']);
+                })
+                // 3. SK Terbit: data tahun ini
+                ->orWhere(function ($q2) use ($year) {
+                    $q2->where('status', PbgTaskStatus::SK_PBG_TERBIT->value)
+                        ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31']);
                 });
             })
             ->count();
@@ -260,7 +270,7 @@ class BigdataResume extends Model
             ->selectRaw("
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getVerified()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS verified_total,
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getWaitingClickDpmptsp()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS waiting_click_dpmptsp_total,
-                SUM(CASE WHEN (pbg_task.status in (".implode(',', PbgTaskStatus::getIssuanceRealizationPbg()).") AND YEAR(pbg_task.start_date) = $year) OR (pbg_task.status in (".implode(',', PbgTaskStatus::getIssuanceRealizationPbgPrev()).") AND YEAR(pbg_task.start_date) = ".($year-1).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS issuance_realization_pbg_total,
+                SUM(CASE WHEN (pbg_task.status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(pbg_task.start_date) = ".($year-1)." AND pbg_task.document_number IS NOT NULL AND CAST(RIGHT(REGEXP_SUBSTR(pbg_task.document_number, '[0-9]{8}'), 4) AS UNSIGNED) = $year) OR (pbg_task.status = ".PbgTaskStatus::PENERBITAN_SK_PBG->value." AND YEAR(pbg_task.start_date) = $year) OR (pbg_task.status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(pbg_task.start_date) = $year) THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS issuance_realization_pbg_total,
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getProcessInTechnicalOffice()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS process_in_technical_office_total,
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getPotention()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS potention_total,
                 COUNT(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getNonVerified()).") THEN 1 END) AS non_verified_tasks_count,

@@ -26,6 +26,10 @@ class PbgTask extends Model
         'function_type',
         'consultation_type',
         'due_date',
+        'start_date',
+        'retribution',
+        'total_area',
+        'unit',
         'land_certificate_phase',
         'task_created_at',
         'is_valid'

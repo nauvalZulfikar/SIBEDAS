@@ -193,6 +193,8 @@ class PbgTasks {
 
         const getVal = (item, key) => {
             if (key === "_name_building") return item.pbg_task_detail ? item.pbg_task_detail.name_building : "";
+            if (key === "total_area") return item.pbg_task_detail ? item.pbg_task_detail.total_area : "";
+            if (key === "unit") return item.pbg_task_detail ? item.pbg_task_detail.unit : "";
             if (key === "_retribusi") return item.pbg_task_retributions ? item.pbg_task_retributions.nilai_retribusi_bangunan : "";
             if (key === "_catatan") return item.pbg_status ? item.pbg_status.note : "";
             if (key === "_aksi") return "";
@@ -259,8 +261,8 @@ class PbgTasks {
                     <td style="${tdnw}">${item.task_created_at ? item.task_created_at.substring(0,10) : "-"}</td>
                     <td style="${tdnw}">${item.start_date ? item.start_date.substring(0,10) : "-"}</td>
                     <td style="${tdnw}">${item.due_date ? item.due_date.substring(0,10) : "-"}</td>
-                    <td style="${tdnw}">${item.total_area ? addThousandSeparators(item.total_area) : "-"}</td>
-                    <td style="${tdnw}">${item.unit || "-"}</td>
+                    <td style="${tdnw}">${item.pbg_task_detail && item.pbg_task_detail.total_area ? addThousandSeparators(item.pbg_task_detail.total_area) : "-"}</td>
+                    <td style="${tdnw}">${item.pbg_task_detail && item.pbg_task_detail.unit ? item.pbg_task_detail.unit : "-"}</td>
                     <td style="${tdnw}">${ret}</td>
                     <td style="${tdnw}">${item.usulan_retribusi ? addThousandSeparators(item.usulan_retribusi) : "0"}</td>
                     <td style="${td}">${item.pbg_status ? item.pbg_status.note : "-"}</td>
