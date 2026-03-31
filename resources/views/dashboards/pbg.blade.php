@@ -219,7 +219,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-6">
-                                <p class="text-muted mb-0 text-truncate">Realisasi Terbit PBG</p>
+                                <p class="text-muted mb-0 text-truncate">Realisasi SK PBG Terbit</p>
                                 <h4 class="text-dark mt-2 mb-0" id="realisasi-terbit-pbg">Loading...</h4>
                             </div>
         
@@ -241,7 +241,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-6">
-                                <p class="text-muted mb-0 text-truncate">Menunggu Klik DPMPTSP</p>
+                                <p class="text-muted mb-0 text-truncate">Berproses di DPMPTSP</p>
                                 <h4 class="text-dark mt-2 mb-0" id="waiting-click-dpmptsp">Loading...</h4>
                             </div>
         

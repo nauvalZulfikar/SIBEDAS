@@ -34,8 +34,8 @@ class ReportPaymentRecapExport implements FromCollection, WithHeadings
             'business_sum' => 'Usaha',
             'non_business_sum' => 'Non Usaha',
             'spatial_sum' => 'Tata Ruang',
-            'waiting_click_dpmptsp_sum' => 'Menunggu Klik DPMPTSP',
-            'issuance_realization_pbg_sum' => 'Realisasi Terbit PBG',
+            'waiting_click_dpmptsp_sum' => 'Berproses di DPMPTSP',
+            'issuance_realization_pbg_sum' => 'Realisasi SK PBG Terbit',
             'process_in_technical_office_sum' => 'Proses Di Dinas Teknis',
         ];
 

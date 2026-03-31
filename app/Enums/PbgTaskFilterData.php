@@ -29,7 +29,7 @@ enum PbgTaskFilterData : string
             self::potention->value => 'Potensi',
             self::issuance_realization_pbg->value => 'Realisasi PBG',
             self::process_in_technical_office->value => 'Proses Di Dinas Teknis',
-            self::waiting_click_dpmptsp->value => 'Menunggu Klik DPMPTSP',
+            self::waiting_click_dpmptsp->value => 'Berproses di DPMPTSP',
             self::non_business_rab->value => 'Non Usaha - RAB',
             self::non_business_krk->value => 'Non Usaha - KRK',
             self::business_rab->value => 'Usaha - RAB',

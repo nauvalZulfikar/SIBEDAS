@@ -327,7 +327,7 @@ class BigdataResume extends Model
             ")
             ->first();
 
-        // Realisasi Terbit PBG: pakai nilai_retribusi_bangunan (nilai resmi, bukan estimasi)
+        // Realisasi SK PBG Terbit: pakai nilai_retribusi_bangunan (nilai resmi, bukan estimasi)
         $issuance_realization_pbg_total = PbgTask::leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
             ->where('pbg_task.is_valid', true)
             ->whereBetween('pbg_task.start_date', [($year - 1) . '-01-01', $year . '-12-31'])

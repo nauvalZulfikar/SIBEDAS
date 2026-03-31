@@ -28,10 +28,10 @@
                 <th>Total Non Usaha</th>
                 <th>Jumlah Tata Ruang</th>
                 <th>Total Tata Ruang</th>
-                <th>Jumlah Menunggu Klik DPMPTSP</th>
-                <th>Total Menunggu Klik DPMPTSP</th>
-                <th>Jumlah Realisasi Terbit PBG</th>
-                <th>Total Realisasi Terbit PBG</th>
+                <th>Jumlah Berproses di DPMPTSP</th>
+                <th>Total Berproses di DPMPTSP</th>
+                <th>Jumlah Realisasi SK PBG Terbit</th>
+                <th>Total Realisasi SK PBG Terbit</th>
                 <th>Jumlah Proses Dinas Teknis</th>
                 <th>Total Proses Dinas Teknis</th>
                 <th>Tahun</th>

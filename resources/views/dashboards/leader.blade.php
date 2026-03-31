@@ -140,7 +140,7 @@
 
 
         @component('components.circle',[
-            'document_title' => 'Realisasi Terbit PBG',
+            'document_title' => 'Realisasi SK PBG Terbit',
             'document_color' => '#8cc540',
             'document_type' => 'Berkas',
             'document_id' => 'chart-realisasi-tebit-pbg',
@@ -154,7 +154,7 @@
         </div>
 
         @component('components.circle',[
-            'document_title' => 'Menunggu Klik DPMPTSP',
+            'document_title' => 'Berproses di DPMPTSP',
             'document_color' => '#00bf61',
             'document_type' => 'Berkas',
             'document_id' => 'chart-menunggu-klik-dpmptsp',
