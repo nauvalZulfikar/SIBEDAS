@@ -128,7 +128,7 @@ class BigdataResume extends Model
             ->whereIn("status", PbgTaskStatus::getNonVerified());
         })
         ->where('is_valid', true)
-        ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+        ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
         ->count();
 
         // Non-business count: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1)
@@ -149,7 +149,7 @@ class BigdataResume extends Model
             });
         })
         ->where('is_valid', true)
-        ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+        ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
         ->count();
 
         // Helper: business filter scope (function_type LIKE usaha OR non-business with unit > 1)
@@ -271,12 +271,51 @@ class BigdataResume extends Model
             })
             ->count();
 
-        // Calculate totals using count-based formula
-        // Business: $business_count * 200 * 44300
-        // Non-Business: $non_business_count * 72 * 16000
-        $business_total = $business_count * 200 * 44300;
-        $non_business_total = $non_business_count * 72 * 16000;
-        $non_verified_total = $business_total + $non_business_total;
+        // Business/Non-business sum using usulan_retribusi (same filter as count, year only)
+        $business_sum = PbgTask::where(function ($q) {
+            $q->where(function ($q2) {
+                $q2->where(function ($q3) {
+                    $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
+                    ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
+                })
+                ->orWhere(function ($q3) {
+                    $q3->where(function ($q4) {
+                        $q4->where(function ($q5) {
+                            $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                        })
+                        ->orWhereNull('function_type');
+                    })
+                    ->whereHas('pbg_task_detail', function ($q4) {
+                        $q4->where('unit', '>', 1);
+                    });
+                });
+            })
+            ->whereIn("status", PbgTaskStatus::getNonVerified());
+        })
+        ->where('is_valid', true)
+        ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
+        ->sum('usulan_retribusi');
+
+        $non_business_sum = PbgTask::where(function ($q) {
+            $q->where(function ($q2) {
+                $q2->where(function ($q3) {
+                    $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                })
+                ->orWhereNull('function_type');
+            })
+            ->whereIn("status", PbgTaskStatus::getNonVerified())
+            ->where(function ($q3) {
+                $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
+                    $q4->where('unit', '>', 1);
+                })
+                ->orWhereDoesntHave('pbg_task_detail');
+            });
+        })
+        ->where('is_valid', true)
+        ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
+        ->sum('usulan_retribusi');
 
         // Get sum values using usulan_retribusi (no join needed)
         $stats = PbgTask::where('is_valid', true)
@@ -332,9 +371,9 @@ class BigdataResume extends Model
             'verified_count' => $verified_count,
             'verified_sum' => $verified_sum,
             'business_count' => $business_count,
-            'business_sum' => $business_total,
+            'business_sum' => $business_sum,
             'non_business_count' => $non_business_count,
-            'non_business_sum' => $non_business_total,
+            'non_business_sum' => $non_business_sum,
             'year' => $year,
             'waiting_click_dpmptsp_count' => $waiting_click_dpmptsp_count,
             'waiting_click_dpmptsp_sum' => $stats->waiting_click_dpmptsp_total ?? 0.00,
