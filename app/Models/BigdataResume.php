@@ -278,16 +278,24 @@ class BigdataResume extends Model
         $non_business_total = $non_business_count * 72 * 16000;
         $non_verified_total = $business_total + $non_business_total;
 
-        // Get other sum values using usulan_retribusi (no join needed)
+        // Get sum values using usulan_retribusi (no join needed)
         $stats = PbgTask::where('is_valid', true)
             ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
             ->selectRaw("
                 SUM(CASE WHEN status in (".implode(',', PbgTaskStatus::getVerified()).") THEN COALESCE(usulan_retribusi, 0) ELSE 0 END) AS verified_total,
                 SUM(CASE WHEN status in (".implode(',', PbgTaskStatus::getWaitingClickDpmptsp()).") THEN COALESCE(usulan_retribusi, 0) ELSE 0 END) AS waiting_click_dpmptsp_total,
-                SUM(CASE WHEN (status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(start_date) = ".($year-1)." AND document_number IS NOT NULL AND CAST(RIGHT(REGEXP_SUBSTR(document_number, '[0-9]{8}'), 4) AS UNSIGNED) = $year) OR (status = ".PbgTaskStatus::PENERBITAN_SK_PBG->value." AND YEAR(start_date) = $year) OR (status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(start_date) = $year) THEN COALESCE(usulan_retribusi, 0) ELSE 0 END) AS issuance_realization_pbg_total,
                 SUM(CASE WHEN status in (".implode(',', PbgTaskStatus::getProcessInTechnicalOffice()).") THEN COALESCE(usulan_retribusi, 0) ELSE 0 END) AS process_in_technical_office_total
             ")
             ->first();
+
+        // Realisasi Terbit PBG: pakai nilai_retribusi_bangunan (nilai resmi, bukan estimasi)
+        $issuance_realization_pbg_total = PbgTask::leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
+            ->where('pbg_task.is_valid', true)
+            ->whereBetween('pbg_task.start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->selectRaw("
+                SUM(CASE WHEN (pbg_task.status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(pbg_task.start_date) = ".($year-1)." AND pbg_task.document_number IS NOT NULL AND CAST(RIGHT(REGEXP_SUBSTR(pbg_task.document_number, '[0-9]{8}'), 4) AS UNSIGNED) = $year) OR (pbg_task.status = ".PbgTaskStatus::PENERBITAN_SK_PBG->value." AND YEAR(pbg_task.start_date) = $year) OR (pbg_task.status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(pbg_task.start_date) = $year) THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS total
+            ")
+            ->value('total');
 
         // Potention sum menggunakan kolom usulan_retribusi (tanpa join retributions)
         // Tahun sebelumnya: hanya 7 status terbatas
@@ -331,7 +339,7 @@ class BigdataResume extends Model
             'waiting_click_dpmptsp_count' => $waiting_click_dpmptsp_count,
             'waiting_click_dpmptsp_sum' => $stats->waiting_click_dpmptsp_total ?? 0.00,
             'issuance_realization_pbg_count' => $issuance_realization_pbg_count,
-            'issuance_realization_pbg_sum' => $stats->issuance_realization_pbg_total ?? 0.00,
+            'issuance_realization_pbg_sum' => $issuance_realization_pbg_total ?? 0.00,
             'process_in_technical_office_count' => $process_in_technical_office_count,
             'process_in_technical_office_sum' => $stats->process_in_technical_office_total ?? 0.00,
             'business_rab_count' => $business_rab_count,
