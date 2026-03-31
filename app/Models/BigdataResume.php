@@ -48,13 +48,21 @@ class BigdataResume extends Model
     public static function generateResumeData($import_datasource_id, $year, $resume_type){
         // Get accurate counts without joins to avoid duplicates from multiple retributions
         // Filter only valid data (is_valid = true) and only the target year
-        $verified_count = PbgTask::whereIn('status', PbgTaskStatus::getVerified())
+        // Berkas Lengkap: split tahun (prev = semua 7 status, current = potention minus belum lengkap)
+        $berkas_lengkap_statuses = array_values(array_diff(PbgTaskStatus::getPotention(), PbgTaskStatus::getNonVerified()));
+        $verified_count_prev = PbgTask::whereIn('status', PbgTaskStatus::getPotentionPreviousYear())
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
             ->count();
+        $verified_count_current = PbgTask::whereIn('status', $berkas_lengkap_statuses)
+            ->where('is_valid', true)
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
+            ->count();
+        $verified_count = $verified_count_prev + $verified_count_current;
+        // Belum Lengkap: split tahun (2025 tidak ada status 1,2 di prev, jadi hanya 2026)
         $non_verified_count = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->count();
         $waiting_click_dpmptsp_count = PbgTask::whereIn('status', PbgTaskStatus::getWaitingClickDpmptsp())
             ->where('is_valid', true)
@@ -294,6 +302,15 @@ class BigdataResume extends Model
             ->sum('usulan_retribusi');
         $potention_total = $potention_sum_prev + $potention_sum_current;
 
+        // Belum Lengkap sum (status 1,2 hanya tahun berjalan, pakai usulan_retribusi)
+        $non_verified_sum = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
+            ->where('is_valid', true)
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
+            ->sum('usulan_retribusi');
+
+        // Berkas Lengkap sum = potention_total - non_verified_sum
+        $verified_sum = $potention_total - $non_verified_sum;
+
         $service_google_sheet = app(ServiceGoogleSheet::class);
 
         return self::create([
@@ -303,9 +320,9 @@ class BigdataResume extends Model
             'potention_count' => $potention_count,
             'potention_sum' => $potention_total,
             'non_verified_count' => $non_verified_count,
-            'non_verified_sum' => $non_verified_total,
+            'non_verified_sum' => $non_verified_sum,
             'verified_count' => $verified_count,
-            'verified_sum' => $stats->verified_total ?? 0.00,
+            'verified_sum' => $verified_sum,
             'business_count' => $business_count,
             'business_sum' => $business_total,
             'non_business_count' => $non_business_count,

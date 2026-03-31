@@ -159,13 +159,8 @@ class BigData {
                     "total_potensi.sum",
                     0
                 );
-                const sumNonVerified = this.safeGet(
-                    this.resumeBigData,
-                    "non_verified_document.sum",
-                    0
-                );
                 element.innerText = `Rp.${addThousandSeparators(
-                    (sum + sumNonVerified).toString()
+                    sum.toString()
                 )}`;
             });
         document

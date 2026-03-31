@@ -120,9 +120,8 @@ enum PbgTaskStatus: int
     public static function getNonVerified(): array
     {
         return [
-            self::VERIFIKASI_KELENGKAPAN->value, 
-            self::PERBAIKAN_DOKUMEN->value, 
-            self::PERBAIKAN_DOKUMEN_KONSULTASI->value, 
+            self::VERIFIKASI_KELENGKAPAN->value,
+            self::PERBAIKAN_DOKUMEN->value,
         ];
     }
 
