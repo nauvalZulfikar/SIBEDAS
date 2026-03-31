@@ -201,7 +201,7 @@ class BigdataResume extends Model
                 $applyBusinessFilter($q);
             })
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -216,7 +216,7 @@ class BigdataResume extends Model
                 $applyBusinessFilter($q);
             })
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -231,7 +231,7 @@ class BigdataResume extends Model
                 $applyBusinessFilter($q);
             })
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -246,7 +246,7 @@ class BigdataResume extends Model
                 $applyNonBusinessFilter($q);
             })
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
@@ -261,7 +261,7 @@ class BigdataResume extends Model
                 $applyNonBusinessFilter($q);
             })
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                       ->from('pbg_task_detail_data_lists')
