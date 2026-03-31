@@ -129,21 +129,37 @@ enum PbgTaskStatus: int
     public static function getPotention(): array
     {
         return [
-            self::MENUNGGU_PEMBAYARAN_RETRIBUSI->value, 
-            self::PROSES_PENERBITAN_SKRD->value, 
+            self::MENUNGGU_PEMBAYARAN_RETRIBUSI->value,
+            self::PROSES_PENERBITAN_SKRD->value,
             self::VERIFIKASI_PEMBAYARAN_RETRIBUSI->value,
-            self::PENERBITAN_SK_PBG->value, 
-            self::SK_PBG_TERBIT->value, 
+            self::PENERBITAN_SK_PBG->value,
+            self::SK_PBG_TERBIT->value,
             self::VERIFIKASI_SK_PBG->value,
-            self::PENERBITAN_SPPST->value, 
-            self::PERHITUNGAN_RETRIBUSI->value, 
-            self::RETRIBUSI_TIDAK_SESUAI->value, 
-            self::MENUNGGU_JADWAL_KONSULTASI->value, 
-            self::MENUNGGU_PENUGASAN_TPT_TPA->value, 
+            self::PENERBITAN_SPPST->value,
+            self::PERHITUNGAN_RETRIBUSI->value,
+            self::RETRIBUSI_TIDAK_SESUAI->value,
+            self::MENUNGGU_JADWAL_KONSULTASI->value,
+            self::MENUNGGU_PENUGASAN_TPT_TPA->value,
             self::PELAKSANAAN_KONSULTASI->value,
-            self::VERIFIKASI_KELENGKAPAN->value, 
-            self::PERBAIKAN_DOKUMEN->value, 
-            self::PERBAIKAN_DOKUMEN_KONSULTASI->value, 
+            self::VERIFIKASI_KELENGKAPAN->value,
+            self::PERBAIKAN_DOKUMEN->value,
+            self::PERBAIKAN_DOKUMEN_KONSULTASI->value,
+        ];
+    }
+
+    /**
+     * Sisa potensi tahun sebelumnya - status terbatas
+     */
+    public static function getPotentionPreviousYear(): array
+    {
+        return [
+            self::MENUNGGU_PENUGASAN_TPT_TPA->value,
+            self::MENUNGGU_JADWAL_KONSULTASI->value,
+            self::PELAKSANAAN_KONSULTASI->value,
+            self::PERHITUNGAN_RETRIBUSI->value,
+            self::PENERBITAN_SPPST->value,
+            self::PROSES_PENERBITAN_SKRD->value,
+            self::MENUNGGU_PEMBAYARAN_RETRIBUSI->value,
         ];
     }
 

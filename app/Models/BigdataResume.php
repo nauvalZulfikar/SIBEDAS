@@ -85,10 +85,17 @@ class BigdataResume extends Model
             ->where('is_valid', true)
             ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
             ->count();
-        $potention_count = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
+        // Potensi tahun sebelumnya: hanya 7 status terbatas
+        $potention_count_prev = PbgTask::whereIn('status', PbgTaskStatus::getPotentionPreviousYear())
             ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
+            ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
             ->count();
+        // Potensi tahun berjalan: semua status potensi
+        $potention_count_current = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
+            ->where('is_valid', true)
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
+            ->count();
+        $potention_count = $potention_count_prev + $potention_count_current;
 
         // Business count: function_type LIKE usaha OR (non-business with unit > 1)
         $business_count = PbgTask::where(function ($q) {
@@ -272,11 +279,23 @@ class BigdataResume extends Model
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getWaitingClickDpmptsp()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS waiting_click_dpmptsp_total,
                 SUM(CASE WHEN (pbg_task.status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(pbg_task.start_date) = ".($year-1)." AND pbg_task.document_number IS NOT NULL AND CAST(RIGHT(REGEXP_SUBSTR(pbg_task.document_number, '[0-9]{8}'), 4) AS UNSIGNED) = $year) OR (pbg_task.status = ".PbgTaskStatus::PENERBITAN_SK_PBG->value." AND YEAR(pbg_task.start_date) = $year) OR (pbg_task.status = ".PbgTaskStatus::SK_PBG_TERBIT->value." AND YEAR(pbg_task.start_date) = $year) THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS issuance_realization_pbg_total,
                 SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getProcessInTechnicalOffice()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS process_in_technical_office_total,
-                SUM(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getPotention()).") THEN COALESCE(ptr.nilai_retribusi_bangunan, 0) ELSE 0 END) AS potention_total,
                 COUNT(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getNonVerified()).") THEN 1 END) AS non_verified_tasks_count,
                 COUNT(CASE WHEN pbg_task.status in (".implode(',', PbgTaskStatus::getNonVerified()).") AND ptr.nilai_retribusi_bangunan IS NOT NULL THEN 1 END) AS non_verified_with_retribution_count
             ")
             ->first();
+
+        // Potention sum menggunakan kolom usulan_retribusi (tanpa join retributions)
+        // Tahun sebelumnya: hanya 7 status terbatas
+        $potention_sum_prev = PbgTask::whereIn('status', PbgTaskStatus::getPotentionPreviousYear())
+            ->where('is_valid', true)
+            ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
+            ->sum('usulan_retribusi');
+        // Tahun berjalan: semua status potensi
+        $potention_sum_current = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
+            ->where('is_valid', true)
+            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
+            ->sum('usulan_retribusi');
+        $potention_total = $potention_sum_prev + $potention_sum_current;
 
         $service_google_sheet = app(ServiceGoogleSheet::class);
 
@@ -285,7 +304,7 @@ class BigdataResume extends Model
             'spatial_count' => $service_google_sheet->getSpatialPlanningWithCalculationCount() ?? 0,
             'spatial_sum' => $service_google_sheet->getSpatialPlanningCalculationSum() ?? 0.00,
             'potention_count' => $potention_count,
-            'potention_sum' => ($stats->potention_total ?? 0),
+            'potention_sum' => $potention_total,
             'non_verified_count' => $non_verified_count,
             'non_verified_sum' => $non_verified_total,
             'verified_count' => $verified_count,
