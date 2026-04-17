@@ -436,6 +436,15 @@
                         @endif
                     </div>
                     <div class="tab-pane" id="pbgTaskDataLists">
+                        @if($data->pbg_status && !empty($data->pbg_status->note))
+                            <div class="alert alert-warning d-flex gap-2 align-items-start mb-4" role="alert">
+                                <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <strong>Keterangan:</strong>
+                                    {{ $data->pbg_status->note }}
+                                </div>
+                            </div>
+                        @endif
                         @if($dataListsByType && $dataListsByType->count() > 0)
                             @foreach($dataListsByType as $dataType => $dataLists)
                                 @php

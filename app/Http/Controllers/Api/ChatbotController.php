@@ -76,9 +76,9 @@ class ChatbotController extends Controller
 
             // Pastikan hasil klasifikasi valid sebelum melanjutkan
             $validCategories = [
-                'reklame', 'business_or_industries', 'customers', 
-                'pbg', 'retribusi', 'spatial_plannings', 
-                'tourisms', 'umkms'
+                'reklame', 'business_or_industries', 'customers',
+                'pbg', 'retribusi', 'spatial_plannings',
+                'tourisms', 'umkms', 'pbg_tracking', 'dokumen_resume', 'dokumen_per_noreg'
             ];
 
             if (!in_array($classifyResponse, $validCategories)) {
@@ -100,8 +100,8 @@ class ChatbotController extends Controller
             
             $formattedResultQuery = json_encode($queryResult, JSON_PRETTY_PRINT);
             
-            $nlpResult = $this->openAIService->generateNLPFromQuery($request->input('prompt'), $formattedResultQuery);
-            $finalGeneratedText =$this->openAIService->generateFinalText($nlpResult);
+            $nlpResult = $this->openAIService->generateNLPFromQuery($request->input('prompt'), $formattedResultQuery, $classifyResponse);
+            $finalGeneratedText = $this->openAIService->generateFinalText($nlpResult);
             
             return response()->json(['response' => $finalGeneratedText, 'nlpResponse' => $queryResponse]);
         } catch (\Exception $e) {

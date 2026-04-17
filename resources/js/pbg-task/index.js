@@ -7,8 +7,10 @@ Dropzone.autoDiscover = false;
 class PbgTasks {
     constructor() {
         const params = new URLSearchParams(window.location.search);
-        this.selectedYear = params.get('year') || new Date().getFullYear().toString();
+        this.selectedYear = params.get('year') || '';
         this.selectedFilter = params.get('filter') || '';
+        this.currentSearch = '';
+        this.currentColFilters = {};
         this.toastMessage = document.getElementById("toast-message");
         this.toastElement = document.getElementById("toastNotification");
     }
@@ -289,21 +291,29 @@ class PbgTasks {
 
             tableContainer.querySelectorAll(".col-filter").forEach(el => {
                 const isSelect = el.tagName === "SELECT";
-                el.addEventListener(isSelect ? "change" : "input", () => {
-                    const key = el.getAttribute("data-key");
-                    colFilters[key] = el.value;
-                    if (isSelect) {
+                if (isSelect) {
+                    el.addEventListener("change", () => {
+                        const key = el.getAttribute("data-key");
+                        colFilters[key] = el.value;
                         loadPage(1, currentSearch);
-                    } else {
-                        clearTimeout(filterDebounceTimer);
-                        filterDebounceTimer = setTimeout(() => loadPage(1, currentSearch), 400);
-                    }
-                });
+                    });
+                } else {
+                    el.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter") {
+                            const key = el.getAttribute("data-key");
+                            colFilters[key] = el.value;
+                            loadPage(1, currentSearch);
+                        }
+                    });
+                }
             });
         };
 
         const loadPage = async (page, search) => {
             tableContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Memuat data...</p></div>`;
+            currentSearch = search;
+            self.currentSearch = search;
+            self.currentColFilters = colFilters;
             const data = await self.fetchPage(page, search, sortCol, sortDir, colFilters);
             totalPages = data.meta.last_page;
             currentPage = page;
@@ -344,7 +354,16 @@ class PbgTasks {
 
         btn.addEventListener("click", () => {
             const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
-            const url = `${GlobalConfig.apiHost}/api/pbg-task/export-excel`;
+            // Read year directly from dropdown at click time (most reliable)
+            const yearDropdown = document.getElementById("year-filter-select");
+            const activeYear = yearDropdown ? yearDropdown.value : this.selectedYear;
+            let url = `${GlobalConfig.apiHost}/api/pbg-task/export-excel?`;
+            if (activeYear) url += `year=${encodeURIComponent(activeYear)}&`;
+            if (this.selectedFilter) url += `filter=${encodeURIComponent(this.selectedFilter)}&`;
+            if (this.currentSearch) url += `search=${encodeURIComponent(this.currentSearch)}&`;
+            Object.entries(this.currentColFilters).forEach(([key, val]) => {
+                if (val) url += `cf[${encodeURIComponent(key)}]=${encodeURIComponent(val)}&`;
+            });
 
             btn.disabled = true;
             btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span> Exporting...`;

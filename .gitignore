@@ -24,3 +24,26 @@ yarn-error.log
 /.composer
 /.config
 /.npm*.bak
+
+# Backup & dump files
+*.bak
+*.sql
+backups/
+struktur.txt
+
+# Agent Mesh
+.agent.yaml
+.agent-memory.md
+.env.agent
+agent.log
+agent.py
+agent_queue.json
+
+# Google credentials
+*.json
+
+# Shell history
+.lesshst
+
+# Claude Code
+.claude/

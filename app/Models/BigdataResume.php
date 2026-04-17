@@ -48,17 +48,7 @@ class BigdataResume extends Model
     public static function generateResumeData($import_datasource_id, $year, $resume_type){
         // Get accurate counts without joins to avoid duplicates from multiple retributions
         // Filter only valid data (is_valid = true) and only the target year
-        // Berkas Lengkap: split tahun (prev = semua 7 status, current = potention minus belum lengkap)
-        $berkas_lengkap_statuses = array_values(array_diff(PbgTaskStatus::getPotention(), PbgTaskStatus::getNonVerified()));
-        $verified_count_prev = PbgTask::whereIn('status', PbgTaskStatus::getPotentionPreviousYear())
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
-            ->count();
-        $verified_count_current = PbgTask::whereIn('status', $berkas_lengkap_statuses)
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
-            ->count();
-        $verified_count = $verified_count_prev + $verified_count_current;
+        // Berkas Lengkap count will be derived from children sum (Option C)
         // Belum Lengkap: split tahun (2025 tidak ada status 1,2 di prev, jadi hanya 2026)
         $non_verified_count = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
             ->where('is_valid', true)
@@ -93,17 +83,9 @@ class BigdataResume extends Model
             ->where('is_valid', true)
             ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31'])
             ->count();
-        // Potensi tahun sebelumnya: hanya 7 status terbatas
-        $potention_count_prev = PbgTask::whereIn('status', PbgTaskStatus::getPotentionPreviousYear())
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
-            ->count();
-        // Potensi tahun berjalan: semua status potensi
-        $potention_count_current = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
-            ->count();
-        $potention_count = $potention_count_prev + $potention_count_current;
+        // Option C: Berkas Lengkap = sum of children, Total Potensi = Berkas Lengkap + Belum Lengkap
+        $verified_count = $waiting_click_dpmptsp_count + $issuance_realization_pbg_count + $process_in_technical_office_count;
+        $potention_count = $verified_count + $non_verified_count;
 
         // Business count: function_type LIKE usaha OR (non-business with unit > 1)
         $business_count = PbgTask::where(function ($q) {
@@ -336,27 +318,15 @@ class BigdataResume extends Model
             ")
             ->value('total');
 
-        // Potention sum menggunakan kolom usulan_retribusi (tanpa join retributions)
-        // Tahun sebelumnya: hanya 7 status terbatas
-        $potention_sum_prev = PbgTask::whereIn('status', PbgTaskStatus::getPotentionPreviousYear())
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', ($year - 1) . '-12-31'])
-            ->sum('usulan_retribusi');
-        // Tahun berjalan: semua status potensi
-        $potention_sum_current = PbgTask::whereIn('status', PbgTaskStatus::getPotention())
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
-            ->sum('usulan_retribusi');
-        $potention_total = $potention_sum_prev + $potention_sum_current;
-
         // Belum Lengkap sum (status 1,2 hanya tahun berjalan, pakai usulan_retribusi)
         $non_verified_sum = PbgTask::whereIn('status', PbgTaskStatus::getNonVerified())
             ->where('is_valid', true)
             ->whereBetween('start_date', [$year . '-01-01', $year . '-12-31'])
             ->sum('usulan_retribusi');
 
-        // Berkas Lengkap sum = potention_total - non_verified_sum
-        $verified_sum = $potention_total - $non_verified_sum;
+        // Option C: Berkas Lengkap sum = children sums, Potensi = Berkas Lengkap + Belum Lengkap
+        $verified_sum = ($stats->waiting_click_dpmptsp_total ?? 0) + ($issuance_realization_pbg_total ?? 0) + ($stats->process_in_technical_office_total ?? 0);
+        $potention_total = $verified_sum + $non_verified_sum;
 
         $service_google_sheet = app(ServiceGoogleSheet::class);
 

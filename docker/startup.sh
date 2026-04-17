@@ -15,6 +15,10 @@ mkdir -p /var/www/bootstrap/cache
 chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
+# Clear stale bootstrap cache (generated with dev deps, but deployed without --dev)
+echo "Clearing bootstrap cache..."
+rm -f /var/www/bootstrap/cache/services.php /var/www/bootstrap/cache/packages.php
+
 # Wait for database to be ready
 max_tries=40
 count=0

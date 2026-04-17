@@ -7,7 +7,18 @@ import "flatpickr/dist/flatpickr.min.css";
 
 class PbgTaskAssignments {
     init() {
-        this.initTablePbgTaskAssignments();
+        // Grid.js must NOT render into a hidden tab-pane (offsetWidth=0 causes infinite loop).
+        // Initialize it lazily when the Penugasan tab is first shown.
+        let gridInitialized = false;
+        const tabLink = document.querySelector('a[href="#pbgTaskAssignments"]');
+        if (tabLink) {
+            tabLink.addEventListener('shown.bs.tab', () => {
+                if (!gridInitialized) {
+                    gridInitialized = true;
+                    this.initTablePbgTaskAssignments();
+                }
+            });
+        }
         this.handleUpdateData();
         this.initDatePicker();
         this.initIsValidToggle();

@@ -58,7 +58,7 @@
             'document_id' => 'chart-total-potensi',
             'visible_small_circle' => true,
             'style' => 'left:400px;top:150px;',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'potention', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'potention'])
         ])
         @endcomponent
 
@@ -93,14 +93,14 @@
         <div style="position: absolute; top: 50px; left: 900px; width: 200px; height: 200px; ">
             <x-custom-circle title="GAMBAR" size="small" style="background-color: #c248a7;float:left;margin-left:250px;" 
             visible_data="true" data_id="non-business-rab-count" data_count="0" 
-            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-business-rab', 'year' => date('Y')]) !!}"
+            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-business-rab']) !!}"
             />
         </div>
 
         <div style="position: absolute; top: 160px; left: 900px; width: 200px; height: 200px; ">
             <x-custom-circle title="KRK" size="small" style="background-color: #295040;float:left;margin-left:250px;" 
             visible_data="true" data_id="non-business-krk-count" data_count="0" 
-            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-business-krk', 'year' => date('Y')]) !!}"
+            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-business-krk']) !!}"
             />
         </div>
 
@@ -116,21 +116,21 @@
         <div style="position: absolute; top: 350px; left: 900px; width: 200px; height: 200px; ">
             <x-custom-circle title="GAMBAR" size="small" style="background-color: #c248a7;float:left;margin-left:250px;" 
             visible_data="true" data_id="business-rab-count" data_count="0" 
-            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business-rab', 'year' => date('Y')]) !!}"
+            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business-rab']) !!}"
             />
         </div>
 
         <div style="position: absolute; top: 460px; left: 900px; width: 200px; height: 200px; ">
             <x-custom-circle title="KRK" size="small" style="background-color: #295040;float:left;margin-left:250px;" 
             visible_data="true" data_id="business-krk-count" data_count="0" 
-            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business-krk', 'year' => date('Y')]) !!}"
+            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business-krk']) !!}"
             />
         </div>
 
         <div style="position: absolute; top: 570px; left: 900px; width: 200px; height: 200px; ">
             <x-custom-circle title="DLH" size="small" style="background-color: #351d02;float:left;margin-left:250px;" 
             visible_data="true" data_id="business-dlh-count" data_count="0" 
-            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business-dlh', 'year' => date('Y')]) !!}"
+            document_url="{!! route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business-dlh']) !!}"
             />
         </div>
 
@@ -141,7 +141,7 @@
             'document_id' => 'chart-non-business',
             'visible_small_circle' => true,
             'style' => 'left:900px;top:150px;',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-business', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-business'])
         ])
         @endcomponent
 
@@ -152,7 +152,7 @@
             'document_id' => 'chart-business',
             'visible_small_circle' => true,
             'style' => 'left:900px;top:400px;',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'business'])
         ])
         @endcomponent
 
@@ -163,7 +163,7 @@
             'document_id' => 'chart-berkas-terverifikasi',
             'visible_small_circle' => true,
             'style' => 'top:300px;left:200px;',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'verified', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'verified'])
         ])
         @endcomponent
 
@@ -180,7 +180,7 @@
             'document_id' => 'chart-berkas-belum-terverifikasi',
             'visible_small_circle' => true,
             'style' => 'top:300px;left:600px;',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-verified', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'non-verified'])
         ])
         @endcomponent
 
@@ -198,7 +198,7 @@
             'document_id' => 'chart-realisasi-tebit-pbg',
             'visible_small_circle' => true,
             'style' => 'top:550px;left:100px;',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'issuance-realization-pbg', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'issuance-realization-pbg'])
             ])
         @endcomponent
 
@@ -223,7 +223,7 @@
             'document_id' => 'chart-menunggu-klik-dpmptsp',
             'visible_small_circle' => true,
             'style' => 'top:550px;left:400px',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'waiting-click-dpmptsp', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'waiting-click-dpmptsp'])
             ])
         @endcomponent
 
@@ -237,7 +237,7 @@
             'document_id' => 'chart-proses-dinas-teknis',
             'visible_small_circle' => true,
             'style' => 'top:550px;left:700px',
-            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'process-in-technical-office', 'year' => date('Y')])
+            'document_url' => route('pbg-task.index') . '?' . http_build_query(['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'process-in-technical-office'])
             ])
         @endcomponent
     </div>

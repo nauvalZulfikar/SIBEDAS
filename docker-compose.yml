@@ -31,9 +31,9 @@ services:
             DB_USERNAME: ${DB_USERNAME:-sibedas_user}
             DB_PASSWORD: ${DB_PASSWORD}
 
-            # Cache / Session / Queue (all using database driver)
-            CACHE_STORE: ${CACHE_STORE:-database}
-            SESSION_DRIVER: ${SESSION_DRIVER:-database}
+            # Cache / Session / Queue
+            CACHE_STORE: ${CACHE_STORE:-file}
+            SESSION_DRIVER: ${SESSION_DRIVER:-file}
             SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
             QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
 

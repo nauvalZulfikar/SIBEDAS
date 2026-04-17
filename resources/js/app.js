@@ -108,6 +108,43 @@ class FormValidation {
 document.addEventListener("DOMContentLoaded", function (e) {
     new Components().init(), new FormValidation().init();
 });
+
+// GridJS search: only fire on Enter, not on every keystroke
+(function () {
+    function setupEnterSearch(realInput) {
+        if (realInput._enterOnly) return;
+        realInput._enterOnly = true;
+
+        // Hide the real GridJS input (still in DOM so GridJS can read it)
+        realInput.style.display = "none";
+
+        // Create a visible fake input the user types into
+        var fakeInput = document.createElement("input");
+        fakeInput.type = "search";
+        // Strip gridjs-search-input class so the observer does NOT re-trigger on this element
+        fakeInput.className = realInput.className.replace(/\bgridjs-search-input\b/g, "").trim();
+        fakeInput.placeholder = realInput.placeholder || "Cari...";
+        realInput.parentNode.insertBefore(fakeInput, realInput);
+
+        // On Enter: sync value to real input and fire input event for GridJS
+        fakeInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                realInput.value = fakeInput.value;
+                realInput.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+        });
+    }
+
+    new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            m.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) return;
+                if (node.classList && node.classList.contains("gridjs-search-input")) setupEnterSearch(node);
+                if (node.querySelectorAll) node.querySelectorAll(".gridjs-search-input").forEach(setupEnterSearch);
+            });
+        });
+    }).observe(document.body, { childList: true, subtree: true });
+})();
 class ThemeLayout {
     constructor() {
         (this.html = document.getElementsByTagName("html")[0]),

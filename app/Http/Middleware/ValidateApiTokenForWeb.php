@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
@@ -69,18 +70,20 @@ class ValidateApiTokenForWeb
         }
 
         $plainToken = $tokenParts[1];
+        $hashedToken = hash('sha256', $plainToken);
+        $cacheKey = 'tok_ok_' . $user->id;
 
-        // Check token di database
-        $validToken = PersonalAccessToken::where('tokenable_id', $user->id)
-            ->where('tokenable_type', get_class($user))
-            ->where('token', hash('sha256', $plainToken))
-            ->where(function($query) {
-                $query->whereNull('expires_at')
-                      ->orWhere('expires_at', '>', now());
-            })
-            ->first();
-
-        return $validToken !== null;
+        // Cache hasil validasi selama 5 menit agar tidak query DB setiap request
+        return Cache::remember($cacheKey, 300, function () use ($user, $hashedToken) {
+            return PersonalAccessToken::where('tokenable_id', $user->id)
+                ->where('tokenable_type', get_class($user))
+                ->where('token', $hashedToken)
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')
+                          ->orWhere('expires_at', '>', now());
+                })
+                ->exists();
+        });
     }
 
     /**
@@ -113,6 +116,9 @@ class ValidateApiTokenForWeb
      */
     private function generateNewToken($user): void
     {
+        // Invalidate cache token lama
+        Cache::forget('tok_ok_' . $user->id);
+
         // Hapus token lama
         PersonalAccessToken::where('tokenable_id', $user->id)
             ->where('tokenable_type', get_class($user))
@@ -136,6 +142,7 @@ class ValidateApiTokenForWeb
         $user = Auth::user();
         
         if ($user) {
+            Cache::forget('tok_ok_' . $user->id);
             // Delete all tokens for this user
             PersonalAccessToken::where('tokenable_id', $user->id)
                 ->where('tokenable_type', get_class($user))

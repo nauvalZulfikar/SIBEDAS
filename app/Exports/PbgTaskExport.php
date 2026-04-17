@@ -6,17 +6,23 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use App\Models\PbgTask;
 use App\Enums\PbgTaskStatus;
+use App\Traits\PbgTaskFilterTrait;
 use Illuminate\Support\Facades\DB;
 
 class PbgTaskExport implements FromCollection, WithHeadings
 {
+    use PbgTaskFilterTrait;
     protected $filter;
     protected $year;
+    protected $search;
+    protected $colFilters;
 
-    public function __construct(string $filter = 'all', int $year = 0)
+    public function __construct(string $filter = 'all', int $year = 0, string $search = '', array $colFilters = [])
     {
         $this->filter = $filter;
         $this->year = $year;
+        $this->search = $search;
+        $this->colFilters = $colFilters;
     }
 
     /**
@@ -26,11 +32,18 @@ class PbgTaskExport implements FromCollection, WithHeadings
     {
         $query = PbgTask::query()->where('is_valid', true);
 
-        if ($this->year > 0) {
-            $query->whereYear('start_date', $this->year);
+        $isSemua = ($this->year === 0);
+        $year = $isSemua ? (int) date('Y') : $this->year;
+
+        $this->applyPbgFilter($query, $this->filter, $year, $isSemua);
+
+        if (!empty($this->search)) {
+            $this->applySearch($query, $this->search);
         }
 
-        $this->applyFilter($query);
+        if (!empty($this->colFilters)) {
+            $this->applyColumnFilters($query, $this->colFilters);
+        }
 
         return $query->with(['pbg_task_retributions', 'pbg_task_detail', 'pbg_status'])
             ->orderBy('id', 'desc')
@@ -86,236 +99,57 @@ class PbgTaskExport implements FromCollection, WithHeadings
         ];
     }
 
-    private function applyFilter($query)
+    private function applySearch($query, string $search)
     {
-        switch ($this->filter) {
-            case 'all':
-                break;
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'LIKE', "%$search%")
+              ->orWhere('registration_number', 'LIKE', "%$search%")
+              ->orWhere('owner_name', 'LIKE', "%$search%")
+              ->orWhere('address', 'LIKE', "%$search%");
+        });
 
-            case 'non-business':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhereNull('function_type');
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified())
-                    ->where(function ($q3) {
-                        $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
-                            $q4->where('unit', '>', 1);
-                        })
-                        ->orWhereDoesntHave('pbg_task_detail');
-                    });
+        $namesBuildingUuids = DB::table('pbg_task_details')
+            ->where('name_building', 'LIKE', "%$search%")
+            ->pluck('pbg_task_uid')
+            ->toArray();
+
+        if (!empty($namesBuildingUuids)) {
+            $query->orWhereIn('uuid', $namesBuildingUuids);
+        }
+    }
+
+    private function applyColumnFilters($query, array $filters)
+    {
+        $directColumns = [
+            'id', 'name', 'owner_name', 'condition', 'registration_number',
+            'document_number', 'address', 'status_name', 'function_type',
+            'consultation_type', 'task_created_at', 'start_date', 'due_date',
+            'usulan_retribusi',
+        ];
+        $detailColumns = ['total_area', 'unit'];
+
+        foreach ($filters as $key => $value) {
+            if (empty($value)) continue;
+
+            if (in_array($key, $directColumns)) {
+                $query->where($key, 'LIKE', "%{$value}%");
+            } elseif (in_array($key, $detailColumns)) {
+                $query->whereHas('pbg_task_detail', function ($q) use ($key, $value) {
+                    $q->where($key, 'LIKE', "%{$value}%");
                 });
-                break;
-
-            case 'business':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereHas('pbg_task_detail', function ($q4) {
-                                $q4->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
+            } elseif ($key === '_name_building') {
+                $query->whereHas('pbg_task_detail', function ($q) use ($value) {
+                    $q->where('name_building', 'LIKE', "%{$value}%");
                 });
-                break;
-
-            case 'verified':
-                $query->whereIn("status", PbgTaskStatus::getVerified());
-                break;
-
-            case 'non-verified':
-                $query->whereIn("status", PbgTaskStatus::getNonVerified());
-                break;
-
-            case 'potention':
-                $query->whereIn("status", PbgTaskStatus::getPotention());
-                break;
-
-            case 'issuance-realization-pbg':
-                if ($this->year > 0 && $this->year < (int) date('Y')) {
-                    $query->whereIn("status", PbgTaskStatus::getIssuanceRealizationPbgPrev());
-                } else {
-                    $query->whereIn("status", PbgTaskStatus::getIssuanceRealizationPbg());
-                }
-                break;
-
-            case 'process-in-technical-office':
-                $query->whereIn("status", PbgTaskStatus::getProcessInTechnicalOffice());
-                break;
-
-            case 'waiting-click-dpmptsp':
-                $query->whereIn("status", PbgTaskStatus::getWaitingClickDpmptsp());
-                break;
-
-            case 'non-business-rab':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhereNull('function_type');
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified())
-                    ->whereNotExists(function ($subq) {
-                        $subq->select(DB::raw(1))
-                              ->from('pbg_task_details')
-                              ->whereColumn('pbg_task_details.pbg_task_uid', 'pbg_task.uuid')
-                              ->where('unit', '>', 1);
-                    });
-                })
-                ->whereExists(function ($subq) {
-                    $subq->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('data_type', 3)
-                          ->where('status', '!=', 1);
+            } elseif ($key === '_retribusi') {
+                $query->whereHas('pbg_task_retributions', function ($q) use ($value) {
+                    $q->where('nilai_retribusi_bangunan', 'LIKE', "%{$value}%");
                 });
-                break;
-
-            case 'non-business-krk':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhereNull('function_type');
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified())
-                    ->whereNotExists(function ($subq) {
-                        $subq->select(DB::raw(1))
-                              ->from('pbg_task_details')
-                              ->whereColumn('pbg_task_details.pbg_task_uid', 'pbg_task.uuid')
-                              ->where('unit', '>', 1);
-                    });
-                })
-                ->whereExists(function ($subq) {
-                    $subq->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('data_type', 2)
-                          ->where('status', '!=', 1);
+            } elseif ($key === '_catatan') {
+                $query->whereHas('pbg_status', function ($q) use ($value) {
+                    $q->where('note', 'LIKE', "%{$value}%");
                 });
-                break;
-
-            case 'business-rab':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereExists(function ($subq) {
-                                $subq->select(DB::raw(1))
-                                      ->from('pbg_task_details')
-                                      ->whereColumn('pbg_task_details.pbg_task_uid', 'pbg_task.uuid')
-                                      ->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                })
-                ->whereExists(function ($subq) {
-                    $subq->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('data_type', 3)
-                          ->where('status', '!=', 1);
-                });
-                break;
-
-            case 'business-krk':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereExists(function ($subq) {
-                                $subq->select(DB::raw(1))
-                                      ->from('pbg_task_details')
-                                      ->whereColumn('pbg_task_details.pbg_task_uid', 'pbg_task.uuid')
-                                      ->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                })
-                ->whereExists(function ($subq) {
-                    $subq->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('data_type', 2)
-                          ->where('status', '!=', 1);
-                });
-                break;
-
-            case 'business-dlh':
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereExists(function ($subq) {
-                                $subq->select(DB::raw(1))
-                                      ->from('pbg_task_details')
-                                      ->whereColumn('pbg_task_details.pbg_task_uid', 'pbg_task.uuid')
-                                      ->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                })
-                ->whereExists(function ($subq) {
-                    $subq->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('data_type', 5)
-                          ->where('status', '!=', 1);
-                });
-                break;
+            }
         }
     }
 }

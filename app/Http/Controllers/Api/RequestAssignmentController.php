@@ -14,9 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Enums\PbgTaskStatus;
+use App\Traits\PbgTaskFilterTrait;
 
 class RequestAssignmentController extends Controller
 {
+    use PbgTaskFilterTrait;
     /**
      * Display a listing of the resource.
      */
@@ -28,23 +30,21 @@ class RequestAssignmentController extends Controller
         // Always filter only valid data (is_valid = true)
         $baseQuery->where('is_valid', true);
         
-        // Apply year filter if provided (to match BigdataResume behavior)
-        if ($request->has('year') && !empty($request->get('year'))) {
-            $year = $request->get('year');
-            $baseQuery->whereYear('start_date', $year);
-            Log::info('RequestAssignmentController year filter applied', ['year' => $year]);
-        }
-        
-        // Get filter value, default to 'all' if not provided or empty
-        $filter = $request->has('filter') && !empty($request->get('filter')) 
-            ? strtolower(trim($request->get('filter'))) 
-            : 'all';
-        
-        // Log filter for debugging
-        Log::info('RequestAssignmentController filter applied', ['filter' => $filter, 'original' => $request->get('filter')]);
+        // Year logic: empty = "semua" (dashboard scope), specific = that year's portion
+        $yearParam = $request->get('year');
+        $isSemua = !$yearParam || empty($yearParam);
+        $year = $isSemua ? (int) date('Y') : (int) $yearParam;
 
-        // Apply filters to base query using single consolidated method
-        $this->applyFilter($baseQuery, $filter);
+        // Get filter value, default to 'all' if not provided or empty
+        $filter = $request->has('filter') && !empty($request->get('filter'))
+            ? strtolower(trim($request->get('filter')))
+            : 'all';
+
+        // Log filter for debugging
+        Log::info('RequestAssignmentController filter applied', ['filter' => $filter, 'year' => $year]);
+
+        // Apply filters and year range to base query
+        $this->applyPbgFilter($baseQuery, $filter, $year, $isSemua);
         
         // Get accurate count from base query (without relationships)
         $accurateCount = $baseQuery->count();
@@ -132,258 +132,6 @@ class RequestAssignmentController extends Controller
         $paginatedResults->appends($request->query());
         
         return RequestAssignmentResouce::collection($paginatedResults);
-    }
-
-    /**
-     * Apply filter logic to the query
-     */
-    private function applyFilter($query, string $filter)
-    {
-        switch ($filter) {
-            case 'all':
-                // No additional filters, just return all valid records
-                break;
-            case 'non-business':
-                // Non-business: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhereNull('function_type');
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified())
-                    // Additional condition: unit IS NULL OR unit <= 1
-                    ->where(function ($q3) {
-                        $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
-                            $q4->where('unit', '>', 1);
-                        })
-                        ->orWhereDoesntHave('pbg_task_detail');
-                    });
-                });
-                break;
-
-            case 'business':
-                // Business: function_type LIKE usaha OR (non-business with unit > 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        // Traditional business: function_type LIKE usaha
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        // OR non-business with unit > 1 (becomes business)
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereHas('pbg_task_detail', function ($q4) {
-                                $q4->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                });
-                break;
-
-            case 'verified':
-                // Match BigdataResume verified logic exactly
-                $query->whereIn("status", PbgTaskStatus::getVerified());
-                break;
-
-            case 'non-verified':
-                // Match BigdataResume non-verified logic exactly
-                $query->whereIn("status", PbgTaskStatus::getNonVerified());
-                break;
-
-            case 'potention':
-                // Match BigdataResume potention logic exactly
-                $query->whereIn("status", PbgTaskStatus::getPotention());
-                break;
-                
-            case 'issuance-realization-pbg':
-                // Match BigdataResume issuance realization logic exactly
-                $query->whereIn("status", PbgTaskStatus::getIssuanceRealizationPbg());
-                break;
-                
-            case 'process-in-technical-office':
-                // Match BigdataResume process in technical office logic exactly
-                $query->whereIn("status", PbgTaskStatus::getProcessInTechnicalOffice());
-                break;
-                
-            case 'waiting-click-dpmptsp':
-                // Match BigdataResume waiting click DPMPTSP logic exactly
-                $query->whereIn("status", PbgTaskStatus::getWaitingClickDpmptsp());
-                break;
-
-            case 'non-business-rab':
-                // Non-business tasks: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhereNull('function_type');
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified())
-                    // Additional condition: unit IS NULL OR unit <= 1
-                    ->where(function ($q3) {
-                        $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
-                            $q4->where('unit', '>', 1);
-                        })
-                        ->orWhereDoesntHave('pbg_task_detail');
-                    });
-                })
-                ->whereExists(function ($query) {
-                    $query->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('pbg_task_detail_data_lists.data_type', 3)
-                          ->where('pbg_task_detail_data_lists.status', '!=', 1);
-                });
-                break;
-
-            case 'non-business-krk':
-                // Non-business tasks: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        ->orWhereNull('function_type');
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified())
-                    // Additional condition: unit IS NULL OR unit <= 1
-                    ->where(function ($q3) {
-                        $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
-                            $q4->where('unit', '>', 1);
-                        })
-                        ->orWhereDoesntHave('pbg_task_detail');
-                    });
-                })
-                ->whereExists(function ($query) {
-                    $query->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('pbg_task_detail_data_lists.data_type', 2)
-                          ->where('pbg_task_detail_data_lists.status', '!=', 1);
-                });
-                break;
-
-            case 'business-rab':
-                // Business tasks: function_type LIKE usaha OR (non-business with unit > 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        // Traditional business: function_type LIKE usaha
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        // OR non-business with unit > 1 (becomes business)
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereHas('pbg_task_detail', function ($q4) {
-                                $q4->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                })
-                ->whereExists(function ($query) {
-                    $query->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('pbg_task_detail_data_lists.data_type', 3)
-                          ->where('pbg_task_detail_data_lists.status', '!=', 1);
-                });
-                break;
-
-            case 'business-krk':
-                // Business tasks: function_type LIKE usaha OR (non-business with unit > 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        // Traditional business: function_type LIKE usaha
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        // OR non-business with unit > 1 (becomes business)
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereHas('pbg_task_detail', function ($q4) {
-                                $q4->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                })
-                ->whereExists(function ($query) {
-                    $query->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('pbg_task_detail_data_lists.data_type', 2)
-                          ->where('pbg_task_detail_data_lists.status', '!=', 1);
-                });
-                break;
-
-            case 'business-dlh':
-                // Business tasks: function_type LIKE usaha OR (non-business with unit > 1)
-                $query->where(function ($q) {
-                    $q->where(function ($q2) {
-                        // Traditional business: function_type LIKE usaha
-                        $q2->where(function ($q3) {
-                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                        })
-                        // OR non-business with unit > 1 (becomes business)
-                        ->orWhere(function ($q3) {
-                            $q3->where(function ($q4) {
-                                $q4->where(function ($q5) {
-                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                                })
-                                ->orWhereNull('function_type');
-                            })
-                            ->whereHas('pbg_task_detail', function ($q4) {
-                                $q4->where('unit', '>', 1);
-                            });
-                        });
-                    })
-                    ->whereIn("status", PbgTaskStatus::getNonVerified());
-                })
-                ->whereExists(function ($query) {
-                    $query->select(DB::raw(1))
-                          ->from('pbg_task_detail_data_lists')
-                          ->whereColumn('pbg_task_detail_data_lists.pbg_task_uuid', 'pbg_task.uuid')
-                          ->where('pbg_task_detail_data_lists.data_type', 5)
-                          ->where('pbg_task_detail_data_lists.status', '!=', 1);
-                });
-                break;
-                
-            default:
-                // Log unrecognized filter for debugging
-                Log::warning('Unrecognized filter value', ['filter' => $filter]);
-                break;
-        }
     }
 
     /**
@@ -475,7 +223,10 @@ class RequestAssignmentController extends Controller
     public function export_excel_pbg_tasks(Request $request){
         $filter = $request->get('filter', 'all');
         $year = (int) $request->get('year', 0);
-        return Excel::download(new \App\Exports\PbgTaskExport($filter, $year), 'data-pbg-' . date('Y-m-d') . '.xlsx');
+        $search = $request->get('search', '');
+        $colFilters = $request->get('cf', []);
+        \Log::info('export_excel_pbg_tasks called', ['filter' => $filter, 'year' => $year, 'raw_year' => $request->get('year'), 'search' => $search, 'all_params' => $request->all()]);
+        return Excel::download(new \App\Exports\PbgTaskExport($filter, $year, $search, $colFilters), 'data-pbg-' . date('Y-m-d') . '.xlsx');
     }
 
     public function export_excel_district_payment_recaps(){

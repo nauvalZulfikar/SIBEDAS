@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
             rollupOptions: {
                 output: {
                     manualChunks: undefined,
-                    entryFileNames: "assets/[name].js",
+                    entryFileNames: "assets/[name]-[hash].js",
                     chunkFileNames: "assets/[name].js",
                     assetFileNames: "assets/[name].[ext]",
                 },
