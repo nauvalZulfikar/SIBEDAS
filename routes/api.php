@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BigDataResumeController;
+use App\Http\Controllers\Api\DetectedBuildingController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\BusinessOrIndustriesController;
 use App\Http\Controllers\Api\CustomersController;
