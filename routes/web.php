@@ -66,6 +66,7 @@ Route::group(['middleware' => ['auth', 'validate.api.token.web']], function(){
         Route::get('/maps', [GoogleApisController::class, 'index'])->name('dashboard.maps');
         Route::get('/inside-system', [PotentialsController::class, 'inside_system'])->name('dashboard.potentials.inside_system');
         Route::get('/outside-system', [PotentialsController::class, 'outside_system'])->name('dashboard.potentials.outside_system');
+        Route::get('/satellite-monitoring', [\App\Http\Controllers\Dashboards\SatelliteMonitoringController::class, 'index'])->name('dashboard.satellite-monitoring');
     });
     
     // settings

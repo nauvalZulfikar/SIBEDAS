@@ -201,6 +201,16 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
         Route::put('/taxs/{id}', 'update')->name('api.taxs.update');
     });
 
+    // detected buildings (satellite monitoring)
+    Route::controller(DetectedBuildingController::class)->group(function () {
+        Route::get('/detected-buildings', 'index')->name('api.detected-buildings.index');
+        Route::get('/detected-buildings/stats', 'stats')->name('api.detected-buildings.stats');
+        Route::get('/detected-buildings/geojson', 'geojson')->name('api.detected-buildings.geojson');
+        Route::get('/detected-buildings/{id}', 'show')->name('api.detected-buildings.show');
+        Route::put('/detected-buildings/{id}/status', 'updateStatus')->name('api.detected-buildings.update-status');
+        Route::post('/detected-buildings/bulk-status', 'bulkUpdateStatus')->name('api.detected-buildings.bulk-status');
+    });
+
     // TODO: Implement new retribution calculation API endpoints using the new schema
 });
 
