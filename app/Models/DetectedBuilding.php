@@ -1,6 +1,10 @@
 <?php
 namespace App\Models;
+use App\Observers\DetectedBuildingObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
+
+#[ObservedBy([DetectedBuildingObserver::class])]
 class DetectedBuilding extends Model
 {
     protected $fillable = ['latitude','longitude','estimated_area_m2','confidence_score','detection_source','detection_date','geometry_geojson','matched_pbg_task_id','pbb_record_id','match_distance_m','verification_status','building_district_name','building_ward_name','verified_by','verified_at','notes'];

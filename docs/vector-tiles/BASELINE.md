@@ -471,6 +471,45 @@ in local dev), but the controller's path through Martin vs. straight
 from cache saves the 48 ms PostGIS query per tile — and protects the
 upstream when the user count scales.
 
+## Phase 15 verification (2026-05-11)
+
+`DetectedBuildingObserver` registered on the model via Laravel 11's
+`#[ObservedBy]` attribute. On any change to `verification_status`
+that ships with a lat/lng, the observer dispatches
+`InvalidateBuildingTiles($lat, $lng)` to the default queue.
+
+The job walks zoom levels 14..18, computes the slippy-map `(x, y)`
+that contains the centroid at each zoom, and `SCAN`s the Redis cache
+DB for keys matching `<prefix>tile:{z}:{x}:{y}:*` (one entry per
+filter-hash). Matching keys are `DEL`-ed in a single batch.
+
+Two snags caught and documented:
+
+1. `SCAN` returns *fully-prefixed* keys (Laravel's redis options
+   prefix is `sibedas_database_`, not `cache.prefix`). The `MATCH`
+   pattern therefore needs the prefix, but `DEL` is back through
+   Laravel's wrapper which re-applies the prefix — so the keys are
+   stripped before being passed to `del()`.
+2. Predis 3 doesn't register `UNLINK`. Falling back to `DEL` is
+   functionally equivalent for our tiny tile-cache footprint and
+   avoids a runtime exception.
+
+End-to-end smoke test:
+
+```
+1. Prime  /tiles/14/13086/8513.pbf            → MISS (cache: 1 key)
+2. PUT    /detected-buildings/792010/status   → 200 (status flipped)
+3. queue:work --once --queue=default
+   App\Jobs\InvalidateBuildingTiles  DONE in 110ms
+   log: "Tile cache invalidated  keys_deleted=1"
+4. Re-hit /tiles/14/13086/8513.pbf            → MISS (cache busted)
+5. Re-hit /tiles/14/13086/8513.pbf            → HIT  (rewarmed)
+```
+
+Production note: `QUEUE_CONNECTION=database` means a `queue:work`
+worker (already in the supervisor config) processes these. Average
+job duration in test ~100 ms.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:
