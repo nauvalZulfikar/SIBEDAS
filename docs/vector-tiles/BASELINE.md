@@ -405,6 +405,33 @@ End-to-end UX (click polygon → see panel → press verify → polygon
 colour flips) still wants browser eyes; logic is wired and every
 intermediate API call returns successfully.
 
+## Phase 13 verification (2026-05-11)
+
+Polygon-layer creation refactored into a `createPolygonLayer()` helper
+that reads current dropdown values via `buildPolygonTileUrl()`. The
+filters `filter-district` and `filter-min-area` forward to the
+PostGIS tile function (Phase 7 already supports these). The other two
+dropdowns (data-source, pbg-status) carry semantics the tile function
+does not yet model and remain stats-only — flagged as future work.
+
+A 300 ms debounced `refreshPolygonLayer()` listens to `change` events on
+the two wired dropdowns. On change it removes the existing layer and
+adds a freshly-constructed one with the new URL; the click handlers
+are reattached automatically because they live inside the helper.
+
+End-to-end filter sweep against the Bandung-centre z=14 tile:
+
+| URL | Tile bytes |
+|---|---|
+| `?district=Soreang` | 15,499 |
+| `?min_area=500` | 9,699 |
+| `?district=Soreang&min_area=500` | 929 |
+
+Rendered HTML carries 8 references to the new helpers
+(`buildPolygonTileUrl`, `createPolygonLayer`, `refreshPolygonLayer`).
+`npm run build` passes; visual confirmation (changing the dropdown ↔
+seeing polygons fade in/out) still pending browser QA.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

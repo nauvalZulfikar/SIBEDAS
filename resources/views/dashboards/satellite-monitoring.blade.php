@@ -363,12 +363,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // ======================================================================
     const VECTOR_TILES_MIN_ZOOM = 14;
     let polygonLayer = null;
-    if (typeof L.vectorGrid !== 'undefined' && window.__vectorGridReady !== false) {
-        polygonLayer = L.vectorGrid.protobuf('/api/tiles/buildings/{z}/{x}/{y}.pbf', {
-            rendererFactory: L.canvas.tile,   // canvas is fastest for 10k+ polys per tile
-            interactive: true,                // enables click events (used in Phase 12)
+    let _highlightedId = null;
+
+    // Build the tile-URL template with filter query string. Only the filters
+    // that the PostGIS tile function understands (Phase 7) are forwarded:
+    // district + min_area. filter-data-source and filter-pbg-status carry
+    // semantics the tile function does not yet model (usage category vs.
+    // PBG match-status); they remain stats-only filters for now.
+    function buildPolygonTileUrl() {
+        const params = new URLSearchParams();
+        const dist = document.getElementById('filter-district')?.value;
+        const area = document.getElementById('filter-min-area')?.value;
+        if (dist) params.set('district', dist);
+        if (area) params.set('min_area', area);
+        const qs = params.toString();
+        return '/api/tiles/buildings/{z}/{x}/{y}.pbf' + (qs ? '?' + qs : '');
+    }
+
+    function createPolygonLayer() {
+        const layer = L.vectorGrid.protobuf(buildPolygonTileUrl(), {
+            rendererFactory: L.canvas.tile,
+            interactive: true,
             getFeatureId: f => f.properties.id,
-            minZoom: VECTOR_TILES_MIN_ZOOM,   // Leaflet stops requesting below this
+            minZoom: VECTOR_TILES_MIN_ZOOM,
             maxZoom: 18,
             bounds: BS_BOUNDS,
             attribution: 'Building footprints (Sibedas + Google Open Buildings + OSM)',
@@ -377,9 +394,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {},
             },
             vectorTileLayerStyles: {
-                // 'buildings' is the layer name encoded in the MVT by the
-                // PostGIS tile function. status_color is precomputed in
-                // Phase 3 (red orphan / green matched).
                 buildings: (props) => ({
                     fill: true,
                     fillColor: props.status_color || '#ef4444',
@@ -390,29 +404,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 }),
             },
         });
-        polygonLayer.on('tileerror', e => console.warn('[polygon-tile] error loading tile', e?.coords));
-        polygonLayer.addTo(map);
-        window.__sibedas_polygonLayer = polygonLayer; // exposed for Phase 11/12 hooks
+        layer.on('tileerror', e => console.warn('[polygon-tile] error loading tile', e?.coords));
 
-        // ==================================================================
         // Phase 12 — click a polygon → open the existing verify panel.
-        // Uses the same panel + selId state the cluster-marker popup uses,
-        // so the Confirmed Legal / Illegal buttons (already wired around
-        // line 727) just work without modification.
-        // ==================================================================
-        let _highlightedId = null;
-        polygonLayer.on('click', async function (e) {
+        layer.on('click', async function (e) {
             const props = e?.layer?.properties || e?.propagatedFrom?.properties;
             if (!props || !props.id) return;
             const id = props.id;
 
-            // Visual highlight — fat outline + brighter fill. setFeatureStyle is
-            // a vectorgrid helper that lives only as long as the tile is loaded;
-            // re-applies on re-render.
             if (_highlightedId && _highlightedId !== id) {
-                polygonLayer.resetFeatureStyle(_highlightedId);
+                try { layer.resetFeatureStyle(_highlightedId); } catch (_) {}
             }
-            polygonLayer.setFeatureStyle(id, {
+            layer.setFeatureStyle(id, {
                 fill: true,
                 fillColor: props.status_color || '#ef4444',
                 fillOpacity: 0.85,
@@ -422,8 +425,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             _highlightedId = id;
 
-            // Fetch full record so we can fill the panel with area / district —
-            // the MVT only carries id + status_color + source + area_class.
             selId = id;
             document.getElementById('verify-id').textContent = '#' + id;
             document.getElementById('verify-area').textContent = '...';
@@ -444,10 +445,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('verify-district').textContent = '—';
             }
         });
-        // ==================================================================
+        return layer;
+    }
+
+    if (typeof L.vectorGrid !== 'undefined' && window.__vectorGridReady !== false) {
+        polygonLayer = createPolygonLayer();
+        polygonLayer.addTo(map);
+        window.__sibedas_polygonLayer = polygonLayer;
     } else {
         console.warn('[vector-tiles] L.vectorGrid unavailable — polygon layer disabled.');
     }
+
+    // Phase 13 — recreate the polygon layer when district / min_area change.
+    // VectorGrid stores its URL template at construction time, so swapping
+    // filters means tearing down the layer and rebuilding with a new URL.
+    // Debounced 300 ms so flipping through dropdowns doesn't fire bursts of
+    // tile requests.
+    let _polygonRefreshTimer = null;
+    function refreshPolygonLayer() {
+        if (!L || !L.vectorGrid || window.__vectorGridReady === false) return;
+        clearTimeout(_polygonRefreshTimer);
+        _polygonRefreshTimer = setTimeout(() => {
+            const wasOnMap = polygonLayer && map.hasLayer(polygonLayer);
+            if (polygonLayer) {
+                try { map.removeLayer(polygonLayer); } catch (_) {}
+            }
+            _highlightedId = null;
+            polygonLayer = createPolygonLayer();
+            window.__sibedas_polygonLayer = polygonLayer;
+            if (wasOnMap || _vtMode === 'polygon') polygonLayer.addTo(map);
+        }, 300);
+    }
+    // Hooked on the same elements applyFilters listens to. The change event
+    // for filter-district is registered later in this file too (for fitBounds),
+    // so refreshPolygonLayer just gets a separate listener — order independent.
+    ['filter-district', 'filter-min-area'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', refreshPolygonLayer);
+    });
     // ======================================================================
 
     let selId = null;
