@@ -1,0 +1,53 @@
+# Vector Tiles — Baseline (Pre-Implementation)
+
+Captured **2026-05-11** on local dev (`php artisan serve --port=8002`, MySQL via XAMPP, 1,182,221 rows in `detected_buildings`).
+
+This document freezes the "before" picture so each phase's regression can be checked.
+
+## Current map behavior (master @ commit f12001f)
+
+- Page: `/dashboards/satellite-monitoring`
+- Layers active:
+  - **Esri World Imagery** base tile (raster)
+  - **CARTO light_only_labels** label overlay (raster)
+  - **Kecamatan boundaries** (GeoJSON polygons from BPS)
+  - **Detected buildings** rendered as **circle markers** (~1.18M points) inside a Leaflet MarkerCluster group
+  - **PBG points** as separate marker layer (~76 points)
+- No polygon rendering for individual buildings.
+- Min zoom dynamic (clamped to fit Kab. Bandung bbox).
+- Max zoom 18.
+
+## Performance reference (cold load, single user)
+
+| Endpoint | Time | Notes |
+|---|---|---|
+| `GET /` | 343 ms | Auth redirect chain |
+| `GET /api/detected-buildings?limit=5000` (unauthenticated) | 819 ms | Returns auth error JSON (30 bytes) — full load when authed not measured in this snapshot |
+
+> Re-run with an authenticated session before Phase 19 to get a fair production comparison.
+
+## Files touched at baseline
+
+- `resources/views/dashboards/satellite-monitoring.blade.php` — view + inline JS
+- `app/Http/Controllers/Api/DetectedBuildingController.php` — paginated API
+- `database/migrations/2026_04_19_000001_create_detected_buildings_table.php` — schema (already has `geometry_geojson` JSON column)
+
+## Data sources currently populating `detected_buildings`
+
+| Source | Count | Has polygon? |
+|---|---:|---|
+| `google_open_buildings` | (majority) | ❌ centroid + area only |
+| `microsoft_footprints` | (some) | ❌ centroid + area only |
+| `osm_buildings` | (sparse, infill) | ✅ stored in `geometry_geojson` |
+| `sentinel_cv` | (few) | ❌ resolution too coarse |
+
+## Acceptance criteria for Phase 20 (final rollout)
+
+When polygons are live, the following must hold:
+
+1. At zoom < `VECTOR_TILES_MIN_ZOOM` (default 14), the map is **visually identical** to baseline above.
+2. At zoom ≥ 14, building polygons replace the cluster layer, colored by PBG status.
+3. Time-to-first-tile after zoom-in: < 500 ms (cache miss), < 50 ms (cache hit).
+4. Click on polygon opens the existing verify panel populated with the building's data.
+5. Role `user` (level 1) never sees polygons — falls back to baseline.
+6. Feature flag `VECTOR_TILES_ENABLED=false` reverts to baseline in one redeploy.
