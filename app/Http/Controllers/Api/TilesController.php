@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\Response;
 class TilesController extends Controller
 {
     /** Filter keys forwarded to the PostGIS function. Anything else is dropped. */
-    private const ALLOWED_FILTERS = ['district', 'status', 'source', 'min_area'];
+    private const ALLOWED_FILTERS = ['district', 'status', 'source', 'exclude_source', 'min_area'];
 
     /** Tile cache TTL in seconds. 1 h matches the browser Cache-Control. */
     private const CACHE_TTL = 3600;

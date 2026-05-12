@@ -161,12 +161,13 @@
                 <select id="filter-min-area" class="form-select form-select-sm"><option value="">Semua (termasuk noise)</option><option value="50">50+ m²</option><option value="100">100+ m²</option><option value="200" selected>200+ m² (wajib PBG)</option><option value="500">500+ m²</option><option value="1000">1000+ m²</option></select>
             </div>
             <div class="col-xl-2 col-md-4 col-sm-6">
-                <label class="form-label mb-1 small">Polygon (zoom ≥14)</label>
+                <label class="form-label mb-1 small">Sumber polygon (zoom ≥14)</label>
                 <select id="filter-polygon-source" class="form-select form-select-sm">
-                    <option value="">Semua sumber</option>
-                    <option value="osm_buildings">🟩 OSM (outline asli, ~85k)</option>
-                    <option value="google_open_buildings">🟦 Google Open Buildings</option>
-                    <option value="microsoft_footprints">⬜ Microsoft (kotak approx, ~1.1jt)</option>
+                    <option value="real_only" selected>🟩 Outline asli (OSM + Google) ~85k</option>
+                    <option value="osm_buildings">  • Hanya OSM (~85k)</option>
+                    <option value="google_open_buildings">  • Hanya Google Open Buildings (~5 test)</option>
+                    <option value="">Semua termasuk approximation</option>
+                    <option value="microsoft_footprints">⚠️ Microsoft kotak approx (~1.1jt — bukan outline asli)</option>
                 </select>
             </div>
             <div class="col-xl-2 col-md-4 col-sm-12 d-flex align-items-end">
@@ -436,7 +437,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const src  = document.getElementById('filter-polygon-source')?.value;
         if (dist) params.set('district', dist);
         if (area) params.set('min_area', area);
-        if (src)  params.set('source', src);
+        // 'real_only' is a synthetic UI value — translate it to
+        // exclude_source=microsoft_footprints on the wire, since the
+        // tile function understands exclude_source. Other values pass
+        // straight through as source=.
+        if (src === 'real_only') params.set('exclude_source', 'microsoft_footprints');
+        else if (src) params.set('source', src);
         const qs = params.toString();
         return '/api/tiles/buildings/{z}/{x}/{y}.pbf' + (qs ? '?' + qs : '');
     }

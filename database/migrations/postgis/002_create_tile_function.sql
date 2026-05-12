@@ -28,6 +28,7 @@ DECLARE
     f_district       text := NULLIF(query_params->>'district', '');
     f_status         text := NULLIF(query_params->>'status', '');
     f_source         text := NULLIF(query_params->>'source', '');
+    f_exclude_source text := NULLIF(query_params->>'exclude_source', '');
     f_min_area       numeric := NULLIF(query_params->>'min_area', '')::numeric;
 BEGIN
     -- buildings.geom is stored in 4326; ST_TileEnvelope returns 3857.
@@ -55,10 +56,11 @@ BEGIN
             ) AS geom
         FROM buildings b
         WHERE b.geom && ST_Transform(ST_TileEnvelope(z, x, y, margin => (64.0 / 4096)), 4326)
-          AND (f_district IS NULL OR b.district = f_district)
-          AND (f_status   IS NULL OR b.verification_status = f_status)
-          AND (f_source   IS NULL OR b.source = f_source)
-          AND (f_min_area IS NULL OR b.area_m2 >= f_min_area)
+          AND (f_district       IS NULL OR b.district = f_district)
+          AND (f_status         IS NULL OR b.verification_status = f_status)
+          AND (f_source         IS NULL OR b.source = f_source)
+          AND (f_exclude_source IS NULL OR b.source <> f_exclude_source)
+          AND (f_min_area       IS NULL OR b.area_m2 >= f_min_area)
         LIMIT 50000
     ) AS tile
     WHERE tile.geom IS NOT NULL;
