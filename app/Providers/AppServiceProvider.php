@@ -10,7 +10,10 @@ use App\Services\ServiceTokenSIMBG;
 use App\View\Components\Circle;
 use Auth;
 use GuzzleHttp\Client;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Carbon\Carbon;
@@ -49,6 +52,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Blade::component('circle', Circle::class);
+
+        // Vector-tile proxy rate limit (Phase 8). 120 tiles/min/user covers
+        // a vigorous pan-zoom session; over the limit returns 429.
+        RateLimiter::for('tiles', function (Request $request) {
+            return Limit::perMinute(120)->by(optional($request->user())->id ?: $request->ip());
+        });
 
         View::composer('layouts.partials.sidebar', function ($view) {
             $user = Auth::user();

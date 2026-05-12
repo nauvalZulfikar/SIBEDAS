@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\ScrapingController;
 use App\Http\Controllers\Api\SpatialPlanningsController;
 use App\Http\Controllers\Api\TaskAssignmentsController;
+use App\Http\Controllers\Api\TilesController;
 use App\Http\Controllers\Api\UsersController;
 use App\Http\Controllers\Settings\SyncronizeController;
 use App\Http\Controllers\Api\AdvertisementController;
@@ -231,6 +232,14 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
             Route::post('/recompute', 'recompute')->name('api.reconciliation.recompute');
         });
     });
+
+    // Vector-tile proxy for building polygon layer (Phase 8).
+    // Reachable only to level_2+ admins; throttled to 120 req/min/user to
+    // protect the Martin upstream from a runaway map pan/zoom.
+    Route::middleware(['pbb.clearance:level_2', 'throttle:tiles'])
+        ->get('/tiles/buildings/{z}/{x}/{y}.pbf', [TilesController::class, 'buildings'])
+        ->where(['z' => '[0-9]+', 'x' => '[0-9]+', 'y' => '[0-9]+'])
+        ->name('api.tiles.buildings');
 
     // detected buildings (satellite monitoring)
     Route::controller(DetectedBuildingController::class)->group(function () {

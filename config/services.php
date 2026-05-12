@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Martin tile-server (loopback). Used by TilesController to proxy
+    // /tiles/buildings/{z}/{x}/{y}.pbf requests onto Martin.
+    'martin' => [
+        'host' => env('MARTIN_HOST', 'http://127.0.0.1:' . env('MARTIN_PORT', 3000)),
+    ],
+
 ];

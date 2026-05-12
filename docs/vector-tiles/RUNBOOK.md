@@ -191,10 +191,32 @@ file tile.pbf                          # → "data" (binary protobuf)
 
 ### Tile sources
 
-| Path | Source | Filterable | Notes |
+| Path (Martin direct) | Source | Filterable | Notes |
 |---|---|---|---|
 | `/buildings.1/{z}/{x}/{y}` | Raw table column (Phase 6) | no | Auto-published; emits every column as a property |
-| `/building_tile/{z}/{x}/{y}` | Function (Phase 7) | `?district=&status=&source=&min_area=` | **Use this** — narrow property set, server-side filter, SRID-correct |
+| `/building_tile/{z}/{x}/{y}` | Function (Phase 7) | `?district=&status=&source=&min_area=` | **Backend uses this** — narrow property set, server-side filter, SRID-correct |
+
+### Public-facing proxy (Phase 8)
+
+The browser never hits Martin directly. `TilesController` exposes:
+
+```
+GET /api/tiles/buildings/{z}/{x}/{y}.pbf?district=&status=&source=&min_area=
+```
+
+Stack of guards:
+- `auth:sanctum` — must have a Sanctum token cookie / Bearer.
+- `pbb.clearance:level_2` — admin / superadmin only. Each request is
+  written to `pbb_access_log`.
+- `throttle:tiles` — 120 tiles/min/user (defined in `AppServiceProvider`).
+- Feature flag — returns 503 if `VECTOR_TILES_ENABLED=false`.
+- Min-zoom guard — returns 404 if `z < VECTOR_TILES_MIN_ZOOM` (default
+  14) so a hand-crafted request can't pull multi-MB tiles.
+- ETag — deterministic from `{z}/{x}/{y}` + filter hash; 304 on match.
+
+CORS / nginx: Treat tile paths like any `/api/*` route. Cache-Control
+is set on every successful response (`public, max-age=3600`); the
+existing nginx config does not strip it.
 
 ### Tile size profile
 

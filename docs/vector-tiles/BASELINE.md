@@ -255,6 +255,36 @@ Buffers: shared hit=1375
 48 ms wall-clock for a filtered tile — sub-100ms is the budget for
 Phase 14 cache MISS path.
 
+## Phase 8 verification (2026-05-11)
+
+`GET /api/tiles/buildings/{z}/{x}/{y}.pbf` deployed behind
+`auth:sanctum` + `pbb.clearance:level_2` + `throttle:tiles` (120/min).
+TilesController forwards whitelisted querystring filters
+(`district`, `status`, `source`, `min_area`) to Martin's
+`/building_tile/...` source.
+
+| Test | Result |
+|---|---|
+| 1. Unauthenticated | `HTTP 401` ✅ |
+| 2. z=12 (< min_zoom 14) | `HTTP 404` ✅ |
+| 3. Auth admin, z=14 | `HTTP 200`, `Content-Type: application/x-protobuf`, 297,537 bytes, `Cache-Control: max-age=3600, public`, `ETag: "10420d5fbdb6e5de"` ✅ |
+| 4. Filter `?district=Soreang` | `HTTP 200`, 15,499 bytes ✅ |
+| 5. Re-request with `If-None-Match` | `HTTP 304` ✅ |
+| 6. level_1 user | `HTTP 403` ✅ |
+
+Each tile hit is captured in `pbb_access_log`:
+
+```
+user_email                  endpoint              clearance  status  accessed_at
+user@demo.com               api.tiles.buildings   level_2    403     …
+superadmin@sibedas.com      api.tiles.buildings   level_2    304     …
+superadmin@sibedas.com      api.tiles.buildings   level_2    200     …
+```
+
+Feature flag flipped to `VECTOR_TILES_ENABLED=true` in local `.env` for
+this verification. `.env.example` and production `.env` stay `false`
+until Phase 19.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:
