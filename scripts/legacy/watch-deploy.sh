@@ -1,5 +1,13 @@
 #!/bin/bash
-# Runs every minute via cron on VPS host
+# =============================================================
+# !!! STALE — DO NOT USE !!!
+# Watches paths under /var/www/SIBEDAS/... which don't match prod
+# (/root/projects/sibedaspbg/). Replaced by GitHub Actions push trigger.
+# See ../README.md.
+# =============================================================
+echo "[STALE] Use .github/workflows/deploy.yml — see scripts/README.md" >&2
+exit 1
+# Runs every minute via cron on VPS host (LEGACY)
 # Watches for deploy.flag written by webhook controller
 
 FLAG="/var/www/SIBEDAS/sibedas_dev/storage/deploy.flag"

@@ -12,8 +12,11 @@ class ExampleTest extends TestCase
      */
     public function test_the_application_returns_a_successful_response(): void
     {
+        // Unauthenticated visitors are redirected to /login.
         $response = $this->get('/');
+        $response->assertRedirect('/login');
 
-        $response->assertStatus(200);
+        // The login page itself must render.
+        $this->get('/login')->assertStatus(200);
     }
 }

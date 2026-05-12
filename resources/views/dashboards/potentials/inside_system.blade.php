@@ -7,6 +7,94 @@
 @section('content')
 @include('layouts.partials.page-title', ['title' => 'Dashboards', 'subtitle' => 'Luar Sistem'])
 
+{{-- Sinkronisasi Monitoring Satelit — bangunan tanpa izin sah (potensi pendapatan) --}}
+{{-- z-index agar tidak ter-overlay oleh .lack-of-potential-wrapper::before (full-viewport white overlay) --}}
+<div class="card mb-3 position-relative" id="satelit-sync-luar" style="z-index: 2;">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <h5 class="card-title mb-0">
+            <iconify-icon icon="solar:satellite-broken" class="me-1 align-middle"></iconify-icon>
+            Sinkronisasi Monitoring Satelit — Bangunan Tanpa Izin Sah
+        </h5>
+        <a href="{{ route('dashboard.satellite-monitoring') }}?filter=unmatched"
+           class="btn btn-sm btn-outline-primary">
+            Lihat detail di Monitoring Satelit
+            <iconify-icon icon="solar:arrow-right-broken" class="ms-1"></iconify-icon>
+        </a>
+    </div>
+    <div class="card-body py-3">
+        <div class="row g-3 mb-3">
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-primary rounded me-3">
+                            <iconify-icon icon="solar:buildings-broken" class="fs-32 avatar-title text-primary"></iconify-icon>
+                        </div>
+                        <div><p class="text-muted mb-0 small">Total Terdeteksi Satelit</p>
+                            <h4 class="mb-0" id="luar-stat-total">-</h4></div>
+                    </div></div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-danger rounded me-3">
+                            <iconify-icon icon="solar:danger-triangle-broken" class="fs-32 avatar-title text-danger"></iconify-icon>
+                        </div>
+                        <div><p class="text-muted mb-0 small">Tanpa Izin Sah</p>
+                            <h4 class="mb-0 text-danger" id="luar-stat-without-permit">-</h4>
+                            <small class="text-muted" id="luar-stat-without-breakdown">-</small></div>
+                    </div></div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-warning rounded me-3">
+                            <iconify-icon icon="solar:map-point-search-broken" class="fs-32 avatar-title text-warning"></iconify-icon>
+                        </div>
+                        <div><p class="text-muted mb-0 small">Tidak Ter-Match PBG</p>
+                            <h4 class="mb-0 text-warning" id="luar-stat-unmatched">-</h4>
+                            <small class="text-muted">tidak ada PBG di radius 50m</small></div>
+                    </div></div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-info rounded me-3">
+                            <iconify-icon icon="solar:percent-broken" class="fs-32 avatar-title text-info"></iconify-icon>
+                        </div>
+                        <div><p class="text-muted mb-0 small">Rasio Tanpa Izin</p>
+                            <h4 class="mb-0 text-info" id="luar-stat-without-rate">-</h4>
+                            <small class="text-muted">terhadap total deteksi</small></div>
+                    </div></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <h6 class="text-muted mb-2">Top 5 Kecamatan dengan Bangunan Tanpa Izin Terbanyak</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Kecamatan</th>
+                                <th class="text-end">Tanpa Izin</th>
+                                <th class="text-end">% dari total kecamatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="luar-top-kecamatan">
+                            <tr><td colspan="4" class="text-center text-muted small py-3">Memuat…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted d-block mt-2" id="luar-snapshot-note"></small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="lack-of-potential-wrapper">
     <div class="row" id="lack-of-potential-wrapper">
         <div class="d-flex justify-content-between align-items-center mt-3 ms-2">

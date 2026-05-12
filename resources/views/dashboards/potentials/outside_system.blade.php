@@ -7,6 +7,88 @@
 <!-- content -->
 @section('content')
 @include('layouts.partials.page-title', ['title' => 'Dashboards', 'subtitle' => 'Dalam Sistem'])
+
+{{-- Sinkronisasi Monitoring Satelit — PBG existing yang ter-konfirmasi citra satelit --}}
+{{-- z-index agar tidak ter-overlay oleh .outside-system-wrapper::before (full-viewport white overlay) --}}
+<div class="card mb-3 position-relative" id="satelit-sync-dalam" style="z-index: 2;">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <h5 class="card-title mb-0">
+            <iconify-icon icon="solar:satellite-broken" class="me-1 align-middle"></iconify-icon>
+            Sinkronisasi Monitoring Satelit — PBG Ter-Validasi Citra Satelit
+        </h5>
+        <a href="{{ route('dashboard.satellite-monitoring') }}"
+           class="btn btn-sm btn-outline-primary">
+            Lihat detail di Monitoring Satelit
+            <iconify-icon icon="solar:arrow-right-broken" class="ms-1"></iconify-icon>
+        </a>
+    </div>
+    <div class="card-body py-3">
+        <div class="row g-3 mb-3">
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-primary rounded me-3">
+                            <iconify-icon icon="solar:document-broken" class="fs-32 avatar-title text-primary"></iconify-icon>
+                        </div>
+                        <div><p class="text-muted mb-0 small">Total PBG Tercatat</p>
+                            <h4 class="mb-0" id="dalam-pbg-total">-</h4></div>
+                    </div></div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-success rounded me-3"><iconify-icon icon="solar:verified-check-broken" class="fs-32 avatar-title text-success"></iconify-icon></div>
+                        <div><p class="text-muted mb-0 small">Ter-Validasi Satelit (SK Terbit + cocok citra)</p>
+                            <h4 class="mb-0 text-success" id="dalam-permit-valid">-</h4>
+                            <small class="text-muted" id="dalam-permit-valid-rate">-</small></div>
+                    </div></div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-warning rounded me-3"><iconify-icon icon="solar:hourglass-broken" class="fs-32 avatar-title text-warning"></iconify-icon></div>
+                        <div><p class="text-muted mb-0 small">Dalam Proses (cocok citra)</p>
+                            <h4 class="mb-0 text-warning" id="dalam-permit-process">-</h4></div>
+                    </div></div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card mb-0 h-100">
+                    <div class="card-body py-2"><div class="d-flex align-items-center">
+                        <div class="avatar-md bg-soft-danger rounded me-3"><iconify-icon icon="solar:close-circle-broken" class="fs-32 avatar-title text-danger"></iconify-icon></div>
+                        <div><p class="text-muted mb-0 small">Ditolak / Batal</p>
+                            <h4 class="mb-0 text-danger" id="dalam-permit-rejected">-</h4></div>
+                    </div></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <h6 class="text-muted mb-2">Top 5 Kecamatan dengan PBG Ter-Validasi Satelit Terbanyak</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Kecamatan</th>
+                                <th class="text-end">SK Terbit</th>
+                                <th class="text-end">Proses</th>
+                                <th class="text-end">Ditolak</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dalam-top-kecamatan">
+                            <tr><td colspan="5" class="text-center text-muted small py-3">Memuat…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted d-block mt-2" id="dalam-snapshot-note"></small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="outside-system-wrapper" id="outside-system-wrapper">
     <div class="row">
         <div class="d-flex justify-content-between align-items-center mt-3 ms-2">

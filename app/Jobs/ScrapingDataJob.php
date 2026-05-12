@@ -25,6 +25,11 @@ class ScrapingDataJob implements ShouldQueue
     public int $tries = 1;
     public int $timeout = 18000; // 5 hours — job will be killed and failed() called if exceeded
 
+    // Auto-fail Processing rows whose updated_at is older than this. Lets a
+    // crashed/SIGKILLed previous run get cleaned up on the next dispatch
+    // without depending on the MonitorScrapingJob scheduler being alive.
+    private const STALE_MINUTES = 30;
+
     protected ?int $resumeImportId;
     protected ?string $resumeFromUuid;
 
@@ -66,7 +71,30 @@ class ScrapingDataJob implements ShouldQueue
         try {
             Log::info("=== SCRAPING DATA JOB STARTED ===");
 
-            // Prevent duplicate runs — abort if another job is already processing
+            // Self-heal stale Processing rows (worker crashed / OOM / SIGKILL
+            // never gave Laravel a chance to call failed()). Without this, one
+            // dead row blocks every future dispatch indefinitely.
+            if (!$this->resumeImportId) {
+                $staleThreshold = now()->subMinutes(self::STALE_MINUTES);
+                $stale = ImportDatasource::where('status', ImportDatasourceStatus::Processing->value)
+                    ->where('updated_at', '<', $staleThreshold)
+                    ->get();
+                foreach ($stale as $row) {
+                    Log::warning("ScrapingDataJob: auto-failing stale row #{$row->id}", [
+                        'last_updated' => $row->updated_at,
+                        'last_message' => $row->message,
+                    ]);
+                    $row->update([
+                        'status' => ImportDatasourceStatus::Failed->value,
+                        'message' => "Auto-failed at job start: no heartbeat since {$row->updated_at}. Last: {$row->message}",
+                        'finish_time' => now(),
+                    ]);
+                }
+            }
+
+            // Prevent duplicate runs — abort if another job is already processing.
+            // Paused is intentional user state; we keep blocking on it so the
+            // daily scheduler doesn't trample a pause.
             if (!$this->resumeImportId) {
                 $active = ImportDatasource::whereIn('status', [
                     ImportDatasourceStatus::Processing->value,
@@ -78,8 +106,10 @@ class ScrapingDataJob implements ShouldQueue
                 }
             }
 
-            // Initialize services
-            $service_google_sheet = app(ServiceGoogleSheet::class);
+            // Initialize services. ServiceGoogleSheet is resolved lazily inside the
+            // Google Sheet sync block — its constructor reads a credentials file
+            // that may be absent on some environments, and we don't want SIMBG
+            // scraping to fail just because Google Sheet sync isn't configured.
             $service_pbg_task = app(ServicePbgTask::class);
             $service_tab_pbg_task = app(ServiceTabPbgTask::class);
 
@@ -164,6 +194,11 @@ class ScrapingDataJob implements ShouldQueue
 
                         $processedTasks++;
 
+                        // Heartbeat every task — cheap UPDATE of updated_at only.
+                        // Keeps MonitorScrapingJob from flagging us as stale even
+                        // when one chunk takes a while.
+                        $import_datasource->touch();
+
                         // Update progress every 10 tasks
                         if ($processedTasks % 10 === 0) {
                             $progress = round(($processedTasks / $totalTasks) * 100, 2);
@@ -200,7 +235,14 @@ class ScrapingDataJob implements ShouldQueue
 
             $import_datasource->update(['message' => 'Scraping Google Sheet data...']);
 
-            $service_google_sheet->run_service();
+            try {
+                app(ServiceGoogleSheet::class)->run_service();
+            } catch (\Throwable $gsErr) {
+                Log::warning("Google Sheet sync skipped: " . $gsErr->getMessage());
+                $import_datasource->update([
+                    'message' => 'Google Sheet sync skipped (' . $gsErr->getMessage() . '), continuing...',
+                ]);
+            }
 
             // Check again before final step
             $status = $this->checkStatus($import_datasource);
@@ -210,10 +252,16 @@ class ScrapingDataJob implements ShouldQueue
 
             $import_datasource->update(['message' => 'Generating BigData resume...']);
 
-            BigdataResume::generateResumeData($import_datasource->id, date('Y'), "simbg");
-            BigdataResume::generateResumeData($import_datasource->id, date('Y'), "leader");
-
-            Log::info("BigData resume generated successfully");
+            // BigdataResume internally calls app(ServiceGoogleSheet::class) for
+            // spatial-planning sums; isolate so SIMBG-only deployments still
+            // mark the job as successful when Google Sheet creds are absent.
+            try {
+                BigdataResume::generateResumeData($import_datasource->id, date('Y'), "simbg");
+                BigdataResume::generateResumeData($import_datasource->id, date('Y'), "leader");
+                Log::info("BigData resume generated successfully");
+            } catch (\Throwable $brErr) {
+                Log::warning("BigData resume skipped: " . $brErr->getMessage());
+            }
 
             // Update final status
             $import_datasource->update([

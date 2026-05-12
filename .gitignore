@@ -47,3 +47,7 @@ agent_queue.json
 
 # Claude Code
 .claude/
+CLAUDE.md
+tmp/
+docs/spec.md
+docs/architecture.md

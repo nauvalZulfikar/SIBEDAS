@@ -38,7 +38,10 @@ class MonitorScrapingJob extends Command
         Log::warning("MonitorScrapingJob: Job #{$active->id} stale for {$minutesSinceUpdate}m, marking as failed", [
             'last_message' => $active->message,
             'last_updated' => $active->updated_at,
+            'failed_uuid' => $active->failed_uuid,
         ]);
+
+        $resumeFromUuid = $active->failed_uuid;
 
         $active->update([
             'status' => ImportDatasourceStatus::Failed->value,
@@ -48,11 +51,14 @@ class MonitorScrapingJob extends Command
 
         $this->warn("Job #{$active->id} marked as failed (stale {$minutesSinceUpdate}m).");
 
-        // Auto-restart
-        $this->info('Dispatching new scraping job...');
-        dispatch(new ScrapingDataJob());
+        // Auto-restart. If we know which UUID was last in flight, resume from
+        // there instead of re-scraping every page from scratch.
+        $this->info('Dispatching new scraping job' . ($resumeFromUuid ? " (resume from {$resumeFromUuid})" : '') . '...');
+        dispatch(new ScrapingDataJob(null, $resumeFromUuid));
 
-        Log::info('MonitorScrapingJob: Auto-dispatched new ScrapingDataJob after stale recovery');
+        Log::info('MonitorScrapingJob: Auto-dispatched new ScrapingDataJob after stale recovery', [
+            'resume_from_uuid' => $resumeFromUuid,
+        ]);
         $this->info('New scraping job dispatched.');
 
         return 0;

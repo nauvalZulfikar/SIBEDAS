@@ -27,10 +27,17 @@ class ServicePbgTask
 
         $this->simbg_host = trim((string) ($settings['SIMBG_HOST'] ?? ""));
         $this->fetch_per_page = trim((string) ($settings['FETCH_PER_PAGE'] ?? "10"));
-        $this->client = $client;
+        // Override the DI'd client so a hung SIMBG endpoint can't lock the
+        // worker forever. Default Guzzle has timeout=0 = wait indefinitely.
+        $this->client = new Client([
+            'connect_timeout' => 15,
+            'timeout' => 60,
+        ]);
         $this->service_token = $service_token;
-        $this->pbg_task_url = "{$this->simbg_host}/api/pbg/v1/list/?page=1&size={$this->fetch_per_page}&sort=ASC";
         $auth_data = $this->service_token->get_token();
+        if (!is_array($auth_data) || !isset($auth_data['access'], $auth_data['refresh'])) {
+            throw new Exception("SIMBG login failed: get_token returned " . json_encode($auth_data));
+        }
         $this->user_token = $auth_data['access'];
         $this->user_refresh_token = $auth_data['refresh'];
     }

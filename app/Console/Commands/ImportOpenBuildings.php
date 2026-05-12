@@ -15,10 +15,13 @@ class ImportOpenBuildings extends Command
 
     protected $description = 'Import building footprints from Google Open Buildings or Microsoft for Kab. Bandung area';
 
-    private const LAT_MIN = -7.20;
+    // Kab. Bandung true admin bbox per BPS GeoJSON (was [-7.20, -6.80] x [107.30, 107.80] —
+    // east clip excluded Cicalengka, Nagreg, Cikancung). Buffer ~0.02° to catch
+    // boundary cells.
+    private const LAT_MIN = -7.32;
     private const LAT_MAX = -6.80;
-    private const LNG_MIN = 107.30;
-    private const LNG_MAX = 107.80;
+    private const LNG_MIN = 107.23;
+    private const LNG_MAX = 107.96;
 
     public function handle(): int
     {

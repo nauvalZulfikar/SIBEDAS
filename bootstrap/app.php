@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'validate.api.token.web' => \App\Http\Middleware\ValidateApiTokenForWeb::class,
+            'pbb.clearance' => \App\Http\Middleware\EnsurePbbClearance::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

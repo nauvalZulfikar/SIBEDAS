@@ -1,6 +1,14 @@
 #!/bin/bash
+# =============================================================
+# !!! STALE — DO NOT USE !!!
+# Uses placeholder domain (sibedas.yourdomain.com) and never adapted to prod.
+# Real prod path: /root/projects/sibedaspbg/ on root@72.60.196.21.
+# Use the global `sibedas-deployer` agent instead, or see ../README.md.
+# =============================================================
+echo "[STALE] This script is broken — see scripts/README.md" >&2
+exit 1
 
-# Production Deployment Script for Sibedas PBG Web
+# Production Deployment Script for Sibedas PBG Web (LEGACY)
 # This script deploys the application with reverse proxy and SSL support
 
 set -e

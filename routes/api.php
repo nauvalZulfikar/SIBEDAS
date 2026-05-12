@@ -14,8 +14,11 @@ use App\Http\Controllers\Api\ImportDatasourceController;
 use App\Http\Controllers\Api\LackOfPotentialController;
 use App\Http\Controllers\Api\MenusController;
 use App\Http\Controllers\Api\PbgTaskAttachmentsController;
+use App\Http\Controllers\Api\PbbHealthController;
 use App\Http\Controllers\Api\PbgTaskController;
 use App\Http\Controllers\Api\PbgTaskGoogleSheetsController;
+use App\Http\Controllers\Api\ReconciliationController;
+use App\Http\Controllers\Api\SatelitPbgPbbController;
 use App\Http\Controllers\Api\ReportPbgPtspController;
 use App\Http\Controllers\Api\ReportTourismsController;
 use App\Http\Controllers\Api\RequestAssignmentController;
@@ -36,6 +39,12 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [UsersController::class, 'login'])->name('api.user.login');
 Route::post('/generate-text', [ChatbotController::class, 'generateText']);
 Route::post('/main-generate-text', [ChatbotController::class, 'mainGenerateText']);
+
+// Public health check (no auth) — uptime probes, deploy verification.
+Route::get('/health/pbb', [PbbHealthController::class, 'pbb'])->name('api.health.pbb');
+
+// Combined dashboard endpoint (read-only aggregate, no PII) — Satelit ↔ PBG ↔ PBB
+Route::get('/satelit-pbg-pbb/summary', [SatelitPbgPbbController::class, 'summary'])->name('api.satelit-pbg-pbb.summary');
 Route::group(['middleware' => 'auth:sanctum'], function (){
     // users
     Route::controller(UsersController::class)->group(function(){
@@ -202,14 +211,37 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
         Route::put('/taxs/{id}', 'update')->name('api.taxs.update');
     });
 
+    // pbb reconciliation (Phase 5+6+9)
+    // Tiered clearance: kab/kec summary = level_1 (semua user authenticated),
+    // kelurahan drill-down = level_2 (admin), audit lists & recompute = level_3 (superadmin).
+    Route::controller(ReconciliationController::class)->prefix('reconciliation')->group(function () {
+        Route::middleware('pbb.clearance:level_1')->group(function () {
+            Route::get('/summary', 'summary')->name('api.reconciliation.summary');
+            Route::get('/per-kec', 'perKec')->name('api.reconciliation.per-kec');
+            Route::get('/export/pdf', 'exportPdf')->name('api.reconciliation.export.pdf');
+        });
+        Route::middleware('pbb.clearance:level_2')->group(function () {
+            Route::get('/kelurahan/{kecName}', 'perKelurahan')->name('api.reconciliation.kelurahan');
+            Route::get('/no-satellite-nop', 'noSatelliteNop')->name('api.reconciliation.no-satellite-nop');
+            Route::get('/no-nop-satellite', 'noNopSatellite')->name('api.reconciliation.no-nop-satellite');
+            Route::get('/export/excel', 'exportExcel')->name('api.reconciliation.export.excel');
+            Route::get('/export/csv', 'exportCsv')->name('api.reconciliation.export.csv');
+        });
+        Route::middleware('pbb.clearance:level_3')->group(function () {
+            Route::post('/recompute', 'recompute')->name('api.reconciliation.recompute');
+        });
+    });
+
     // detected buildings (satellite monitoring)
     Route::controller(DetectedBuildingController::class)->group(function () {
         Route::get('/detected-buildings', 'index')->name('api.detected-buildings.index');
         Route::get('/detected-buildings/stats', 'stats')->name('api.detected-buildings.stats');
         Route::get('/detected-buildings/geojson', 'geojson')->name('api.detected-buildings.geojson');
+        Route::get('/detected-buildings/pbg-geojson', 'pbgGeojson')->name('api.detected-buildings.pbg-geojson');
         Route::get('/detected-buildings/{id}', 'show')->name('api.detected-buildings.show');
         Route::put('/detected-buildings/{id}/status', 'updateStatus')->name('api.detected-buildings.update-status');
         Route::post('/detected-buildings/bulk-status', 'bulkUpdateStatus')->name('api.detected-buildings.bulk-status');
+        Route::post('/detected-buildings/refresh-stats', 'refreshStats')->name('api.detected-buildings.refresh-stats');
     });
 
     // TODO: Implement new retribution calculation API endpoints using the new schema

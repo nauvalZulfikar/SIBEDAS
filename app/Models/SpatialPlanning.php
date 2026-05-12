@@ -34,7 +34,7 @@ class SpatialPlanning extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = ['name', 'kbli', 'activities', 'area', 'location', 'number', 'date', 'no_tapak', 'no_skkl', 'no_ukl', 'building_function', 'sub_building_function', 'number_of_floors', 'land_area', 'site_bcr', 'is_terbit'];
+    protected $fillable = ['nop', 'name', 'kbli', 'activities', 'area', 'location', 'number', 'date', 'no_tapak', 'no_skkl', 'no_ukl', 'building_function', 'sub_building_function', 'number_of_floors', 'land_area', 'site_bcr', 'is_terbit'];
 
     protected $casts = [
         'area' => 'decimal:6',
@@ -62,6 +62,11 @@ class SpatialPlanning extends Model
     public function getBuildingFunctionText(): string
     {
         return $this->building_function ?? $this->activities ?? '';
+    }
+
+    public function pbbRecord()
+    {
+        return $this->belongsTo(PbbRecord::class, 'nop', 'nop');
     }
 
     /**

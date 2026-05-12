@@ -1,5 +1,13 @@
 #!/bin/bash
-# Auto-deploy script triggered by GitHub webhook
+# =============================================================
+# !!! STALE — DO NOT USE !!!
+# REPO_DIR points to /var/www/SIBEDAS/... which doesn't match prod
+# (/root/projects/sibedaspbg/). Replaced by GitHub Actions workflow
+# at .github/workflows/deploy.yml. See ../README.md.
+# =============================================================
+echo "[STALE] Use .github/workflows/deploy.yml — see scripts/README.md" >&2
+exit 1
+# Auto-deploy script triggered by GitHub webhook (LEGACY)
 # Runs on VPS host (not inside container)
 
 REPO_DIR="/var/www/SIBEDAS/sibedas_dev/sibedas_dev"

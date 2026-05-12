@@ -5,40 +5,153 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
+    #satellite-map-wrapper { position: relative; }
     #satellite-map { height: 550px; border-radius: 8px; }
     .legend-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; }
     .stat-card { transition: transform 0.2s; cursor: pointer; }
     .stat-card:hover { transform: translateY(-2px); }
+    #map-loading {
+        position: absolute; top: 12px; right: 12px; z-index: 500;
+        background: rgba(255,255,255,0.95); padding: 8px 14px; border-radius: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15); display: none;
+        align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #333;
+    }
+    #map-loading.active { display: flex; }
+    #map-loading .spinner {
+        width: 14px; height: 14px; border: 2px solid #ddd; border-top-color: #0d6efd;
+        border-radius: 50%; animation: mspin 0.7s linear infinite;
+    }
+    @keyframes mspin { to { transform: rotate(360deg); } }
+    .district-label {
+        background: rgba(13,110,253,0.85); color: #fff; font-size: 10px; font-weight: 600;
+        padding: 2px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none;
+        border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
 </style>
 @endsection
 
 @section('content')
-@include('layouts.partials/page-title', ['title' => 'Monitoring', 'subtitle' => 'Deteksi Bangunan Satelit'])
+@include('layouts.partials/page-title', ['title' => 'Monitoring', 'subtitle' => 'Deteksi Bangunan Satelit — Kab. Kab. Bandung'])
 
 <div class="row mb-3">
     <div class="col-xl-3 col-md-6">
         <div class="card stat-card"><div class="card-body"><div class="d-flex align-items-center">
             <div class="avatar-md bg-soft-primary rounded me-3"><iconify-icon icon="solar:buildings-broken" class="fs-32 avatar-title text-primary"></iconify-icon></div>
-            <div><p class="text-muted mb-0">Total Terdeteksi</p><h4 class="mb-0" id="stat-total">-</h4></div>
+            <div><p class="text-muted mb-0">Total Terdeteksi (satelit)</p><h4 class="mb-0" id="stat-total">-</h4></div>
         </div></div></div>
     </div>
     <div class="col-xl-3 col-md-6">
         <div class="card stat-card"><div class="card-body"><div class="d-flex align-items-center">
             <div class="avatar-md bg-soft-success rounded me-3"><iconify-icon icon="solar:verified-check-broken" class="fs-32 avatar-title text-success"></iconify-icon></div>
-            <div><p class="text-muted mb-0">Ber-izin PBG</p><h4 class="mb-0 text-success" id="stat-matched">-</h4></div>
+            <div><p class="text-muted mb-0">Ber-izin Sah (SK PBG Terbit)</p><h4 class="mb-0 text-success" id="stat-permit-valid">-</h4></div>
         </div></div></div>
     </div>
     <div class="col-xl-3 col-md-6">
         <div class="card stat-card"><div class="card-body"><div class="d-flex align-items-center">
             <div class="avatar-md bg-soft-danger rounded me-3"><iconify-icon icon="solar:danger-triangle-broken" class="fs-32 avatar-title text-danger"></iconify-icon></div>
-            <div><p class="text-muted mb-0">Suspect Tanpa Izin</p><h4 class="mb-0 text-danger" id="stat-unmatched">-</h4></div>
+            <div><p class="text-muted mb-0">Tanpa Izin Sah</p><h4 class="mb-0 text-danger" id="stat-without-permit">-</h4>
+                <small class="text-muted" id="stat-without-breakdown">-</small></div>
         </div></div></div>
     </div>
     <div class="col-xl-3 col-md-6">
         <div class="card stat-card"><div class="card-body"><div class="d-flex align-items-center">
             <div class="avatar-md bg-soft-warning rounded me-3"><iconify-icon icon="solar:chart-broken" class="fs-32 avatar-title text-warning"></iconify-icon></div>
-            <div><p class="text-muted mb-0">Match Rate</p><h4 class="mb-0 text-warning" id="stat-rate">-</h4></div>
+            <div><p class="text-muted mb-0">Rasio Berizin</p><h4 class="mb-0 text-warning" id="stat-rate">-</h4>
+                <small class="text-muted">terhadap total deteksi</small></div>
         </div></div></div>
+    </div>
+</div>
+
+<div class="card mb-3"><div class="card-body py-2 px-3">
+    <div class="d-flex flex-wrap align-items-center gap-3 small">
+        <span class="fw-semibold text-dark">PBG Tercatat di Database (Kab. Bandung):</span>
+        <span>Total <b id="pbg-total">-</b></span>
+        <span class="text-primary">● SK Terbit <b id="pbg-terbit">-</b></span>
+        <span class="text-warning">● Proses <b id="pbg-proses">-</b></span>
+        <span class="text-muted">● Ditolak/Batal <b id="pbg-ditolak">-</b></span>
+        <span class="ms-auto text-muted fst-italic">Tanpa izin = tidak match PBG, match ke record terhapus, atau match ke PBG yg Ditolak/Batal.</span>
+    </div>
+</div></div>
+
+<div class="card">
+    <div class="card-header py-2"><h5 class="card-title mb-0">Filter</h5></div>
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <label class="form-label mb-1 small">Kecamatan</label>
+                <select id="filter-district" class="form-select form-select-sm"><option value="">Semua Kecamatan</option></select>
+            </div>
+            <div class="col-xl-3 col-md-6 col-sm-12">
+                <label class="form-label mb-1 small">Jenis Bangunan</label>
+                <select id="filter-data-source" class="form-select form-select-sm">
+                    <option value="">Semua Jenis</option>
+                    <optgroup label="🟦 USAHA — Reklame">
+                        <option value="reklame_survey">Survey Lapangan</option>
+                        <option value="tax_reklame">Pajak Reklame</option>
+                    </optgroup>
+                    <optgroup label="🟦 USAHA — Pajak Daerah">
+                        <option value="tax_restoran">Pajak Restoran</option>
+                        <option value="tax_hiburan">Pajak Hiburan</option>
+                        <option value="tax_hotel">Pajak Hotel</option>
+                        <option value="tax_parkir">Pajak Parkir</option>
+                    </optgroup>
+                    <optgroup label="🟦 USAHA — Bisnis">
+                        <option value="umkm">UMKM</option>
+                        <option value="pariwisata">Pariwisata (Tourism KBLI)</option>
+                    </optgroup>
+                    <optgroup label="🟦 USAHA — Tata Ruang / PBG">
+                        <option value="tata_ruang_usaha">Tata Ruang Usaha</option>
+                        <option value="ft_usaha">PBG: Tempat Usaha / UMKM</option>
+                        <option value="ft_multifungsi">PBG: Multifungsi</option>
+                    </optgroup>
+                    <optgroup label="⬜ NON USAHA — Layanan">
+                        <option value="pdam">PDAM (Air Bersih)</option>
+                    </optgroup>
+                    <optgroup label="⬜ NON USAHA — Tata Ruang / PBG">
+                        <option value="tata_ruang_non_usaha">Tata Ruang Non Usaha</option>
+                        <option value="ft_hunian">PBG: Hunian / Tempat Tinggal</option>
+                        <option value="ft_sosial">PBG: Sosial Budaya</option>
+                        <option value="ft_prasarana">PBG: Prasarana</option>
+                        <option value="ft_ibadah">PBG: Ibadah / Keagamaan</option>
+                        <option value="ft_pendidikan">PBG: Pendidikan / Kebudayaan</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <label class="form-label mb-1 small">Status PBG</label>
+                <select id="filter-pbg-status" class="form-select form-select-sm">
+                    <option value="">Semua Status</option>
+                    <optgroup label="🏛️ Dalam Sistem">
+                        <option value="terbit">SK Terbit</option>
+                        <option value="proses">Sedang Proses</option>
+                        <option value="ditolak">Ditolak / Dibekukan</option>
+                    </optgroup>
+                    <optgroup label="🏚️ Luar Sistem">
+                        <option value="luar_sistem">Tanpa Izin Sah (unmatched/orphan/ditolak)</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <label class="form-label mb-1 small">Luas Minimum</label>
+                <select id="filter-min-area" class="form-select form-select-sm"><option value="">Semua (termasuk noise)</option><option value="50">50+ m²</option><option value="100">100+ m²</option><option value="200" selected>200+ m² (wajib PBG)</option><option value="500">500+ m²</option><option value="1000">1000+ m²</option></select>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-12 d-flex align-items-end">
+                <button class="btn btn-outline-secondary btn-sm flex-fill" id="btn-reset-view">
+                    <iconify-icon icon="solar:refresh-broken" class="me-1"></iconify-icon>Reset
+                </button>
+            </div>
+        </div>
+        <div class="mt-2 d-flex flex-wrap gap-3 align-items-center small text-muted">
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="toggle-pbg-layer" checked>
+                <label class="form-check-label" for="toggle-pbg-layer">Tampilkan titik PBG (izin dari database)</label>
+            </div>
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="toggle-sat-layer" checked>
+                <label class="form-check-label" for="toggle-sat-layer">Tampilkan deteksi satelit</label>
+            </div>
+            <span class="ms-auto"><iconify-icon icon="solar:info-circle-broken"></iconify-icon> Pilih kecamatan untuk auto-zoom.</span>
+        </div>
     </div>
 </div>
 
@@ -46,27 +159,46 @@
     <div class="col-xl-9">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Peta Deteksi Bangunan — Kab. Bandung</h5>
-                <div class="d-flex gap-2"><span><span class="legend-dot" style="background:#ef4444"></span>Tanpa Izin</span><span><span class="legend-dot" style="background:#22c55e"></span>Ber-izin</span><span><span class="legend-dot" style="background:#f59e0b"></span>Under Review</span></div>
+                <h5 class="card-title mb-0">Peta Deteksi Bangunan — Kab. Kab. Bandung</h5>
+                <div class="d-flex flex-wrap gap-2 small">
+                    <span><span class="legend-dot" style="background:#ef4444"></span>Satelit Tanpa Izin</span>
+                    <span><span class="legend-dot" style="background:#22c55e"></span>Satelit SK Terbit</span>
+                    <span><span class="legend-dot" style="background:#f59e0b"></span>Satelit Proses/Dalam Pengurusan</span>
+                    <span><span class="legend-dot" style="background:#6b7280"></span>Satelit PBG Ditolak</span>
+                    <span class="mx-2">│</span>
+                    <span><span class="legend-dot" style="background:#0d6efd;border:2px solid #fff;box-shadow:0 0 0 1px #0d6efd"></span>Titik PBG SK Terbit</span>
+                    <span><span class="legend-dot" style="background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 1px #f59e0b"></span>Titik PBG Proses</span>
+                </div>
             </div>
-            <div class="card-body p-0"><div id="satellite-map"></div></div>
+            <div class="card-body p-0"><div id="satellite-map-wrapper"><div id="satellite-map"></div><div id="map-loading"><div class="spinner"></div><span>Memuat data...</span></div></div></div>
+            <div class="card-footer py-2 small text-muted" id="map-counter">Menampilkan 0 bangunan di area ini.</div>
         </div>
         <div class="card">
-            <div class="card-header"><h5 class="card-title mb-0">Bangunan Tanpa Izin per Kecamatan</h5></div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Data per Kecamatan (Kab. Bandung)</h5>
+                <div class="d-flex gap-2 align-items-center">
+                    <small class="text-muted" id="snapshot-ts"></small>
+                    <button class="btn btn-sm btn-outline-primary" id="btn-refresh-stats" title="Hitung ulang dari database (untuk staff PUTR)"><iconify-icon icon="solar:refresh-broken"></iconify-icon> Refresh</button>
+                </div>
+            </div>
             <div class="card-body"><div class="table-responsive">
-                <table class="table table-hover mb-0"><thead class="table-light"><tr><th>Kecamatan</th><th class="text-end">Jumlah</th><th style="width:50%">Distribusi</th></tr></thead>
+                <table class="table table-hover mb-0 align-middle"><thead class="table-light">
+                    <tr>
+                        <th>Kecamatan</th>
+                        <th style="width:55%">Share: <span class="text-danger">● Tanpa Izin</span> · <span class="text-primary">● SK Terbit</span> · <span class="text-warning">● Proses</span></th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                    <tr id="district-total-row" class="table-secondary"><td colspan="3" class="text-muted">—</td></tr>
+                </thead>
                 <tbody id="district-tbody"><tr><td colspan="3" class="text-center text-muted">Memuat data...</td></tr></tbody></table>
             </div></div>
         </div>
+        <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0">Jenis Bangunan Ber-izin Sah (SK PBG Terbit)</h5></div>
+            <div class="card-body"><div class="row" id="function-type-cards"><div class="col-12 text-center text-muted">Memuat data...</div></div></div>
+        </div>
     </div>
     <div class="col-xl-3">
-        <div class="card"><div class="card-header"><h5 class="card-title mb-0">Filter</h5></div><div class="card-body">
-            <div class="mb-3"><label class="form-label">Kecamatan</label><select id="filter-district" class="form-select form-select-sm"><option value="">Semua</option></select></div>
-            <div class="mb-3"><label class="form-label">Status</label><select id="filter-status" class="form-select form-select-sm"><option value="">Semua</option><option value="unverified">Belum Diverifikasi</option><option value="confirmed_illegal">Confirmed Illegal</option><option value="confirmed_legal">Confirmed Legal</option><option value="under_review">Under Review</option></select></div>
-            <div class="mb-3"><label class="form-label">Luas Minimum</label><select id="filter-min-area" class="form-select form-select-sm"><option value="">Semua</option><option value="50">50+ m²</option><option value="200" selected>200+ m²</option><option value="500">500+ m²</option><option value="1000">1000+ m²</option></select></div>
-            <div class="mb-3"><label class="form-label">Tampilkan</label><select id="filter-permit" class="form-select form-select-sm"><option value="unmatched">Tanpa Izin Saja</option><option value="">Semua</option></select></div>
-            <button class="btn btn-primary btn-sm w-100" id="btn-apply-filter">Terapkan Filter</button>
-        </div></div>
         <div class="card" id="verify-panel" style="display:none">
             <div class="card-header bg-soft-warning"><h5 class="card-title mb-0">Verifikasi Bangunan</h5></div>
             <div class="card-body">
@@ -91,12 +223,83 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const API = '/api/detected-buildings';
-    const TOKEN = localStorage.getItem('token') || '';
+    const TOKEN = document.querySelector('meta[name="api-token"]')?.getAttribute('content') || '';
     const H = {'Accept':'application/json','Content-Type':'application/json','Authorization':TOKEN?`Bearer ${TOKEN}`:''};
 
-    const map = L.map('satellite-map').setView([-6.98, 107.55], 11);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:19}).addTo(map);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,pane:'overlayPane'}).addTo(map);
+    // BBOX konsisten dengan backend KECAMATAN_BBOX (spatial-based, bukan dari kolom database name)
+    // BBOX full Kab Bandung = union dari 31 polygon (sumber BPS)
+    const BS_BOUNDS = [[-7.310, 107.250], [-6.810, 107.940]];
+    const DISTRICT_BOUNDS = {
+        'Arjasari':     [[-7.095, 107.590], [-7.030, 107.685]],
+        'Baleendah':    [[-7.040, 107.590], [-6.970, 107.680]],
+        'Banjaran':     [[-7.085, 107.555], [-7.030, 107.620]],
+        'Cangkuang':    [[-7.065, 107.515], [-7.000, 107.595]],
+        'Cimaung':      [[-7.135, 107.545], [-7.065, 107.620]],
+        'Ciparay':      [[-7.090, 107.615], [-6.985, 107.735]],
+        'Ciwidey':      [[-7.135, 107.408], [-7.058, 107.475]],
+        'Ibun':         [[-7.110, 107.752], [-7.058, 107.775]],
+        'Kertasari':    [[-7.210, 107.665], [-7.155, 107.710]],
+        'Majalaya':     [[-7.082, 107.740], [-6.995, 107.780]],
+        'Pacet':        [[-7.132, 107.697], [-7.085, 107.746]],
+        'Pameungpeuk':  [[-7.030, 107.560], [-6.995, 107.610]],
+        'Pangalengan':  [[-7.240, 107.515], [-7.125, 107.635]],
+        'Paseh':        [[-7.072, 107.775], [-7.013, 107.795]],
+        'Pasirjambu':   [[-7.190, 107.415], [-7.060, 107.500]],
+        'Rancabali':    [[-7.200, 107.250], [-7.110, 107.410]],
+        'Soreang':      [[-7.078, 107.320], [-7.005, 107.555]],
+        'Solokanjeruk': [[-7.030, 107.720], [-6.965, 107.775]],
+    };
+    const DISTRICT_NAMES = Object.keys(DISTRICT_BOUNDS).sort();
+
+    const map = L.map('satellite-map', {
+        maxBounds: BS_BOUNDS,
+        maxBoundsViscosity: 1.0,
+        worldCopyJump: false,
+        maxZoom: 18,
+    }).setView([-7.05, 107.55], 11);
+
+    // Set minZoom dinamis agar viewport saat zoom-out paling jauh tetap pas di BS_BOUNDS
+    // (bukan tile di luar BS yang kelihatan tapi ga bisa di-pan ke sana)
+    function clampMinZoom() {
+        const fit = map.getBoundsZoom(BS_BOUNDS, true);
+        map.setMinZoom(fit);
+        if (map.getZoom() < fit) map.setZoom(fit);
+    }
+    clampMinZoom();
+    map.fitBounds(BS_BOUNDS);
+    window.addEventListener('resize', clampMinZoom);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri', maxZoom: 19, bounds: BS_BOUNDS, noWrap: true
+    }).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19, pane: 'overlayPane', bounds: BS_BOUNDS, noWrap: true
+    }).addTo(map);
+
+    // Layer polygon kecamatan (GeoJSON dari BPS). Di-load async — tidak blocking render peta.
+    const districtLayer = L.layerGroup().addTo(map);
+    const kecPolygonByName = {}; // name -> Leaflet Layer
+    // Semua 31 kecamatan Kab Bandung
+    const KAB_BANDUNG = new Set(['Arjasari','Baleendah','Banjaran','Bojongsoang','Cangkuang','Cicalengka','Cikancung','Cilengkrang','Cileunyi','Cimaung','Cimenyan','Ciparay','Ciwidey','Dayeuhkolot','Ibun','Katapang','Kertasari','Kutawaringin','Majalaya','Margaasih','Margahayu','Nagreg','Pacet','Pameungpeuk','Pangalengan','Paseh','Pasirjambu','Rancabali','Rancaekek','Soreang','Solokanjeruk']);
+    fetch('/data/kecamatan_kab_bandung.geojson')
+      .then(r => r.json())
+      .then(gj => {
+        L.geoJSON(gj, {
+            filter: f => KAB_BANDUNG.has(f.properties.name),
+            style: { color: '#ffbb33', weight: 1.2, opacity: 0.85, fillColor: '#ffbb33', fillOpacity: 0.05, dashArray: '3,3' },
+            onEachFeature: (feature, layer) => {
+                const name = feature.properties.name;
+                kecPolygonByName[name] = layer;
+                layer.bindTooltip(name, { permanent: true, direction: 'center', className: 'district-label' });
+                layer.on('click', () => {
+                    distSel.value = name;
+                    map.fitBounds(layer.getBounds());
+                    applyFilters();
+                });
+            }
+        }).addTo(districtLayer);
+    })
+    .catch(e => console.error('[kecamatan geojson]', e));
 
     const markers = L.markerClusterGroup({maxClusterRadius:50,showCoverageOnHover:false,
         iconCreateFunction:c=>{const n=c.getChildCount();const d=n>100?50:n>10?40:30;
@@ -104,57 +307,388 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     map.addLayer(markers);
 
+    // Layer PBG tasks (dari pbg_task_details) — cluster sama kaya satelit biar konsisten
+    const pbgLayer = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        showCoverageOnHover: false,
+        iconCreateFunction: c => {
+            const n = c.getChildCount();
+            const d = n > 100 ? 44 : n > 10 ? 36 : 28;
+            return L.divIcon({
+                html: `<div style="background:rgba(13,110,253,0.85);color:#fff;border-radius:50%;width:${d}px;height:${d}px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${n > 999 ? Math.round(n/1000) + 'k' : n}</div>`,
+                className: 'mc-pbg',
+                iconSize: L.point(d, d)
+            });
+        }
+    });
+    map.addLayer(pbgLayer);
+    const PBG_COLORS = {terbit: '#0d6efd', proses: '#f59e0b', ditolak: '#6b7280'};
+
     let selId = null;
     const colors = {unverified:'#ef4444',confirmed_illegal:'#dc2626',confirmed_legal:'#22c55e',under_review:'#f59e0b',false_positive:'#6b7280'};
+    const FUNCTION_LABELS = {hunian:'Hunian / Tempat Tinggal', usaha:'Usaha / UMKM', sosial:'Sosial Budaya', prasarana:'Prasarana', ibadah:'Ibadah / Keagamaan', pendidikan:'Pendidikan / Kebudayaan', multifungsi:'Multifungsi'};
+
+    // Populate district dropdown
+    const distSel = document.getElementById('filter-district');
+    DISTRICT_NAMES.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; distSel.appendChild(o); });
+
+    // When district changes, auto fitBounds + reload stats. Map reload triggered via moveend.
+    distSel.addEventListener('change', function() {
+        if (!this.value) { map.fitBounds(BS_BOUNDS); }
+        else {
+            const poly = kecPolygonByName[this.value];
+            if (poly) map.fitBounds(poly.getBounds());
+            else if (DISTRICT_BOUNDS[this.value]) map.fitBounds(DISTRICT_BOUNDS[this.value]);
+        }
+        loadStats();
+    });
+
+    // Konversi pilihan dropdown jadi param API. Value yg diawali `ft_` artinya filter
+    // PBG function_type (sub-jenis bangunan), selain itu adalah data_source (sumber Luar Sistem).
+    function dataSourceParams(rawValue) {
+        if (!rawValue) return {};
+        if (rawValue.startsWith('ft_')) return { function_type: rawValue.substring(3) };
+        return { data_source: rawValue };
+    }
 
     async function loadStats() {
         try {
-            const r = await fetch(`${API}/stats`,{headers:H});
+            const p = new URLSearchParams();
+            const area = document.getElementById('filter-min-area').value;
+            const dsrc = document.getElementById('filter-data-source').value;
+            const pbgStatus = document.getElementById('filter-pbg-status').value;
+            if (area) p.set('min_area', area);
+            Object.entries(dataSourceParams(dsrc)).forEach(([k, v]) => p.set(k, v));
+            if (pbgStatus) p.set('pbg_status', pbgStatus);
+            const qs = p.toString() ? `?${p}` : '';
+            const r = await fetch(`${API}/stats${qs}`, {headers: H});
+            if (!r.ok) throw new Error(`stats HTTP ${r.status}`);
             const d = await r.json();
-            document.getElementById('stat-total').textContent = Number(d.total_detected).toLocaleString('id-ID');
-            document.getElementById('stat-matched').textContent = Number(d.matched_with_permit).toLocaleString('id-ID');
-            document.getElementById('stat-unmatched').textContent = Number(d.unmatched_suspect).toLocaleString('id-ID');
-            document.getElementById('stat-rate').textContent = d.match_rate+'%';
-            if(d.unmatched_by_district) {
-                const sel = document.getElementById('filter-district');
-                Object.keys(d.unmatched_by_district).sort().forEach(n=>{if(n&&n!='null'){const o=document.createElement('option');o.value=n;o.textContent=`${n} (${Number(d.unmatched_by_district[n]).toLocaleString('id-ID')})`;sel.appendChild(o);}});
-                const tb=document.getElementById('district-tbody');const entries=Object.entries(d.unmatched_by_district);const mx=Math.max(...entries.map(([,v])=>v));
-                tb.innerHTML=entries.map(([n,c])=>`<tr class="district-row" data-d="${n}" style="cursor:pointer"><td>${n}</td><td class="text-end">${Number(c).toLocaleString('id-ID')}</td><td><div class="progress" style="height:8px"><div class="progress-bar bg-danger" style="width:${(c/mx*100).toFixed(0)}%"></div></div></td></tr>`).join('');
-                tb.querySelectorAll('.district-row').forEach(r=>r.addEventListener('click',()=>{document.getElementById('filter-district').value=r.dataset.d;loadMap();}));
+            const fmt = n => Number(n || 0).toLocaleString('id-ID');
+            document.getElementById('stat-total').textContent = fmt(d.total_detected);
+            document.getElementById('stat-permit-valid').textContent = fmt(d.permit_valid);
+            document.getElementById('stat-without-permit').textContent = fmt(d.without_permit);
+            document.getElementById('stat-rate').textContent = (d.permit_rate ?? 0) + '%';
+            const br = `${fmt(d.unmatched)} tak match · ${fmt(d.match_orphan)} orphan · ${fmt(d.permit_rejected)} ditolak`;
+            const el = document.getElementById('stat-without-breakdown');
+            if (el) el.textContent = br;
+
+            const ts = d.snapshot_refreshed_at;
+            const tsEl = document.getElementById('snapshot-ts');
+            if (tsEl && ts) {
+                const t = new Date(ts);
+                tsEl.textContent = `Snapshot: ${t.toLocaleString('id-ID')}`;
+            } else if (tsEl) {
+                tsEl.textContent = '';
             }
-        } catch(e) { console.error(e); }
+
+            if (d.unmatched_by_district) {
+                const tb = document.getElementById('district-tbody');
+                const tf = document.getElementById('district-total-row');
+                // Mask per-segment data based on Status PBG filter so 100% stacked bar
+                // reflects exactly apa yang user pilih (otherwise pbg_by_district yang
+                // datang dari pbg_task_details unfiltered nampilin segmen yang harusnya
+                // di-hide).
+                const pbgStatus = document.getElementById('filter-pbg-status').value;
+                const unmatched = {};
+                const pbg = {};
+                Object.entries(d.unmatched_by_district).forEach(([k, v]) => {
+                    unmatched[k] = (pbgStatus === '' || pbgStatus === 'luar_sistem') ? v : 0;
+                });
+                Object.entries(d.pbg_by_district || {}).forEach(([k, p]) => {
+                    pbg[k] = {
+                        terbit:  (pbgStatus === '' || pbgStatus === 'terbit')  ? (p.terbit  || 0) : 0,
+                        proses:  (pbgStatus === '' || pbgStatus === 'proses')  ? (p.proses  || 0) : 0,
+                        ditolak: (pbgStatus === '' || pbgStatus === 'ditolak') ? (p.ditolak || 0) : 0,
+                    };
+                });
+                const allKc = Array.from(new Set([...Object.keys(unmatched), ...Object.keys(pbg)]));
+                if (allKc.length === 0) {
+                    tb.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Tidak ada data</td></tr>';
+                    if (tf) tf.innerHTML = '<td colspan="3" class="text-muted">—</td>';
+                } else {
+                    const rows = allKc.map(n => {
+                        const tanpaIzin = unmatched[n] || 0;
+                        const p = pbg[n] || {terbit:0, proses:0, ditolak:0};
+                        const terbit = p.terbit || 0;
+                        const proses = p.proses || 0;
+                        // Total = tanpa izin (deteksi satelit) + pbg terbit + pbg proses (ditolak nggak masuk hitung "aktif")
+                        const total = tanpaIzin + terbit + proses;
+                        return {n, tanpaIzin, terbit, proses, total};
+                    }).sort((a,b) => b.total - a.total);
+                    // Grand totals
+                    const gTanpa = rows.reduce((s, r) => s + r.tanpaIzin, 0);
+                    const gTerbit = rows.reduce((s, r) => s + r.terbit, 0);
+                    const gProses = rows.reduce((s, r) => s + r.proses, 0);
+                    const gTotal = gTanpa + gTerbit + gProses;
+                    tb.innerHTML = rows.map(r => {
+                        const pctTanpa = r.total ? (r.tanpaIzin / r.total * 100) : 0;
+                        const pctTerbit = r.total ? (r.terbit / r.total * 100) : 0;
+                        const pctProses = r.total ? (r.proses / r.total * 100) : 0;
+                        const seg = (pct, bg, title, count) => pct > 0 ? `<div class="progress-bar ${bg}" style="width:${pct.toFixed(2)}%" title="${title}: ${count.toLocaleString('id-ID')} (${pct.toFixed(1)}%)"></div>` : '';
+                        return `<tr class="district-row" data-d="${r.n}" style="cursor:pointer">
+                            <td><b>${r.n}</b></td>
+                            <td>
+                                <div class="progress position-relative" style="height:22px">
+                                    ${seg(pctTanpa, 'bg-danger', 'Tanpa Izin', r.tanpaIzin)}
+                                    ${seg(pctTerbit, 'bg-primary', 'SK Terbit', r.terbit)}
+                                    ${seg(pctProses, 'bg-warning', 'Proses', r.proses)}
+                                    <small class="position-absolute top-50 start-50 translate-middle fw-bold text-dark" style="text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 2px #fff">${r.total.toLocaleString('id-ID')}</small>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mt-1">
+                                    <span>🔴 ${r.tanpaIzin.toLocaleString('id-ID')}</span>
+                                    <span>🔵 ${r.terbit.toLocaleString('id-ID')}</span>
+                                    <span>🟡 ${r.proses.toLocaleString('id-ID')}</span>
+                                </div>
+                            </td>
+                            <td class="text-end fw-semibold">${r.total.toLocaleString('id-ID')}</td>
+                        </tr>`;
+                    }).join('');
+                    if (tf) {
+                        const pctTanpa = gTotal ? (gTanpa / gTotal * 100) : 0;
+                        const pctTerbit = gTotal ? (gTerbit / gTotal * 100) : 0;
+                        const pctProses = gTotal ? (gProses / gTotal * 100) : 0;
+                        const seg = (pct, bg) => pct > 0 ? `<div class="progress-bar ${bg}" style="width:${pct.toFixed(2)}%"></div>` : '';
+                        tf.innerHTML = `
+                            <td class="fw-bold">TOTAL BS</td>
+                            <td>
+                                <div class="progress position-relative" style="height:22px">
+                                    ${seg(pctTanpa, 'bg-danger')}${seg(pctTerbit, 'bg-primary')}${seg(pctProses, 'bg-warning')}
+                                    <small class="position-absolute top-50 start-50 translate-middle fw-bold text-dark" style="text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 2px #fff">${gTotal.toLocaleString('id-ID')}</small>
+                                </div>
+                                <div class="d-flex justify-content-between small fw-semibold mt-1">
+                                    <span class="text-danger">🔴 ${gTanpa.toLocaleString('id-ID')}</span>
+                                    <span class="text-primary">🔵 ${gTerbit.toLocaleString('id-ID')}</span>
+                                    <span class="text-warning">🟡 ${gProses.toLocaleString('id-ID')}</span>
+                                </div>
+                            </td>
+                            <td class="text-end fw-bold fs-6">${gTotal.toLocaleString('id-ID')}</td>`;
+                    }
+                    tb.querySelectorAll('.district-row').forEach(r => r.addEventListener('click', () => {
+                        const d = r.dataset.d;
+                        distSel.value = d;
+                        const poly = kecPolygonByName[d];
+                        if (poly) map.fitBounds(poly.getBounds());
+                        else if (DISTRICT_BOUNDS[d]) map.fitBounds(DISTRICT_BOUNDS[d]);
+                        applyFilters();
+                    }));
+                }
+            }
+
+            if (d.pbg_by_status_category) {
+                const p = d.pbg_by_status_category;
+                document.getElementById('pbg-total').textContent = Number(d.pbg_total || 0).toLocaleString('id-ID');
+                document.getElementById('pbg-terbit').textContent = Number(p.terbit || 0).toLocaleString('id-ID');
+                document.getElementById('pbg-proses').textContent = Number(p.proses || 0).toLocaleString('id-ID');
+                document.getElementById('pbg-ditolak').textContent = Number(p.ditolak || 0).toLocaleString('id-ID');
+            }
+
+            if (d.by_function_type) {
+                const host = document.getElementById('function-type-cards');
+                const entries = Object.entries(d.by_function_type);
+                const total = entries.reduce((s, [, v]) => s + v, 0);
+                if (total === 0) {
+                    host.innerHTML = '<div class="col-12 text-center text-muted">Belum ada bangunan ber-izin PBG yang ter-match</div>';
+                } else {
+                    host.innerHTML = entries.map(([k, v]) => `
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                                <span>${FUNCTION_LABELS[k] || k}</span>
+                                <span class="badge bg-primary">${Number(v).toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>`).join('');
+                }
+            }
+        } catch (e) { console.error('[stats]', e); }
     }
 
-    async function loadMap() {
-        const b=map.getBounds();const p=new URLSearchParams({sw_lat:b.getSouth(),sw_lng:b.getWest(),ne_lat:b.getNorth(),ne_lng:b.getEast()});
-        const dist=document.getElementById('filter-district').value;
-        const status=document.getElementById('filter-status').value;
-        const area=document.getElementById('filter-min-area').value;
-        const permit=document.getElementById('filter-permit').value;
-        if(dist)p.set('district',dist);if(status)p.set('status',status);if(area)p.set('min_area',area);if(permit==='unmatched')p.set('unmatched_only','1');
+    const loadingEl = document.getElementById('map-loading');
+    function setLoading(on) { loadingEl.classList.toggle('active', on); }
+
+    let mapAbort = null;
+    let loadSeq = 0;
+
+    function readFilters() {
+        // pbgStatus = 'terbit' | 'proses' | 'ditolak' | 'luar_sistem' | ''
+        // 'luar_sistem' = ex-"Tanpa Izin Sah" yg dulu di filter-permit (unmatched + orphan + rejected)
+        return {
+            dist: document.getElementById('filter-district').value,
+            pbgStatus: document.getElementById('filter-pbg-status').value,
+            area: document.getElementById('filter-min-area').value,
+            dsrc: document.getElementById('filter-data-source').value,
+            showSat: document.getElementById('toggle-sat-layer').checked,
+            showPbg: document.getElementById('toggle-pbg-layer').checked,
+        };
+    }
+
+    let lastShown = {sat: 0, pbg: 0, limit: 0};
+    async function fetchSatellite(b, z, f, signal) {
+        if (!f.showSat) { markers.clearLayers(); lastShown.sat = 0; return; }
+        // Limit: district filter aktif = ambil lebih banyak (karena pool-nya udah kecil).
+        const limit = f.dist ? 10000 : (z <= 11 ? 800 : z <= 13 ? 1500 : z <= 15 ? 3000 : 5000);
+        lastShown.limit = limit;
+        // Kalau filter kecamatan aktif, pakai BS_BOUNDS (luas) biar semua bangunan di kecamatan itu ke-load
+        // meski user zoom ke level yg viewport-nya lebih kecil dari area kecamatan.
+        const useBbox = f.dist
+            ? {sw: BS_BOUNDS[0], ne: BS_BOUNDS[1]}
+            : {sw: [b.getSouth(), b.getWest()], ne: [b.getNorth(), b.getEast()]};
+        const p = new URLSearchParams({sw_lat: useBbox.sw[0], sw_lng: useBbox.sw[1], ne_lat: useBbox.ne[0], ne_lng: useBbox.ne[1], limit: String(limit)});
+        if (f.dist) p.set('district', f.dist);
+        if (f.area) p.set('min_area', f.area);
+        // Status PBG → backend params
+        // 'luar_sistem' (Tanpa Izin Sah) = unmatched_only=1 (ex-filter-permit)
+        // 'terbit' / 'proses' / 'ditolak' (Dalam Sistem) = pbg_status=<value>
+        if (f.pbgStatus === 'luar_sistem') p.set('unmatched_only', '1');
+        else if (f.pbgStatus) p.set('pbg_status', f.pbgStatus);
+        Object.entries(dataSourceParams(f.dsrc)).forEach(([k, v]) => p.set(k, v));
+
+        const r = await fetch(`${API}/geojson?${p}`, {headers: H, signal});
+        if (!r.ok) throw new Error(`geojson HTTP ${r.status}`);
+        const gj = await r.json();
+        markers.clearLayers();
+        if (!gj.features) return;
+        const STATE_COLOR = {terbit:'#22c55e', proses:'#f59e0b', ditolak:'#6b7280', tanpa_izin:'#ef4444'};
+        const STATE_LABEL = {terbit:'Berizin Sah', proses:'PBG Proses', ditolak:'PBG Ditolak', tanpa_izin:'Tanpa Izin'};
+        const STATE_BADGE = {terbit:'bg-success', proses:'bg-warning', ditolak:'bg-secondary', tanpa_izin:'bg-danger'};
+        gj.features.forEach(ft => {
+            const [lng, lat] = ft.geometry.coordinates;
+            const pr = ft.properties;
+            const state = pr.permit_state || 'tanpa_izin';
+            const color = STATE_COLOR[state];
+            const m = L.circleMarker([lat, lng], {radius: Math.min(4 + (pr.area_m2 || 0) / 200, 12), fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.8});
+            const typeLine = pr.function_type ? `<br>Jenis: <span class="badge bg-info">${pr.function_type}</span>` : '';
+            const ownerLine = pr.owner_name ? `<br>Pemilik: ${pr.owner_name}` : '';
+            const regLine = pr.registration_number ? `<br>No. Reg: ${pr.registration_number}` : '';
+            const pbgStatusLine = pr.pbg_status_name ? `<br>Status PBG: ${pr.pbg_status_name}` : '';
+            m.bindPopup(`<b>Satelit #${pr.id}</b><br>Luas: ${pr.area_m2 ? Number(pr.area_m2).toLocaleString('id-ID') + ' m²' : 'N/A'}<br>Status: <span class="badge ${STATE_BADGE[state]}">${STATE_LABEL[state]}</span>${pbgStatusLine}${typeLine}<br>Kecamatan: ${pr.district || '-'}${ownerLine}${regLine}<br><button class="btn btn-sm btn-outline-primary mt-1 w-100 bv" data-id="${pr.id}" data-area="${pr.area_m2 || 0}" data-d="${pr.district || ''}">Verifikasi</button>`);
+            m.on('popupopen', () => document.querySelectorAll('.bv').forEach(btn => btn.addEventListener('click', function() {
+                selId = this.dataset.id;
+                document.getElementById('verify-id').textContent = '#' + this.dataset.id;
+                document.getElementById('verify-area').textContent = Number(this.dataset.area).toLocaleString('id-ID');
+                document.getElementById('verify-district').textContent = this.dataset.d;
+                document.getElementById('verify-panel').style.display = 'block';
+            })));
+            markers.addLayer(m);
+        });
+        lastShown.sat = gj.features.length;
+    }
+
+    async function fetchPbg(b, f, signal) {
+        pbgLayer.clearLayers();
+        if (!f.showPbg) return;
+        // Status "Luar Sistem" = bangunan tanpa PBG record. PBG layer (titik-titik dari
+        // database PBG) inherently nggak punya entri buat ini — skip fetch biar nggak
+        // tampilin titik yg keliru.
+        if (f.pbgStatus === 'luar_sistem') return;
+        const useBbox = f.dist
+            ? {sw: BS_BOUNDS[0], ne: BS_BOUNDS[1]}
+            : {sw: [b.getSouth(), b.getWest()], ne: [b.getNorth(), b.getEast()]};
+        const p = new URLSearchParams({sw_lat: useBbox.sw[0], sw_lng: useBbox.sw[1], ne_lat: useBbox.ne[0], ne_lng: useBbox.ne[1], limit: '3000'});
+        if (f.dist) p.set('district', f.dist);
+        if (f.pbgStatus) p.set('pbg_status', f.pbgStatus);
+        Object.entries(dataSourceParams(f.dsrc)).forEach(([k, v]) => p.set(k, v));
+
+        const r = await fetch(`${API}/pbg-geojson?${p}`, {headers: H, signal});
+        if (!r.ok) throw new Error(`pbg-geojson HTTP ${r.status}`);
+        const gj = await r.json();
+        if (!gj.features) return;
+        gj.features.forEach(ft => {
+            const [lng, lat] = ft.geometry.coordinates;
+            const pr = ft.properties;
+            const color = PBG_COLORS[pr.category] || '#0d6efd';
+            const m = L.circleMarker([lat, lng], {radius: 6, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.95});
+            const areaLine = pr.total_area ? `<br>Luas: ${Number(pr.total_area).toLocaleString('id-ID')} m²` : '';
+            const fnLine = pr.function_type ? `<br>Jenis: ${pr.function_type}` : '';
+            const ownerLine = pr.owner_name ? `<br>Pemilik: ${pr.owner_name}` : '';
+            const regLine = pr.registration_number ? `<br>No. Reg: ${pr.registration_number}` : '';
+            const nameLine = pr.name ? `<br>Nama: ${pr.name}` : '';
+            m.bindPopup(`<b>PBG #${pr.id}</b><br>Status: <span class="badge" style="background:${color}">${pr.status_name || pr.category}</span>${nameLine}${regLine}${ownerLine}${fnLine}${areaLine}<br>Kecamatan: ${pr.district || '-'}`);
+            m.addTo(pbgLayer);
+        });
+        lastShown.pbg = gj.features.length;
+    }
+
+    function updateMapCounter() {
+        const el = document.getElementById('map-counter');
+        if (!el) return;
+        const f = readFilters();
+        const dist = f.dist || 'area ini';
+        const parts = [];
+        if (f.showSat) parts.push(`${Number(lastShown.sat).toLocaleString('id-ID')} deteksi satelit`);
+        if (f.showPbg) parts.push(`${Number(lastShown.pbg).toLocaleString('id-ID')} titik PBG`);
+        let msg = `Peta menampilkan ${parts.join(' + ')} di ${dist}. Cluster angka merah = jumlah bangunan di area tersebut; zoom-out buat liat total kecamatan.`;
+        if (lastShown.sat >= lastShown.limit) msg += ` <span class="text-warning fw-semibold">Dibatasi ${lastShown.limit} marker — naikkan filter Luas Minimum biar semua muncul.</span>`;
+        el.innerHTML = msg;
+    }
+
+    async function doLoadMap() {
+        const seq = ++loadSeq;
+        if (mapAbort) mapAbort.abort();
+        mapAbort = new AbortController();
+        const signal = mapAbort.signal;
+
+        const b = map.getBounds();
+        const z = map.getZoom();
+        const f = readFilters();
+
+        setLoading(true);
         try {
-            const r=await fetch(`${API}/geojson?${p}`,{headers:H});const gj=await r.json();
-            markers.clearLayers();
-            if(gj.features) gj.features.forEach(f=>{
-                const[lng,lat]=f.geometry.coordinates;const pr=f.properties;
-                const color=pr.has_permit?'#22c55e':(colors[pr.status]||'#ef4444');
-                const m=L.circleMarker([lat,lng],{radius:Math.min(4+(pr.area_m2||0)/200,12),fillColor:color,color:'#fff',weight:1,fillOpacity:0.8});
-                m.bindPopup(`<b>#${pr.id}</b><br>Luas: ${pr.area_m2?Number(pr.area_m2).toLocaleString('id-ID')+' m²':'N/A'}<br>Status: <span class="badge ${pr.has_permit?'bg-success':'bg-danger'}">${pr.has_permit?'Ber-izin':'Tanpa Izin'}</span><br>Kecamatan: ${pr.district||'-'}<br><button class="btn btn-sm btn-outline-primary mt-1 w-100 bv" data-id="${pr.id}" data-area="${pr.area_m2}" data-d="${pr.district||''}">Verifikasi</button>`);
-                m.on('popupopen',()=>document.querySelectorAll('.bv').forEach(b=>b.addEventListener('click',function(){selId=this.dataset.id;document.getElementById('verify-id').textContent='#'+this.dataset.id;document.getElementById('verify-area').textContent=Number(this.dataset.area).toLocaleString('id-ID');document.getElementById('verify-district').textContent=this.dataset.d;document.getElementById('verify-panel').style.display='block';})));
-                markers.addLayer(m);
-            });
-        } catch(e) { console.error(e); }
+            await Promise.all([
+                fetchSatellite(b, z, f, signal).catch(e => { if (e.name !== 'AbortError') console.error('[sat]', e); }),
+                fetchPbg(b, f, signal).catch(e => { if (e.name !== 'AbortError') console.error('[pbg]', e); }),
+            ]);
+            if (seq !== loadSeq) return;
+            updateMapCounter();
+        } finally {
+            if (seq === loadSeq) setLoading(false);
+        }
     }
 
-    document.querySelectorAll('.verify-btn').forEach(b=>b.addEventListener('click',async function(){
-        if(!selId)return;
-        await fetch(`${API}/${selId}/status`,{method:'PUT',headers:H,body:JSON.stringify({verification_status:this.dataset.status})});
-        document.getElementById('verify-panel').style.display='none';loadMap();loadStats();
+    let loadMapTimer = null;
+    function loadMap() {
+        clearTimeout(loadMapTimer);
+        loadMapTimer = setTimeout(doLoadMap, 250);
+    }
+
+    document.querySelectorAll('.verify-btn').forEach(b => b.addEventListener('click', async function() {
+        if (!selId) return;
+        try {
+            const r = await fetch(`${API}/${selId}/status`, {method: 'PUT', headers: H, body: JSON.stringify({verification_status: this.dataset.status})});
+            if (!r.ok) throw new Error(`status HTTP ${r.status}`);
+        } catch (e) { console.error('[updateStatus]', e); }
+        document.getElementById('verify-panel').style.display = 'none';
+        loadMap(); loadStats();
     }));
 
-    document.getElementById('btn-apply-filter').addEventListener('click',loadMap);
-    map.on('moveend',loadMap);
-    loadStats();loadMap();
+    function applyFilters() { loadStats(); loadMap(); }
+    document.getElementById('filter-min-area').addEventListener('change', applyFilters);
+
+    document.getElementById('filter-data-source').addEventListener('change', applyFilters);
+    const refreshBtn = document.getElementById('btn-refresh-stats');
+    if (refreshBtn) refreshBtn.addEventListener('click', async function () {
+        const prev = this.innerHTML; this.disabled = true; this.innerHTML = 'Refreshing...';
+        try {
+            const r = await fetch(`${API}/refresh-stats`, {method: 'POST', headers: H});
+            if (!r.ok) throw new Error(`refresh HTTP ${r.status}`);
+            await loadStats();
+        } catch (e) { console.error('[refresh]', e); alert('Gagal refresh: ' + e.message); }
+        finally { this.disabled = false; this.innerHTML = prev; }
+    });
+    document.getElementById('btn-reset-view').addEventListener('click', function() {
+        distSel.value = '';
+        document.getElementById('filter-data-source').value = '';
+        document.getElementById('filter-pbg-status').value = '';
+        document.getElementById('filter-min-area').value = '200';
+        document.getElementById('toggle-sat-layer').checked = true;
+        document.getElementById('toggle-pbg-layer').checked = true;
+        map.fitBounds(BS_BOUNDS);
+        loadStats(); loadMap();
+    });
+    document.getElementById('toggle-sat-layer').addEventListener('change', loadMap);
+    document.getElementById('toggle-pbg-layer').addEventListener('change', loadMap);
+    document.getElementById('filter-pbg-status').addEventListener('change', applyFilters);
+    map.on('moveend', loadMap);
+    loadStats(); loadMap();
 });
 </script>
 @endsection

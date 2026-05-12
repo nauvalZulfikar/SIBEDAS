@@ -1,7 +1,16 @@
 #!/bin/bash
 # =============================================================
-# Sibedas Production Deployment Script
-# Target: root@72.60.196.21 | Domain: sibedaspbg.cloud
+# !!! STALE — DO NOT USE !!!
+# This script targets /opt/sibedas which doesn't exist in prod.
+# Real prod path: /root/projects/sibedaspbg/ on root@72.60.196.21.
+# Use the global `sibedas-deployer` agent instead, or see ../README.md.
+# Kept for historical reference only.
+# =============================================================
+echo "[STALE] This script is broken — see scripts/README.md" >&2
+exit 1
+# =============================================================
+# Sibedas Production Deployment Script (LEGACY)
+# Target: root@72.60.196.21 | Domain: sibedaspbg.aureonforge.com
 # =============================================================
 
 set -e
@@ -10,8 +19,8 @@ set -e
 VPS_IP="72.60.196.21"
 VPS_USER="root"
 APP_DIR="/opt/sibedas"
-DOMAIN="sibedaspbg.cloud"
-EMAIL="admin@sibedaspbg.cloud"
+DOMAIN="sibedaspbg.aureonforge.com"
+EMAIL="admin@sibedaspbg.aureonforge.com"
 LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # ── Colors ────────────────────────────────────────────────────

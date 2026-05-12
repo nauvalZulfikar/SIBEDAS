@@ -2,9 +2,9 @@
 /**
  * GitHub Webhook Receiver
  * Place this file at: /var/www/SIBEDAS/webhook.php
- * Access via: https://sibedaspbg.cloud/webhook.php (served by nginx directly)
+ * Access via: https://sibedaspbg.aureonforge.com/webhook.php (served by nginx directly)
  *
- * Setup: Add GitHub webhook pointing to https://sibedaspbg.cloud/webhook
+ * Setup: Add GitHub webhook pointing to https://sibedaspbg.aureonforge.com/webhook
  * with secret matching WEBHOOK_SECRET below.
  */
 

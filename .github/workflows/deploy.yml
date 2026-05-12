@@ -1,0 +1,148 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  PROD_HOST: 72.60.196.21
+  PROD_USER: root
+  PROD_PATH: /root/projects/sibedaspbg
+  PHP_VERSION: '8.2'
+  NODE_VERSION: '20'
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, bcmath, pdo_mysql, gd, zip
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Generate APP_KEY
+        run: php artisan key:generate
+
+      - name: Run Pest / PHPUnit
+        run: |
+          if [ -f vendor/bin/pest ]; then
+            vendor/bin/pest --no-coverage
+          else
+            vendor/bin/phpunit
+          fi
+
+  build:
+    name: Build assets
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # NOTE: `npm ci` triggers a known rollup optional-deps bug on this repo.
+      # Use `npm install` with a fresh lockfile resolution.
+      - name: Install JS dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-build
+          path: public/build
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: public-build
+          path: public/build
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts
+
+      - name: Rsync to production
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='vendor' \
+            --exclude='.env' \
+            --exclude='.env.agent' \
+            --exclude='.agent.yaml' \
+            --exclude='.agent-memory.md' \
+            --exclude='agent.py' \
+            --exclude='agent.log' \
+            --exclude='agent_queue.json' \
+            --exclude='storage/logs/*' \
+            --exclude='storage/framework/cache/*' \
+            --exclude='storage/framework/sessions/*' \
+            --exclude='storage/framework/views/*' \
+            --exclude='tests' \
+            --exclude='*.sql' \
+            --exclude='RAB dan PPT' \
+            --exclude='sibedas_dev' \
+            --exclude='tmp' \
+            ./ "$PROD_USER@$PROD_HOST:$PROD_PATH/"
+
+      - name: Run post-deploy on server
+        run: |
+          ssh "$PROD_USER@$PROD_HOST" "cd $PROD_PATH && \
+            docker compose exec -T app composer install --no-dev --optimize-autoloader && \
+            docker compose exec -T app php artisan migrate --force && \
+            docker compose exec -T app php artisan config:cache && \
+            docker compose exec -T app php artisan route:cache && \
+            docker compose exec -T app php artisan view:cache && \
+            docker compose up -d"
+
+      - name: Smoke test
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://sibedaspbg.aureonforge.com/login || echo 000)
+            echo "Attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "Smoke test failed — login page not responding 200"
+          exit 1

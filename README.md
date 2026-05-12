@@ -159,6 +159,19 @@ docker exec sibedas_db mysqldump -u root -p sibedas > backup.sql
 
 Untuk dokumentasi lengkap, lihat [docs/README.md](docs/README.md)
 
+### PBB Reconciliation Module (Phase 1-13 done)
+
+Cross-reference PBB tax data ↔ satellite-detected buildings ↔ PBG permits.
+
+- 🧑‍💼 **End user (Bapenda staff)**: [docs/pbb/USER_GUIDE.md](docs/pbb/USER_GUIDE.md)
+- 🛠️ **Operations / IT**: [docs/pbb/RUNBOOK.md](docs/pbb/RUNBOOK.md)
+- 👩‍💻 **Developer**: [docs/pbb/DEVELOPER.md](docs/pbb/DEVELOPER.md)
+- 🚀 **Staging deploy playbook**: [docs/pbb/DEPLOY_STAGING.md](docs/pbb/DEPLOY_STAGING.md)
+- 📜 **Phase change log**: [CHANGELOG.md](CHANGELOG.md)
+- 📦 **Per-phase audit reports**: `storage/app/private/data-pbb/PHASE_*_REPORT.md`
+- 🔌 **API Postman collection**: [docs/postman/sibedas-pbb-reconciliation.json](docs/postman/sibedas-pbb-reconciliation.json)
+- ❤️ **Health probe**: `GET /api/health/pbb` (no auth, returns 200/503 with 6 component checks)
+
 ## 🆘 Support
 
 1. Check logs: `docker-compose logs [service]`

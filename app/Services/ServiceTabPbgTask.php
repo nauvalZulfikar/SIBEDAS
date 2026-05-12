@@ -31,9 +31,18 @@ class ServiceTabPbgTask
 
         $this->simbg_host = trim((string) ($settings['SIMBG_HOST'] ?? ""));
         $this->fetch_per_page = trim((string) ($settings['FETCH_PER_PAGE'] ?? "10"));
-        $this->client = $client;
+        // Override the DI'd client — default Guzzle has timeout=0 which means
+        // a hung SIMBG endpoint blocks the worker indefinitely (no heartbeat,
+        // looks dead to MonitorScrapingJob).
+        $this->client = new \GuzzleHttp\Client([
+            'connect_timeout' => 15,
+            'timeout' => 60,
+        ]);
         $this->service_token = $service_token;
         $auth_data = $this->service_token->get_token();
+        if (!is_array($auth_data) || !isset($auth_data['access'], $auth_data['refresh'])) {
+            throw new \Exception("SIMBG login failed: get_token returned " . json_encode($auth_data));
+        }
         $this->user_token = $auth_data['access'];
         $this->user_refresh_token = $auth_data['refresh'];
     }
@@ -700,6 +709,7 @@ class ServiceTabPbgTask
 
                 $data = $responseData['data'];
 
+                $integrations = [];
                 $integrations[] = [
                     'pbg_task_uid' => $uuid,
                     'indeks_fungsi_bangunan' => $data['indeks_fungsi_bangunan'] ?? null,

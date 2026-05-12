@@ -10,4 +10,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command("app:start-scraping-data --confirm")->dailyAt("00:00");
 Schedule::command("app:monitor-scraping")->everyThirtyMinutes();
+Schedule::command("pbb:recompute-reconciliation")->dailyAt("02:00");
+Schedule::command("pbb:snapshot-reconciliation")->monthlyOn(1, "03:00");
 

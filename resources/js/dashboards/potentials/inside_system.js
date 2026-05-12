@@ -244,6 +244,103 @@ class DashboardPotentialInsideSystem {
         );
     }
 
+    async loadSatelliteSync() {
+        // Pulls aggregate from /api/detected-buildings/stats and renders the
+        // "Sinkronisasi Monitoring Satelit — Bangunan Tanpa Izin Sah" panel.
+        // Decoupled from init() so a failure here doesn't blank the rest of
+        // the dashboard, and a failure earlier in init() doesn't block this.
+        const tokenEl = document.querySelector("meta[name='api-token']");
+        const headers = { "Content-Type": "application/json" };
+        if (tokenEl?.content) headers.Authorization = `Bearer ${tokenEl.content}`;
+
+        const setErrorState = (msg) => {
+            const tbody = document.getElementById("luar-top-kecamatan");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger small py-3">${msg}</td></tr>`;
+            }
+        };
+
+        let res;
+        try {
+            res = await fetch(
+                `${GlobalConfig.apiHost}/api/detected-buildings/stats?min_area=200`,
+                { credentials: "include", headers }
+            );
+        } catch (err) {
+            console.error("detected-buildings/stats network error", err);
+            setErrorState("Gagal memuat data satelit (jaringan).");
+            return;
+        }
+        if (!res.ok) {
+            console.error("detected-buildings/stats failed", res.status);
+            setErrorState(`Gagal memuat data satelit (HTTP ${res.status}).`);
+            return;
+        }
+        const s = await res.json();
+
+        const fmt = (v) => addThousandSeparators(v ?? 0, 0);
+        const setText = (id, v) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = v;
+        };
+
+        const total = s.total_detected ?? 0;
+        const without = s.without_permit ?? 0;
+        const unmatched = s.unmatched ?? 0;
+        const orphan = s.match_orphan ?? 0;
+        const rejected = s.permit_rejected ?? 0;
+        const rate = total > 0 ? ((without / total) * 100).toFixed(1) : "0.0";
+
+        setText("luar-stat-total", fmt(total));
+        setText("luar-stat-without-permit", fmt(without));
+        setText("luar-stat-unmatched", fmt(unmatched));
+        setText("luar-stat-without-rate", `${rate}%`);
+        setText(
+            "luar-stat-without-breakdown",
+            `${fmt(unmatched)} unmatched · ${fmt(orphan)} orphan · ${fmt(rejected)} ditolak`
+        );
+
+        // Top 5 kecamatan with most unmatched
+        const byDistrict = s.unmatched_by_district || {};
+        const totalUnmatchedAll = Object.values(byDistrict).reduce(
+            (a, b) => a + (b || 0),
+            0
+        );
+        const top5 = Object.entries(byDistrict)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        const tbody = document.getElementById("luar-top-kecamatan");
+        if (tbody) {
+            if (top5.length === 0) {
+                tbody.innerHTML =
+                    '<tr><td colspan="4" class="text-center text-muted small py-3">Belum ada data deteksi.</td></tr>';
+            } else {
+                tbody.innerHTML = top5
+                    .map(([kec, count], i) => {
+                        const pct =
+                            totalUnmatchedAll > 0
+                                ? ((count / totalUnmatchedAll) * 100).toFixed(1)
+                                : "0.0";
+                        return `<tr>
+                            <td>${i + 1}</td>
+                            <td class="fw-medium">${kec}</td>
+                            <td class="text-end">${fmt(count)}</td>
+                            <td class="text-end text-muted">${pct}%</td>
+                        </tr>`;
+                    })
+                    .join("");
+            }
+        }
+
+        // Snapshot freshness note
+        const note = document.getElementById("luar-snapshot-note");
+        if (note && s.snapshot_refreshed_at) {
+            const d = new Date(s.snapshot_refreshed_at);
+            note.innerText = `Snapshot terakhir di-refresh: ${d.toLocaleString("id-ID")}.`;
+        }
+    }
+
     initChartTataRuang() {
         // Helper function to safely update elements with class selector
         const safeUpdateElements = (selector, callback) => {
@@ -344,7 +441,13 @@ class DashboardPotentialInsideSystem {
     }
 }
 document.addEventListener("DOMContentLoaded", async function (e) {
-    await new DashboardPotentialInsideSystem().init();
+    const dash = new DashboardPotentialInsideSystem();
+    // Run satellite sync independently — it must not be blocked by errors in
+    // the rest of init() (e.g. missing tata_ruang object from a stale cache).
+    dash.loadSatelliteSync().catch((err) =>
+        console.error("Satellite sync (luar sistem) failed:", err)
+    );
+    await dash.init();
 });
 
 function handleCircleClick(element) {

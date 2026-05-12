@@ -24,7 +24,10 @@ class ServiceTokenSIMBG
         $this->password = trim((string) ($settings['SIMBG_PASSWORD'] ?? ""));
         $this->simbg_host = trim((string) ($settings['SIMBG_HOST'] ?? ""));
         $this->fetch_per_page = trim((string) ($settings['FETCH_PER_PAGE'] ?? ""));
-        $this->client = new Client();
+        $this->client = new Client([
+            'connect_timeout' => 10,
+            'timeout' => 30,
+        ]);
         $this->login_url = $this->simbg_host . "/api/user/v1/auth/login/";
         $this->refresh_url = $this->simbg_host. "/api/user/v1/auth/token/refresh/";
     }

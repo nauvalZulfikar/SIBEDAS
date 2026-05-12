@@ -1,4 +1,4 @@
-# docker-compose.yml - Production deployment for sibedaspbg.cloud
+# docker-compose.yml - Production deployment for sibedaspbg.aureonforge.com
 
 services:
     # ==========================================================
@@ -16,8 +16,8 @@ services:
             APP_ENV: ${APP_ENV:-production}
             APP_DEBUG: ${APP_DEBUG:-false}
             APP_KEY: ${APP_KEY}
-            APP_URL: ${APP_URL:-https://sibedaspbg.cloud}
-            API_URL: ${API_URL:-https://sibedaspbg.cloud}
+            APP_URL: ${APP_URL:-https://sibedaspbg.aureonforge.com}
+            API_URL: ${API_URL:-https://sibedaspbg.aureonforge.com}
             APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Jakarta}
 
             LOG_CHANNEL: ${LOG_CHANNEL:-stack}
@@ -44,7 +44,7 @@ services:
             MAIL_USERNAME: ${MAIL_USERNAME:-}
             MAIL_PASSWORD: ${MAIL_PASSWORD:-}
             MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
-            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@sibedaspbg.cloud}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@sibedaspbg.aureonforge.com}
             MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Sibedas}
 
             # Google APIs
@@ -90,7 +90,7 @@ services:
         container_name: sibedas_nginx
         restart: unless-stopped
         environment:
-            DOMAIN: ${DOMAIN:-sibedaspbg.cloud}
+            DOMAIN: ${DOMAIN:-sibedaspbg.aureonforge.com}
         ports:
             - "${NGINX_HTTP_PORT:-80}:80"
             - "${NGINX_HTTPS_PORT:-443}:443"
