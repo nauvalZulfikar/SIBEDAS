@@ -115,6 +115,58 @@ Manual trigger (fires the job immediately, ignoring the cron):
 docker compose exec app php artisan schedule:test --name="buildings:sync-postgis --via=pdo"
 ```
 
+## 7. Phase 5 — Real Polygon Ingest (Google Open Buildings)
+
+Until this phase, ~93% of `detected_buildings` had no real polygon and
+the PostGIS mirror used a square envelope built from centroid + sqrt(area).
+Phase 5 wires the importer to parse the `geometry` WKT column from
+Google Open Buildings v3 so the real footprint replaces the square.
+
+### Refresh the dataset
+
+1. Install + authenticate gcloud:
+   ```bash
+   gcloud auth application-default login
+   gcloud config set project <YOUR_GCP_PROJECT>
+   ```
+2. Run the download script:
+   ```bash
+   bash scripts/download_open_buildings.sh
+   ```
+   Writes `storage/app/open-buildings/bandung_buildings.csv` (~400-600 MB,
+   ~1.1 M rows). First 1 TB/month of BigQuery scans are free; this query
+   uses ~2 GB.
+
+3. Re-import into MySQL (will prompt to delete the existing 1.09M Google
+   rows first — say yes):
+   ```bash
+   php artisan buildings:import-open-buildings --source=google
+   ```
+   New flag `--skip-geometry` is available if you only want the
+   centroid+area path. End-of-run summary now reports
+   "with polygon: N (P%)".
+
+4. Re-sync PostGIS so the mirror picks up real polygons:
+   ```bash
+   docker compose exec app php artisan buildings:sync-postgis
+   # — or wait until 03:00 WIB
+   ```
+
+### Detecting old square polygons
+
+Squares have exactly 5 points (4 corners + closing point) AND are
+`ST_IsRectangle`-true. Real footprints typically have 6+ points and are
+not axis-aligned:
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE ST_NPoints(geom) > 5) AS real_polygons,
+  COUNT(*) FILTER (WHERE ST_NPoints(geom) = 5) AS likely_squares,
+  COUNT(*)                                     AS total
+FROM buildings;
+```
+After Phase 5 refresh, `real_polygons` should jump from ~84k (OSM only)
+toward ~1.1 M (OSM + Google).
+
 ## 3. Credentials & Secrets
 
 All controlled via `.env`:

@@ -140,6 +140,46 @@ prevents the dev environment from accidentally dumping raw SQL into the
 log file. Inside the production Docker image (Phase 1 Dockerfile change),
 pdo_pgsql is installed; the same run succeeds end-to-end.
 
+## Phase 5 verification (2026-05-11)
+
+Importer upgrade verified with a synthetic 5-row CSV containing a
+`geometry` WKT column:
+
+```
+Columns: latitude, longitude, area_in_meters, confidence, geometry
+Import complete: 5 rows
+  with polygon: 5 (100.0%)
+  centroid only: 0
+```
+
+Round-trip through `buildings:sync-postgis`:
+```
+id      | source                | n_points | area  | geom_preview
+1300853 | google_open_buildings | 5        | 234.5 | POLYGON((107.5499 -7.0501,…
+…
+```
+
+Coordinates in PostGIS match the input WKT — confirming WKT → GeoJSON
+parser → MySQL JSON column → ST_GeomFromGeoJSON → PostGIS works
+end-to-end.
+
+WktParser unit cases (run via tinker):
+
+| Input | Output |
+|---|---|
+| `POLYGON((…))` | Polygon, 1 ring |
+| `MULTIPOLYGON(((…)),((…)))` | MultiPolygon, 2 polygons |
+| `POLYGON((…), (…))` (outer + hole) | Polygon, 2 rings |
+| `POINT(…)` / garbage / null | null |
+
+The 5 verification rows (ids 1300853–1300857) were left in place because
+the auto-mode classifier blocked the cleanup DELETE. They will be
+overwritten when the operator runs the full BigQuery refresh.
+
+A real refresh against the live BigQuery export is gated on the user
+authenticating with GCP (`gcloud auth application-default login`) and
+running `bash scripts/download_open_buildings.sh`.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\DetectedBuilding;
+use App\Support\WktParser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -11,7 +12,8 @@ class ImportOpenBuildings extends Command
     protected $signature = 'buildings:import-open-buildings
                             {--source=google : Source: google or microsoft}
                             {--chunk=1000 : Insert chunk size}
-                            {--min-confidence=0.65 : Minimum confidence score}';
+                            {--min-confidence=0.65 : Minimum confidence score}
+                            {--skip-geometry : Skip WKT polygon parsing (lat/lng only, faster but loses footprint detail)}';
 
     protected $description = 'Import building footprints from Google Open Buildings or Microsoft for Kab. Bandung area';
 
@@ -60,10 +62,20 @@ class ImportOpenBuildings extends Command
         $lngCol = array_search('longitude', $header);
         $areaCol = array_search('area_in_meters', $header) ?: array_search('estimated_area_m2', $header);
         $confCol = array_search('confidence', $header) ?: array_search('confidence_score', $header);
+        // Google Open Buildings BigQuery export carries a 'geometry' column
+        // as WKT POLYGON/MULTIPOLYGON. Microsoft footprint dumps usually
+        // have the same column name. Both are optional — we fall back to
+        // centroid+area when missing or unparsable.
+        $geomCol = array_search('geometry', $header);
+        $skipGeom = (bool) $this->option('skip-geometry');
 
         if ($latCol === false || $lngCol === false) {
             $this->error('CSV must have latitude and longitude columns');
             return self::FAILURE;
+        }
+        if ($geomCol === false && !$skipGeom) {
+            $this->warn('No "geometry" column found in CSV — rows will be stored without polygon footprints.');
+            $this->warn('Re-export from BigQuery including the geometry column to get real polygons.');
         }
 
         $existing = DetectedBuilding::where('detection_source', $sourceName)->count();
@@ -73,6 +85,8 @@ class ImportOpenBuildings extends Command
 
         $batch = [];
         $imported = 0;
+        $withPolygon = 0;
+        $without = 0;
         $now = now()->format('Y-m-d H:i:s');
         $today = now()->toDateString();
 
@@ -85,6 +99,19 @@ class ImportOpenBuildings extends Command
             $confidence = $confCol !== false ? (float) ($row[$confCol] ?? 0) : null;
             if ($minConfidence > 0 && $confidence !== null && $confidence < $minConfidence) continue;
 
+            $geometryJson = null;
+            if (!$skipGeom && $geomCol !== false) {
+                $parsed = WktParser::toGeoJson($row[$geomCol] ?? null);
+                if ($parsed) {
+                    $geometryJson = json_encode($parsed);
+                    $withPolygon++;
+                } else {
+                    $without++;
+                }
+            } else {
+                $without++;
+            }
+
             $batch[] = [
                 'latitude' => $lat,
                 'longitude' => $lng,
@@ -92,6 +119,7 @@ class ImportOpenBuildings extends Command
                 'confidence_score' => $confidence,
                 'detection_source' => $sourceName,
                 'detection_date' => $today,
+                'geometry_geojson' => $geometryJson,
                 'verification_status' => 'unverified',
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -112,6 +140,11 @@ class ImportOpenBuildings extends Command
 
         fclose($handle);
         $this->info("Import complete: " . number_format($imported) . " rows");
+        if (!$skipGeom && $geomCol !== false) {
+            $this->info("  with polygon: " . number_format($withPolygon)
+                . " (" . ($imported ? number_format($withPolygon / $imported * 100, 1) : '0.0') . "%)");
+            $this->info("  centroid only: " . number_format($without));
+        }
         return self::SUCCESS;
     }
 }
