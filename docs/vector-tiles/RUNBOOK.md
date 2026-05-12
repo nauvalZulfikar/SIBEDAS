@@ -50,6 +50,19 @@ docker compose down postgis
 docker volume rm sibedas_sibedas_postgis_data
 ```
 
+### Apply schema migrations
+Production / staging (inside the app container):
+```bash
+docker compose exec app php artisan postgis:migrate
+```
+Dev (host XAMPP without `pdo_pgsql`) — pipe SQL directly:
+```powershell
+Get-Content database/migrations/postgis/001_create_buildings.sql -Raw |
+  docker exec -i sibedas_postgis psql -U sibedas_spatial -d sibedas_spatial
+```
+Both routes are idempotent. Migrations are tracked in the
+`postgis_migrations` table.
+
 ## 3. Credentials & Secrets
 
 All controlled via `.env`:

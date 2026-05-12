@@ -62,6 +62,34 @@ it (`Dockerfile` updated in both `local` and `production` stages). Local
 verification via tinker requires enabling the extension manually — skip if
 not testing the connection locally.
 
+## Phase 2 verification (2026-05-11)
+
+Schema applied (locally via `docker exec ... psql`, since XAMPP PHP lacks
+`pdo_pgsql`):
+
+```
+Table "public.buildings"
+       Column        |          Type           |  Nullable | Default
+---------------------+-------------------------+-----------+--------
+ id                  | bigint                  | not null  |
+ geom                | geometry(Polygon,4326)  | not null  |
+ centroid            | geometry(Point,4326)    | not null  |
+ source              | varchar(50)             |           |
+ verification_status | varchar(30)             |           |
+ district            | varchar(100)            |           |
+ ward                | varchar(100)            |           |
+ matched_pbg_task_id | bigint                  |           |
+ area_m2             | numeric(10,2)           |           |
+ status_color        | varchar(7)              |           |
+ updated_at          | timestamptz             |           | now()
+```
+
+Indexes: `buildings_pkey`, `idx_buildings_geom` (GIST), `idx_buildings_centroid` (GIST), `idx_buildings_district`, `idx_buildings_verif`, `idx_buildings_pbg_task`, `idx_buildings_source`.
+
+Artisan command `php artisan postgis:migrate` registered (visible in
+`php artisan list`). Will be the canonical path in production
+(staging/prod Docker images bundle `pdo_pgsql`).
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:
