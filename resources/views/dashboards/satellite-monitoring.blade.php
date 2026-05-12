@@ -23,12 +23,12 @@
         border-radius: 50%; animation: mspin 0.7s linear infinite;
     }
     @keyframes mspin { to { transform: rotate(360deg); } }
-    /* Phase 11 — fade transitions between cluster and polygon mode.
-       The polygon layer renders to canvas tiles inside leaflet-tile-pane;
-       the cluster icons sit inside leaflet-marker-pane. Toggling these
-       panes opacity is the smoothest way to swap layers without a hard cut. */
-    .leaflet-pane.leaflet-tile-pane,
-    .leaflet-pane.leaflet-marker-pane { transition: opacity .2s ease; }
+    /* Phase 11 — fade transition for the polygon layer only. We DO NOT
+       touch the global .leaflet-tile-pane opacity here because that pane
+       also holds the base satellite imagery (Esri + Google Hybrid);
+       hiding it would blank out the whole map at zoom-out. The polygon
+       vector-tile layer lives on its own .vt-pane below. */
+    .leaflet-pane.vt-pane { transition: opacity .2s ease; }
     .vt-mode-pill {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
@@ -297,6 +297,8 @@ document.addEventListener('DOMContentLoaded', function() {
         worldCopyJump: false,
         maxZoom: 18,
     }).setView([-7.05, 107.55], 11);
+    // Expose for headless QA scripts (Playwright). No-op in production usage.
+    window.map = map;
 
     // Set minZoom dinamis agar viewport saat zoom-out paling jauh tetap pas di BS_BOUNDS
     // (bukan tile di luar BS yang kelihatan tapi ga bisa di-pan ke sana)
@@ -309,20 +311,24 @@ document.addEventListener('DOMContentLoaded', function() {
     map.fitBounds(BS_BOUNDS);
     window.addEventListener('resize', clampMinZoom);
 
-    // Satellite imagery — primary visual reference for cross-checking
-    // building footprints against actual rooftops. We layer two sources
-    // so the user always sees imagery, never a blank/cream canvas:
+    // Satellite imagery. Google Hybrid (lyrs=y = imagery + roads + labels)
+    // is the primary source: 4-subdomain CDN, ~250 ms/tile in parallel,
+    // and — critically — uses high-resolution imagery at EVERY zoom level,
+    // including z=11 max-zoom-out. Esri World Imagery at z<12 falls back
+    // to washed-out Landsat ~30 m/px which looks like a cream blank for
+    // farmland areas like Kab. Bandung; users mistake that for "no
+    // satellite".
     //
-    //   1) Google Hybrid (4 subdomains mt0..mt3) — fast multi-host CDN,
-    //      paints in well under a second from Indonesia. Used as the
-    //      BASE so the first frame is satellite, not beige.
-    //   2) Esri World Imagery — single-host but higher-resolution and
-    //      the authoritative source. Stacked on top with full opacity;
-    //      once it loads it replaces the Google view seamlessly.
-    //
-    // Both layers free, no API key. No bounds restriction at tileLayer
-    // level — the map's maxBounds already caps panning, and a per-layer
-    // bounds was clipping edge tiles at the lowest zoom.
+    // Esri is added underneath as a soft fallback in case Google blocks
+    // an IP; if both fail there's a cartocdn label overlay that still
+    // shows place names.
+    const esriImagery = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+            attribution: 'Esri World Imagery',
+            maxZoom: 19, noWrap: true, keepBuffer: 4,
+        }
+    ).addTo(map);
     const googleHybrid = L.tileLayer(
         'https://mt{s}.google.com/vt/lyrs=y&hl=id&x={x}&y={y}&z={z}',
         {
@@ -331,17 +337,10 @@ document.addEventListener('DOMContentLoaded', function() {
             maxZoom: 19, noWrap: true, keepBuffer: 4,
         }
     ).addTo(map);
-    const esriImagery = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-            attribution: 'Esri World Imagery',
-            maxZoom: 19, noWrap: true, keepBuffer: 4,
-        }
-    ).addTo(map);
-    esriImagery.on('tileerror', e => console.warn('[esri tileerror]', e?.coords));
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19, pane: 'overlayPane', bounds: BS_BOUNDS, noWrap: true,
-    }).addTo(map);
+    googleHybrid.on('tileerror', e => console.warn('[google tileerror]', e?.coords));
+    // No light_only_labels overlay here — Google Hybrid already includes
+    // labels (lyrs=y = imagery + roads + labels). Stacking another label
+    // layer just doubles place names.
 
     // Layer polygon kecamatan (GeoJSON dari BPS). Di-load async — tidak blocking render peta.
     const districtLayer = L.layerGroup().addTo(map);
@@ -933,8 +932,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ======================================================================
     let _vtMode = null; // 'cluster' | 'polygon'
     const _modePill = document.getElementById('vt-mode-pill');
-    const _markerPaneEl = () => map.getPane('markerPane') || document.querySelector('.leaflet-marker-pane');
-    const _tilePaneEl   = () => map.getPane('tilePane')   || document.querySelector('.leaflet-tile-pane');
 
     function applyZoomMode() {
         // Phase 16 — users without polygon clearance always stay in cluster.
@@ -945,13 +942,14 @@ document.addEventListener('DOMContentLoaded', function() {
         _vtMode = next;
 
         if (next === 'polygon') {
-            // Cluster off, polygon visible
             if (map.hasLayer(markers)) map.removeLayer(markers);
-            if (polygonLayer && _tilePaneEl()) _tilePaneEl().style.opacity = '1';
+            if (polygonLayer && !map.hasLayer(polygonLayer)) map.addLayer(polygonLayer);
             if (_modePill) { _modePill.textContent = 'Polygon'; _modePill.classList.remove('cluster'); _modePill.classList.add('polygon'); _modePill.title = 'Outline tiap bangunan — zoom out untuk kembali ke cluster'; }
         } else {
-            // Polygon faded, cluster (respecting showSat toggle) back on
-            if (polygonLayer && _tilePaneEl()) _tilePaneEl().style.opacity = '0.0';
+            // Remove the polygon layer entirely. Crucially NOT by hiding the
+            // tile pane (that also holds Esri + Google base imagery and blanks
+            // the whole map at zoom-out).
+            if (polygonLayer && map.hasLayer(polygonLayer)) map.removeLayer(polygonLayer);
             const f = readFilters();
             if (f.showSat && !map.hasLayer(markers)) map.addLayer(markers);
             if (_modePill) { _modePill.textContent = 'Cluster'; _modePill.classList.remove('polygon'); _modePill.classList.add('cluster'); _modePill.title = 'Zoom in (≥14) untuk lihat polygon'; }
