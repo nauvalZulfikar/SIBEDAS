@@ -285,6 +285,34 @@ Feature flag flipped to `VECTOR_TILES_ENABLED=true` in local `.env` for
 this verification. `.env.example` and production `.env` stay `false`
 until Phase 19.
 
+## Phase 9 verification (2026-05-11)
+
+`leaflet.vectorgrid@^1.3.0` added to `package.json`. The blade view
+loads the bundled distribution (includes the protobuf dep) via unpkg
+to stay consistent with the existing `leaflet@1.9.4` +
+`leaflet.markercluster@1.5.3` script tags.
+
+```
+$ npm list leaflet.vectorgrid
+Sibedas@ D:\Downloads\coding project\_sibedas\Sibedas
+`-- leaflet.vectorgrid@1.3.0
+
+$ curl -o /dev/null -w "%{http_code} %{size_download}\n" \
+    https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js
+200 105580
+
+$ npm run build  →  built in 12.45s, no new errors
+```
+
+Smoke-check snippet in the view sets `window.__vectorGridReady` and
+logs a console warning if the CDN ever fails — surfacing the missing
+dep cleanly when Phase 10 starts using `L.vectorGrid.protobuf(...)`.
+
+The inline JS in `satellite-monitoring.blade.php` was NOT extracted
+into `resources/js/dashboards/satellite-monitoring.js` (Phase 9.2 in
+the plan) — that refactor is risky and orthogonal to the polygon
+work; deferred to a follow-up.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+{{-- Phase 9 — Leaflet.VectorGrid (script tag in @section('scripts') below). Version pinned in package.json. No separate CSS file; styling comes from the layer's `vectorTileLayerStyles` option set in Phase 10. --}}
 <style>
     #satellite-map-wrapper { position: relative; }
     #satellite-map { height: 550px; border-radius: 8px; }
@@ -220,6 +221,18 @@
 @section('scripts')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+{{-- Phase 9 — Leaflet.VectorGrid (bundled with its protobuf dep). --}}
+<script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
+<script>
+    // Phase 9 smoke check — surface a console warning if vectorgrid fails to
+    // load (e.g. CDN blocked). Polygon layer activates in Phase 10.
+    if (typeof L === 'undefined' || typeof L.vectorGrid === 'undefined') {
+        console.warn('[vector-tiles] Leaflet.VectorGrid not loaded — polygon layer will be disabled.');
+        window.__vectorGridReady = false;
+    } else {
+        window.__vectorGridReady = true;
+    }
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const API = '/api/detected-buildings';
