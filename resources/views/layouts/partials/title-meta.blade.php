@@ -14,10 +14,13 @@
 @auth
     <!-- API Token from session (primary method) -->
     <meta name="api-token" content="{{ session('api_token') }}">
-    
+
     <!-- Alternative: User ID for token generation -->
     <meta name="user-id" content="{{ auth()->id() }}">
-    
+
+    <!-- Phase 16 — clearance level for frontend gating (vector-tile polygon layer). -->
+    <meta name="user-clearance" content="{{ session('pbb_clearance', 'level_1') }}">
+
     <!-- Token expiration timestamp (if available) -->
     @if(session('api_token_expires'))
         <meta name="api-token-expires" content="{{ session('api_token_expires') }}">

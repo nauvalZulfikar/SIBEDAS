@@ -54,6 +54,18 @@ class AuthenticatedSessionController extends Controller
         session(['login_timestamp' => now()->timestamp]);
         session(['user_id' => $user->id]);
 
+        // Phase 16 — pre-compute the highest PBB clearance among the user's
+        // roles. EnsurePbbClearance middleware re-computes per request for
+        // safety; this copy in session is consumed by the frontend
+        // (meta name="user-clearance") to gate the polygon vector-tile layer
+        // without having to ping the server.
+        $clearance = 'level_1';
+        $rank = ['level_1' => 1, 'level_2' => 2, 'level_3' => 3];
+        foreach ($user->roles()->pluck('pbb_clearance')->all() as $lvl) {
+            if (($rank[$lvl] ?? 0) > ($rank[$clearance] ?? 0)) $clearance = $lvl;
+        }
+        session(['pbb_clearance' => $clearance]);
+
         // Append menu_id dynamically to HOME
         $menuId = optional(\App\Models\Menu::where('name', 'Dashboard Pimpinan SIMBG')->first())->id;
         $home = RouteServiceProvider::HOME . ($menuId ? ('?menu_id=' . $menuId) : '');

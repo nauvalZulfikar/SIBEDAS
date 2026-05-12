@@ -510,6 +510,33 @@ Production note: `QUEUE_CONNECTION=database` means a `queue:work`
 worker (already in the supervisor config) processes these. Average
 job duration in test ~100 ms.
 
+## Phase 16 verification (2026-05-11)
+
+Polygon visibility is now gated by `pbb_clearance` at both ends:
+
+- **Backend** (already in place since Phase 8) —
+  `pbb.clearance:level_2` on the `/api/tiles/buildings/...` route +
+  audit log entry per request.
+- **Frontend** (new) —
+  `AuthenticatedSessionController` computes the user's highest
+  clearance on login and stores it in `session('pbb_clearance')`.
+  `title-meta.blade.php` emits it as `<meta name="user-clearance">`.
+  `satellite-monitoring.blade.php` reads the meta tag at startup and:
+  - skips `createPolygonLayer()` entirely for level_1,
+  - removes the cluster/polygon mode pill from the card header,
+  - short-circuits `applyZoomMode()` to stay in cluster mode,
+  - short-circuits `refreshPolygonLayer()` so dropdown changes never
+    fire tile requests the API would 403 anyway.
+
+Three-role sweep (login via web form → grep meta tag in rendered HTML
+and call `/api/tiles/buildings/...` with the matching Sanctum token):
+
+| User              | Clearance | meta `user-clearance` | API tile endpoint |
+|---|---|---|---|
+| user@demo.com           | level_1 | level_1 | 403 |
+| l2test@sibedas.local    | level_2 | level_2 | 200 (HIT) |
+| superadmin@sibedas.com  | level_3 | level_3 | 200 (HIT) |
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

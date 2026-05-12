@@ -362,6 +362,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // polygons; reverse below) lands in Phase 11.
     // ======================================================================
     const VECTOR_TILES_MIN_ZOOM = 14;
+    // Phase 16 — gate the polygon layer on PBB clearance. level_1 ('user')
+    // gets only the cluster view because polygon footprints reveal
+    // individual buildings (PII concern under UU PDP). Backend already
+    // enforces this with pbb.clearance:level_2; this frontend gate stops
+    // us from rendering the mode pill / firing 403 requests for users
+    // who'd never see polygons anyway.
+    const USER_CLEARANCE = document.querySelector('meta[name="user-clearance"]')?.getAttribute('content') || 'level_1';
+    const CLEARANCE_RANK = { level_1: 1, level_2: 2, level_3: 3 };
+    const POLYGON_ALLOWED = (CLEARANCE_RANK[USER_CLEARANCE] || 0) >= 2;
     let polygonLayer = null;
     let _highlightedId = null;
 
@@ -448,7 +457,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return layer;
     }
 
-    if (typeof L.vectorGrid !== 'undefined' && window.__vectorGridReady !== false) {
+    if (!POLYGON_ALLOWED) {
+        // Hide the cluster ↔ polygon mode pill — it's misleading for a user
+        // who'll never see polygons. Counter footer stays as-is.
+        document.getElementById('vt-mode-pill')?.remove();
+        console.info('[vector-tiles] User clearance ' + USER_CLEARANCE + ' — polygon layer hidden, cluster view only.');
+    } else if (typeof L.vectorGrid !== 'undefined' && window.__vectorGridReady !== false) {
         polygonLayer = createPolygonLayer();
         polygonLayer.addTo(map);
         window.__sibedas_polygonLayer = polygonLayer;
@@ -463,6 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // tile requests.
     let _polygonRefreshTimer = null;
     function refreshPolygonLayer() {
+        if (!POLYGON_ALLOWED) return;
         if (!L || !L.vectorGrid || window.__vectorGridReady === false) return;
         clearTimeout(_polygonRefreshTimer);
         _polygonRefreshTimer = setTimeout(() => {
@@ -884,6 +899,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const _tilePaneEl   = () => map.getPane('tilePane')   || document.querySelector('.leaflet-tile-pane');
 
     function applyZoomMode() {
+        // Phase 16 — users without polygon clearance always stay in cluster.
+        if (!POLYGON_ALLOWED) { _vtMode = 'cluster'; return; }
         const z = map.getZoom();
         const next = (z >= VECTOR_TILES_MIN_ZOOM) ? 'polygon' : 'cluster';
         if (next === _vtMode) return;
