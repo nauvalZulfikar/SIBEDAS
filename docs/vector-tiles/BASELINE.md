@@ -537,6 +537,28 @@ and call `/api/tiles/buildings/...` with the matching Sanctum token):
 | l2test@sibedas.local    | level_2 | level_2 | 200 (HIT) |
 | superadmin@sibedas.com  | level_3 | level_3 | 200 (HIT) |
 
+## Phase 17 verification (2026-05-11)
+
+Three new test files cover the vector-tile critical paths:
+
+| File | Cases | What it pins |
+|---|---:|---|
+| `tests/Unit/WktParserTest.php` | 7 | WKT → GeoJSON for null/garbage/POINT (→ null), POLYGON, POLYGON-with-hole, MULTIPOLYGON, whitespace + case tolerance |
+| `tests/Unit/TileCoordMathTest.php` | 6 | Slippy-map `lonLatToTile()` at z=0/14/16/18 (Bandung-centre reference); intra-tile stability; tile-boundary increment |
+| `tests/Feature/TilesControllerTest.php` | 3 | Route is `auth:sanctum`-gated (401), the feature-flag-off / unauth path returns 401, non-numeric path segments are 404-rejected |
+
+```
+$ php artisan test --filter="WktParserTest|TileCoordMathTest|TilesControllerTest"
+Tests:    16 passed (35 assertions)
+Duration: 0.80s
+```
+
+Full suite (after Phase 17): 52 passed / 4 failed / 159 assertions.
+The four failures all live in `Tests\Feature\ReconciliationDashboardPageTest`
+and were present **before** the vector-tiles branch (introduced in
+master commit f12001f); they're 404 / page-discovery issues in the
+existing reconciliation dashboard test, not vector-tile regressions.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:
