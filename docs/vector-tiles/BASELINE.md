@@ -313,6 +313,37 @@ into `resources/js/dashboards/satellite-monitoring.js` (Phase 9.2 in
 the plan) — that refactor is risky and orthogonal to the polygon
 work; deferred to a follow-up.
 
+## Phase 10 verification (2026-05-11)
+
+`L.vectorGrid.protobuf('/api/tiles/buildings/{z}/{x}/{y}.pbf', …)`
+inserted into the satellite-monitoring view. minZoom=14 set on the
+layer so Leaflet stops requesting below that — server-side already
+returns 404 too. Style function is keyed on `props.status_color`
+emitted by the Phase 7 tile function (fillColor = status_color,
+fillOpacity 0.55, dark outline). Layer is added to the map but the
+existing cluster layer is also still active; the cluster vs polygon
+switch is Phase 11.
+
+Server-side smoke test through the real auth flow (web login → session
+api_token → bearer header on tile fetch):
+
+```
+$ curl POST /login (form _token + email + password)  →  302
+$ GET /dashboards/satellite-monitoring                →  200, 70 KB
+    grep "Phase 10 — polygon footprint"                  → 1 match
+    grep "L.vectorGrid.protobuf"                         → 1 match
+    grep "__sibedas_polygonLayer"                        → 1 match
+    meta name="api-token" content="987|wkYne…"           → present
+$ curl GET /api/tiles/buildings/14/13086/8513.pbf
+    Authorization: Bearer 987|wkYne…
+  →  HTTP 200, Content-Type application/x-protobuf, 297,537 bytes
+```
+
+Visual rendering itself runs in the browser; final eyes-on verification
+(zoom to 14+ over Soreang, see red/green polygons land) requires
+opening the page in a real browser — Playwright is not installed in
+this repo and adding it is out of scope for Phase 10.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

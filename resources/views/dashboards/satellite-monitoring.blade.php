@@ -337,6 +337,51 @@ document.addEventListener('DOMContentLoaded', function() {
     map.addLayer(pbgLayer);
     const PBG_COLORS = {terbit: '#0d6efd', proses: '#f59e0b', ditolak: '#6b7280'};
 
+    // ======================================================================
+    // Phase 10 — polygon footprint layer.
+    // Reads vector tiles from /api/tiles/buildings/{z}/{x}/{y}.pbf (Phase 8
+    // proxy → Martin → PostGIS function). Activates only above zoom 14;
+    // below that the existing cluster layer is the right level of detail.
+    // The zoom-driven layer-switch logic (hide clusters at z>=14, show
+    // polygons; reverse below) lands in Phase 11.
+    // ======================================================================
+    const VECTOR_TILES_MIN_ZOOM = 14;
+    let polygonLayer = null;
+    if (typeof L.vectorGrid !== 'undefined' && window.__vectorGridReady !== false) {
+        polygonLayer = L.vectorGrid.protobuf('/api/tiles/buildings/{z}/{x}/{y}.pbf', {
+            rendererFactory: L.canvas.tile,   // canvas is fastest for 10k+ polys per tile
+            interactive: true,                // enables click events (used in Phase 12)
+            getFeatureId: f => f.properties.id,
+            minZoom: VECTOR_TILES_MIN_ZOOM,   // Leaflet stops requesting below this
+            maxZoom: 18,
+            bounds: BS_BOUNDS,
+            attribution: 'Building footprints (Sibedas + Google Open Buildings + OSM)',
+            fetchOptions: {
+                credentials: 'same-origin',
+                headers: TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {},
+            },
+            vectorTileLayerStyles: {
+                // 'buildings' is the layer name encoded in the MVT by the
+                // PostGIS tile function. status_color is precomputed in
+                // Phase 3 (red orphan / green matched).
+                buildings: (props) => ({
+                    fill: true,
+                    fillColor: props.status_color || '#ef4444',
+                    fillOpacity: 0.55,
+                    color: '#1f2937',
+                    weight: 0.4,
+                    opacity: 0.7,
+                }),
+            },
+        });
+        polygonLayer.on('tileerror', e => console.warn('[polygon-tile] error loading tile', e?.coords));
+        polygonLayer.addTo(map);
+        window.__sibedas_polygonLayer = polygonLayer; // exposed for Phase 11/12 hooks
+    } else {
+        console.warn('[vector-tiles] L.vectorGrid unavailable — polygon layer disabled.');
+    }
+    // ======================================================================
+
     let selId = null;
     const colors = {unverified:'#ef4444',confirmed_illegal:'#dc2626',confirmed_legal:'#22c55e',under_review:'#f59e0b',false_positive:'#6b7280'};
     const FUNCTION_LABELS = {hunian:'Hunian / Tempat Tinggal', usaha:'Usaha / UMKM', sosial:'Sosial Budaya', prasarana:'Prasarana', ibadah:'Ibadah / Keagamaan', pendidikan:'Pendidikan / Kebudayaan', multifungsi:'Multifungsi'};
