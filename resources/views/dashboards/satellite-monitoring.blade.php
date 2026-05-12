@@ -32,10 +32,21 @@
     .vt-mode-pill {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
-        color: #fff; background: #6b7280; letter-spacing: .02em;
+        color: #fff; background: #6b7280; letter-spacing: .02em; cursor: help;
     }
     .vt-mode-pill.polygon { background: #1e88e5; }
     .vt-mode-pill.cluster { background: #6b7280; }
+    .vt-hint {
+        position: absolute; top: 8px; left: 50px; z-index: 500;
+        background: rgba(13, 110, 253, 0.92); color: #fff; padding: 6px 12px;
+        border-radius: 6px; font-size: 12px; font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;
+        display: none;
+    }
+    .vt-hint.show { display: block; animation: fadeInOut 4s ease; }
+    @keyframes fadeInOut {
+        0%, 90% { opacity: 1; } 100% { opacity: 0; }
+    }
     .district-label {
         background: rgba(13,110,253,0.85); color: #fff; font-size: 10px; font-weight: 600;
         padding: 2px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none;
@@ -187,7 +198,7 @@
                     <span><span class="legend-dot" style="background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 1px #f59e0b"></span>Titik PBG Proses</span>
                 </div>
             </div>
-            <div class="card-body p-0"><div id="satellite-map-wrapper"><div id="satellite-map"></div><div id="map-loading"><div class="spinner"></div><span>Memuat data...</span></div></div></div>
+            <div class="card-body p-0"><div id="satellite-map-wrapper"><div id="satellite-map"></div><div id="map-loading"><div class="spinner"></div><span>Memuat data...</span></div><div id="vt-hint" class="vt-hint"><iconify-icon icon="solar:zoom-in-broken" inline></iconify-icon> Zoom dalam ke level 14+ buat lihat outline polygon tiap bangunan</div></div></div>
             <div class="card-footer py-2 small text-muted" id="map-counter">Menampilkan 0 bangunan di area ini.</div>
         </div>
         <div class="card">
@@ -298,12 +309,34 @@ document.addEventListener('DOMContentLoaded', function() {
     map.fitBounds(BS_BOUNDS);
     window.addEventListener('resize', clampMinZoom);
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Esri', maxZoom: 19, bounds: BS_BOUNDS, noWrap: true
+    // Base map (perf fix): Esri World Imagery is the visual reference for
+    // building cross-check, but its CDN can be 1-2 s per tile from Indonesia
+    // — at zoom-out 20+ tiles = 20+ s blank canvas. Use CartoDB Voyager
+    // (4-subdomain CDN, ~50 ms/tile globally) as the IMMEDIATE base so the
+    // map paints quickly, then overlay Esri imagery (semi-transparent so
+    // the basemap shows through during slow loads). Both layers exposed
+    // via the layer-control top-right.
+    const cartoBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        subdomains: ['a','b','c','d'],
+        attribution: '&copy; CARTO &copy; OpenStreetMap',
+        maxZoom: 19, bounds: BS_BOUNDS, noWrap: true,
+        keepBuffer: 4,
+    }).addTo(map);
+    const esriImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri World Imagery', maxZoom: 19, bounds: BS_BOUNDS, noWrap: true,
+        opacity: 0.85,
+        keepBuffer: 2,
     }).addTo(map);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19, pane: 'overlayPane', bounds: BS_BOUNDS, noWrap: true
+        maxZoom: 19, pane: 'overlayPane', bounds: BS_BOUNDS, noWrap: true,
     }).addTo(map);
+    // Layer control so the user can disable the slow satellite imagery if
+    // they want a pure-vector view.
+    L.control.layers(
+        null,
+        { 'CartoDB Voyager (cepat)': cartoBase, 'Esri Imagery (satelit)': esriImagery },
+        { collapsed: true, position: 'topright' }
+    ).addTo(map);
 
     // Layer polygon kecamatan (GeoJSON dari BPS). Di-load async — tidak blocking render peta.
     const districtLayer = L.layerGroup().addTo(map);
@@ -925,6 +958,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     map.on('zoomend', applyZoomMode);
+    // Show a brief "zoom in for polygons" hint on first load if the user
+    // has clearance and we're below z14.
+    if (POLYGON_ALLOWED) {
+        setTimeout(() => {
+            if (map.getZoom() < VECTOR_TILES_MIN_ZOOM) {
+                const h = document.getElementById('vt-hint');
+                if (h) { h.classList.add('show'); setTimeout(() => h.classList.remove('show'), 5000); }
+            }
+        }, 1500);
+    }
     // Skip the satellite cluster fetch in polygon mode (network savings).
     const _origFetchSatellite = fetchSatellite;
     fetchSatellite = async function (b, z, f, signal) {
