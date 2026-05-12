@@ -23,6 +23,19 @@
         border-radius: 50%; animation: mspin 0.7s linear infinite;
     }
     @keyframes mspin { to { transform: rotate(360deg); } }
+    /* Phase 11 — fade transitions between cluster and polygon mode.
+       The polygon layer renders to canvas tiles inside leaflet-tile-pane;
+       the cluster icons sit inside leaflet-marker-pane. Toggling these
+       panes opacity is the smoothest way to swap layers without a hard cut. */
+    .leaflet-pane.leaflet-tile-pane,
+    .leaflet-pane.leaflet-marker-pane { transition: opacity .2s ease; }
+    .vt-mode-pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+        color: #fff; background: #6b7280; letter-spacing: .02em;
+    }
+    .vt-mode-pill.polygon { background: #1e88e5; }
+    .vt-mode-pill.cluster { background: #6b7280; }
     .district-label {
         background: rgba(13,110,253,0.85); color: #fff; font-size: 10px; font-weight: 600;
         padding: 2px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none;
@@ -160,7 +173,10 @@
     <div class="col-xl-9">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Peta Deteksi Bangunan — Kab. Kab. Bandung</h5>
+                <h5 class="card-title mb-0 d-flex align-items-center gap-2">
+                    Peta Deteksi Bangunan — Kab. Kab. Bandung
+                    <span class="vt-mode-pill cluster" id="vt-mode-pill" title="Zoom in (≥14) untuk lihat polygon">Cluster</span>
+                </h5>
                 <div class="d-flex flex-wrap gap-2 small">
                     <span><span class="legend-dot" style="background:#ef4444"></span>Satelit Tanpa Izin</span>
                     <span><span class="legend-dot" style="background:#22c55e"></span>Satelit SK Terbit</span>
@@ -746,6 +762,59 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('toggle-pbg-layer').addEventListener('change', loadMap);
     document.getElementById('filter-pbg-status').addEventListener('change', applyFilters);
     map.on('moveend', loadMap);
+
+    // ======================================================================
+    // Phase 11 — auto-switch between cluster mode (z<14) and polygon mode
+    // (z>=14). Driven by zoomend; safe to call repeatedly.
+    // - Cluster mode: the existing markers/pbgLayer cluster groups are the
+    //   right level of detail. The polygon canvas pane is faded out.
+    // - Polygon mode: cluster of satellite buildings becomes redundant
+    //   (each polygon is its own outline now), so it's removed from the map.
+    //   PBG points stay — there are only 76 of them and they convey
+    //   different info (permit dots, not building outlines).
+    // The actual polygon tile requests are already minZoom-gated (Phase 10),
+    // so this is mostly a UX layer; the marker fetch is also skipped in
+    // polygon mode so we don't waste bandwidth on dots no one sees.
+    // ======================================================================
+    let _vtMode = null; // 'cluster' | 'polygon'
+    const _modePill = document.getElementById('vt-mode-pill');
+    const _markerPaneEl = () => map.getPane('markerPane') || document.querySelector('.leaflet-marker-pane');
+    const _tilePaneEl   = () => map.getPane('tilePane')   || document.querySelector('.leaflet-tile-pane');
+
+    function applyZoomMode() {
+        const z = map.getZoom();
+        const next = (z >= VECTOR_TILES_MIN_ZOOM) ? 'polygon' : 'cluster';
+        if (next === _vtMode) return;
+        _vtMode = next;
+
+        if (next === 'polygon') {
+            // Cluster off, polygon visible
+            if (map.hasLayer(markers)) map.removeLayer(markers);
+            if (polygonLayer && _tilePaneEl()) _tilePaneEl().style.opacity = '1';
+            if (_modePill) { _modePill.textContent = 'Polygon'; _modePill.classList.remove('cluster'); _modePill.classList.add('polygon'); _modePill.title = 'Outline tiap bangunan — zoom out untuk kembali ke cluster'; }
+        } else {
+            // Polygon faded, cluster (respecting showSat toggle) back on
+            if (polygonLayer && _tilePaneEl()) _tilePaneEl().style.opacity = '0.0';
+            const f = readFilters();
+            if (f.showSat && !map.hasLayer(markers)) map.addLayer(markers);
+            if (_modePill) { _modePill.textContent = 'Cluster'; _modePill.classList.remove('polygon'); _modePill.classList.add('cluster'); _modePill.title = 'Zoom in (≥14) untuk lihat polygon'; }
+        }
+
+        const counter = document.getElementById('map-counter');
+        if (counter && next === 'polygon') {
+            counter.innerHTML = '<strong>Polygon mode</strong> — outline tiap bangunan dari deteksi satelit. Warna mengikuti status PBG. Zoom out untuk kembali ke cluster.';
+        }
+    }
+    map.on('zoomend', applyZoomMode);
+    // Skip the satellite cluster fetch in polygon mode (network savings).
+    const _origFetchSatellite = fetchSatellite;
+    fetchSatellite = async function (b, z, f, signal) {
+        if (_vtMode === 'polygon') { markers.clearLayers(); lastShown.sat = 0; return; }
+        return _origFetchSatellite(b, z, f, signal);
+    };
+    applyZoomMode(); // initial sync — runs at map's starting zoom (11)
+    // ======================================================================
+
     loadStats(); loadMap();
 });
 </script>

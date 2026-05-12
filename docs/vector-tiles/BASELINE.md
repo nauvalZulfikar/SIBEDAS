@@ -344,6 +344,34 @@ Visual rendering itself runs in the browser; final eyes-on verification
 opening the page in a real browser — Playwright is not installed in
 this repo and adding it is out of scope for Phase 10.
 
+## Phase 11 verification (2026-05-11)
+
+Layer-mode switch wired into `map.on('zoomend', applyZoomMode)` plus an
+initial sync at boot:
+
+| Zoom | Behaviour |
+|---|---|
+| < 14 | Cluster on (subject to `Tampilkan deteksi satelit` toggle), polygon canvas faded out (opacity 0). PBG cluster stays on. |
+| ≥ 14 | Cluster removed (and `fetchSatellite` short-circuits — no useless API calls), polygon canvas opaque, PBG cluster stays on. |
+
+CSS transition (`opacity .2s ease`) on `.leaflet-tile-pane` +
+`.leaflet-marker-pane` smooths the swap. A mode pill in the card header
+flips between **Cluster** (gray) and **Polygon** (blue) so the user
+knows which level of detail is active without inspecting the legend.
+
+Rendered HTML smoke check (logged in as superadmin):
+
+```
+grep "vt-mode-pill"           page.html  → 5 hits
+grep "Phase 11 — auto-switch" page.html  → 1
+grep "applyZoomMode"          page.html  → 3
+grep "VECTOR_TILES_MIN_ZOOM"  page.html  → 3
+npm run build                            → ✓ in 15.52s
+```
+
+Visual fade verification (Soreang at z 13→14→15) still requires
+browser eyes — Playwright not installed, deferred to manual QA.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:
