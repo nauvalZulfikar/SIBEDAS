@@ -432,6 +432,45 @@ Rendered HTML carries 8 references to the new helpers
 `npm run build` passes; visual confirmation (changing the dropdown ↔
 seeing polygons fade in/out) still pending browser QA.
 
+## Phase 14 verification (2026-05-11)
+
+Redis sidecar (`redis:7-alpine`) added to docker-compose with a 256 MB
+LRU cap, loopback-only `:6379`, in-memory only (`--save '' --appendonly no`).
+Predis 3.4.2 added to composer, `REDIS_CLIENT=predis` in `.env` so the
+local XAMPP install doesn't need the `phpredis` extension.
+
+TilesController now wraps the Martin upstream in `Cache::store('redis')`:
+
+| Hit | Behaviour |
+|---|---|
+| MISS | Forward to Martin, store `['status' => 200, 'body' => …]` for 3600 s, return `X-Cache: MISS`. Empty (204 → 200 empty) tiles cached too so Leaflet doesn't keep retrying. |
+| HIT  | Skip Martin entirely; return cached bytes + `X-Cache: HIT`. |
+| Redis down | Catch + log warning, fall through to a normal MISS (no 500 to the user). |
+
+Live curl sweep:
+
+| Request | X-Cache |
+|---|---|
+| 1st `?district=Soreang` | MISS |
+| 2nd `?district=Soreang` | HIT |
+| 3rd `?district=Soreang&min_area=200` | MISS |
+| 4th `?district=Soreang&min_area=200` | HIT |
+
+Redis verifies the writes landed in DB 1 (Laravel's default cache db),
+keyed by `sibedas_database_tile:{z}:{x}:{y}:{filter-hash}`. Stored
+value is the standard Laravel-serialized array with `status` + `body`.
+
+```
+$ docker exec sibedas_redis redis-cli -n 1 KEYS "*"
+sibedas_database_tile:14:13086:8513:105a7c46f54d
+sibedas_database_tile:14:13086:8513:6a8b98de8ead
+```
+
+Total wall-clock time is dominated by Sanctum auth + middleware (~0.6 s
+in local dev), but the controller's path through Martin vs. straight
+from cache saves the 48 ms PostGIS query per tile — and protects the
+upstream when the user count scales.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

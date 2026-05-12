@@ -10,6 +10,7 @@ prod.
 |---|---|---|
 | `postgis` | `sibedas_postgis` | Spatial DB holding `buildings` polygons (Phase 1+) |
 | `martin`  | `sibedas_martin`  | Vector tile server reading from PostGIS (Phase 6+). Loopback-only on `:3000`; never expose publicly — Laravel TilesController (Phase 8) is the only public path. |
+| `redis`   | `sibedas_redis`   | Tile cache for TilesController (Phase 14). 256 MB LRU, ephemeral (no AOF/RDB) — losing it is fine, next request just re-warms. Loopback-only on `:6379`. |
 
 Existing services (`app`, `nginx`, `db`) are **unchanged**.
 
