@@ -155,6 +155,44 @@ services:
                     memory: 256M
 
     # ==========================================================
+    # MARTIN: PostGIS vector-tile server
+    # Reachable only via the Laravel TilesController proxy (Phase 8).
+    # ==========================================================
+    martin:
+        image: ghcr.io/maplibre/martin:v0.14.2
+        container_name: sibedas_martin
+        restart: unless-stopped
+        environment:
+            # Martin substitutes ${MARTIN_DATABASE_URL} from this env into
+            # docker/martin/config.yaml at startup.
+            MARTIN_DATABASE_URL: "postgresql://${POSTGIS_USER:-sibedas_spatial}:${POSTGIS_PASSWORD:-changeme}@postgis:5432/${POSTGIS_DB:-sibedas_spatial}"
+            RUST_LOG: "martin=info"
+        command: ["--config", "/config/config.yaml"]
+        volumes:
+            - ./docker/martin/config.yaml:/config/config.yaml:ro
+        ports:
+            # Loopback only — public access must go through Laravel.
+            - "127.0.0.1:${MARTIN_PORT:-3000}:3000"
+        depends_on:
+            postgis:
+                condition: service_healthy
+        networks:
+            - sibedas_network
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+        deploy:
+            resources:
+                limits:
+                    memory: 256M
+                    cpus: "0.5"
+                reservations:
+                    memory: 64M
+
+    # ==========================================================
     # DATABASE: MariaDB 10.6
     # ==========================================================
     db:

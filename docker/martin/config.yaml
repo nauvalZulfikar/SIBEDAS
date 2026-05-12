@@ -1,0 +1,28 @@
+# Martin tile-server config — see https://maplibre.org/martin/config-file.html
+#
+# Martin is only ever reached through Laravel's TilesController (Phase 8),
+# which adds auth + role gating. Therefore we bind to all interfaces
+# *inside* the docker network and rely on docker-compose to map the host
+# port to 127.0.0.1 only — never expose Martin to the public internet.
+
+listen_addresses: '0.0.0.0:3000'
+worker_processes: 2
+
+# Connection string for the PostGIS sidecar. Env-substituted at start time
+# by the entrypoint (see docker-compose.yml command:).
+postgres:
+  connection_string: '${MARTIN_DATABASE_URL}'
+
+  # Auto-publish every table in the `public` schema that has a geometry
+  # column. With only `buildings` present that's exactly one source named
+  # `buildings`, served at /buildings/{z}/{x}/{y}.
+  auto_publish:
+    from_schemas:
+      - public
+
+  # Cap how much each tile can return. The default is huge; a 50k point
+  # ceiling protects the server if someone zooms way out with the layer
+  # toggled on (Phase 11 hides the layer below z14, but defence in depth).
+  default_srid: 4326
+  pool_size: 8
+  max_feature_count: 50000

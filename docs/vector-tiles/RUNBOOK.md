@@ -9,7 +9,7 @@ prod.
 | Component | Container | Purpose |
 |---|---|---|
 | `postgis` | `sibedas_postgis` | Spatial DB holding `buildings` polygons (Phase 1+) |
-| `martin` | `sibedas_martin` | Vector tile server reading from PostGIS (Phase 6+) |
+| `martin`  | `sibedas_martin`  | Vector tile server reading from PostGIS (Phase 6+). Loopback-only on `:3000`; never expose publicly — Laravel TilesController (Phase 8) is the only public path. |
 
 Existing services (`app`, `nginx`, `db`) are **unchanged**.
 
@@ -151,6 +151,54 @@ Google Open Buildings v3 so the real footprint replaces the square.
    docker compose exec app php artisan buildings:sync-postgis
    # — or wait until 03:00 WIB
    ```
+
+## 8. Phase 6 — Martin Tile Server
+
+Martin auto-discovers every geometry column in the `public` schema and
+publishes a source per column. With our `buildings` table that produces:
+
+| Source | Geometry column | Used for |
+|---|---|---|
+| `buildings.1` | `geom` (Polygon) | The polygon layer (Phase 10). |
+| `buildings`   | `centroid` (Point) | Reserved — possible dot fallback. |
+
+### Start / stop
+```bash
+docker compose up -d martin    # boots after postgis is healthy
+docker compose stop martin
+docker compose restart martin  # re-reads config.yaml
+```
+
+### Verify
+```bash
+curl http://127.0.0.1:3000/health      # 200 "OK"
+curl http://127.0.0.1:3000/catalog     # JSON listing sources
+curl -o tile.pbf http://127.0.0.1:3000/buildings.1/16/52346/34054
+file tile.pbf                          # → "data" (binary protobuf)
+```
+
+### Config
+
+`docker/martin/config.yaml` is mounted read-only. Changes need
+`docker compose restart martin`. Note the password is templated via
+`${MARTIN_DATABASE_URL}` env so credentials never leak into the file.
+
+### Resource budget
+
+| Layer | RAM | CPU |
+|---|---|---|
+| martin | 64 MB reserved / 256 MB cap | 0.5 cap |
+
+### Tile size profile
+
+Sampled at the Bandung-centre tile:
+
+| Zoom | Bytes | Notes |
+|---|---|---|
+| 12 | 2.5 MB | Too heavy — Phase 11 hides the polygon layer below z14 |
+| 14 | 442 KB | Acceptable as the entry zoom |
+| 16 | 33 KB  | Smooth |
+| 18 | 1.7 KB | Single-building scale |
 
 ### Detecting old square polygons
 

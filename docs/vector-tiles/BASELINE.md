@@ -180,6 +180,39 @@ A real refresh against the live BigQuery export is gated on the user
 authenticating with GCP (`gcloud auth application-default login`) and
 running `bash scripts/download_open_buildings.sh`.
 
+## Phase 6 verification (2026-05-11)
+
+Martin (`ghcr.io/maplibre/martin:v0.14.2`) deployed alongside PostGIS.
+
+```
+$ docker ps --filter name=sibedas_
+NAMES             STATUS                  PORTS
+sibedas_martin    Up (healthy)            127.0.0.1:3000->3000/tcp
+sibedas_postgis   Up (healthy)            127.0.0.1:5432->5432/tcp
+```
+
+Auto-discovery picked up both geometry columns on `buildings`:
+
+```
+$ curl http://127.0.0.1:3000/catalog
+{
+  "tiles": {
+    "buildings":   { "content_type": "application/x-protobuf", "description": "public.buildings.centroid" },
+    "buildings.1": { "content_type": "application/x-protobuf", "description": "public.buildings.geom" }
+  }
+}
+```
+
+Tile-size scan at the Bandung-centre column (justifies the z14
+minimum-zoom decision for the polygon layer in Phase 11):
+
+| Zoom | Tile bytes |
+|---|---|
+| 12 | 2,532,769 |
+| 14 | 442,356 |
+| 16 | 33,155 |
+| 18 | 1,733 |
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:
