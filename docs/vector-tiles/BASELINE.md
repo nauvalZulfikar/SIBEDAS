@@ -372,6 +372,39 @@ npm run build                            → ✓ in 15.52s
 Visual fade verification (Soreang at z 13→14→15) still requires
 browser eyes — Playwright not installed, deferred to manual QA.
 
+## Phase 12 verification (2026-05-11)
+
+Polygon click handler wired into `polygonLayer.on('click', …)`. On click:
+
+1. Extract `id` from MVT feature properties.
+2. Apply a vector-grid `setFeatureStyle` highlight (fat blue outline) and
+   remember `_highlightedId` so the next click resets the previous one.
+3. Open the existing `#verify-panel` with placeholder text, set `selId`
+   (the global already used by the cluster popup so the verify buttons
+   work unchanged).
+4. Fetch `/api/detected-buildings/{id}` for `estimated_area_m2` +
+   `building_district_name`, fill the panel.
+
+The existing `.verify-btn` handler now also refreshes the polygon style
+locally via `setFeatureStyle` when the page is in polygon mode — the
+status colour updates immediately without needing the next PostGIS
+sync cycle. The persisted update lands when Phase 4's cron runs (or a
+manual `buildings:sync-postgis`).
+
+Smoke checks (logged in as superadmin):
+
+| Probe | Result |
+|---|---|
+| `grep "Phase 12 — click a polygon"` | 1 |
+| `grep "setFeatureStyle"` | 6 (click highlight + reset + verify repaint) |
+| `grep "polygonLayer.on('click'"` | 1 |
+| `GET /api/detected-buildings/1` (Bearer) | 200, full JSON including area + district |
+| `npm run build` | ✓ in 13.98s |
+
+End-to-end UX (click polygon → see panel → press verify → polygon
+colour flips) still wants browser eyes; logic is wired and every
+intermediate API call returns successfully.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

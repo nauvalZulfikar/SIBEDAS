@@ -393,6 +393,58 @@ document.addEventListener('DOMContentLoaded', function() {
         polygonLayer.on('tileerror', e => console.warn('[polygon-tile] error loading tile', e?.coords));
         polygonLayer.addTo(map);
         window.__sibedas_polygonLayer = polygonLayer; // exposed for Phase 11/12 hooks
+
+        // ==================================================================
+        // Phase 12 — click a polygon → open the existing verify panel.
+        // Uses the same panel + selId state the cluster-marker popup uses,
+        // so the Confirmed Legal / Illegal buttons (already wired around
+        // line 727) just work without modification.
+        // ==================================================================
+        let _highlightedId = null;
+        polygonLayer.on('click', async function (e) {
+            const props = e?.layer?.properties || e?.propagatedFrom?.properties;
+            if (!props || !props.id) return;
+            const id = props.id;
+
+            // Visual highlight — fat outline + brighter fill. setFeatureStyle is
+            // a vectorgrid helper that lives only as long as the tile is loaded;
+            // re-applies on re-render.
+            if (_highlightedId && _highlightedId !== id) {
+                polygonLayer.resetFeatureStyle(_highlightedId);
+            }
+            polygonLayer.setFeatureStyle(id, {
+                fill: true,
+                fillColor: props.status_color || '#ef4444',
+                fillOpacity: 0.85,
+                color: '#0d6efd',
+                weight: 2.5,
+                opacity: 1,
+            });
+            _highlightedId = id;
+
+            // Fetch full record so we can fill the panel with area / district —
+            // the MVT only carries id + status_color + source + area_class.
+            selId = id;
+            document.getElementById('verify-id').textContent = '#' + id;
+            document.getElementById('verify-area').textContent = '...';
+            document.getElementById('verify-district').textContent = '...';
+            document.getElementById('verify-panel').style.display = 'block';
+
+            try {
+                const r = await fetch(`${API}/${id}`, { headers: H });
+                if (!r.ok) throw new Error(`detail HTTP ${r.status}`);
+                const detail = await r.json();
+                document.getElementById('verify-area').textContent =
+                    detail.estimated_area_m2 != null ? Number(detail.estimated_area_m2).toLocaleString('id-ID') : '—';
+                document.getElementById('verify-district').textContent =
+                    detail.building_district_name || detail.district || '—';
+            } catch (err) {
+                console.warn('[polygon-click] fetch detail failed', err);
+                document.getElementById('verify-area').textContent = '—';
+                document.getElementById('verify-district').textContent = '—';
+            }
+        });
+        // ==================================================================
     } else {
         console.warn('[vector-tiles] L.vectorGrid unavailable — polygon layer disabled.');
     }
@@ -726,9 +778,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.querySelectorAll('.verify-btn').forEach(b => b.addEventListener('click', async function() {
         if (!selId) return;
+        const newStatus = this.dataset.status;
         try {
-            const r = await fetch(`${API}/${selId}/status`, {method: 'PUT', headers: H, body: JSON.stringify({verification_status: this.dataset.status})});
+            const r = await fetch(`${API}/${selId}/status`, {method: 'PUT', headers: H, body: JSON.stringify({verification_status: newStatus})});
             if (!r.ok) throw new Error(`status HTTP ${r.status}`);
+
+            // Phase 12 — if we're in polygon mode the cluster refresh is a no-op
+            // (Phase 11 short-circuits fetchSatellite), so repaint the affected
+            // polygon locally so the colour change is immediate. The next
+            // PostGIS sync (Phase 4 cron) will make this permanent in the tile.
+            if (_vtMode === 'polygon' && polygonLayer && typeof polygonLayer.setFeatureStyle === 'function') {
+                const newColor = colors[newStatus] || '#ef4444';
+                try {
+                    polygonLayer.setFeatureStyle(Number(selId), {
+                        fill: true, fillColor: newColor, fillOpacity: 0.55,
+                        color: '#1f2937', weight: 0.4, opacity: 0.7,
+                    });
+                } catch (_) { /* setFeatureStyle throws if tile unloaded; ignore */ }
+            }
         } catch (e) { console.error('[updateStatus]', e); }
         document.getElementById('verify-panel').style.display = 'none';
         loadMap(); loadStats();
