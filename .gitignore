@@ -30,6 +30,8 @@ yarn-error.log
 *.sql
 backups/
 struktur.txt
+# but DO track PostGIS migration SQL — that's checked-in schema, not a dump
+!database/migrations/postgis/*.sql
 
 # Agent Mesh
 .agent.yaml
