@@ -531,6 +531,18 @@ class DetectedBuildingController extends Controller
 
     public function pbgGeojson(Request $request): JsonResponse
     {
+        $cacheKey = $this->geojsonCacheKey($request, 'pbg');
+        if ($cacheKey) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) return response()->json($cached);
+        }
+        $payload = $this->computePbgGeojson($request);
+        if ($cacheKey) Cache::put($cacheKey, $payload, 60);
+        return response()->json($payload);
+    }
+
+    private function computePbgGeojson(Request $request): array
+    {
         $q = DB::table('pbg_task_details as d')
             ->leftJoin('pbg_task as t', 't.uuid', '=', 'd.pbg_task_uid')
             ->whereIn('d.building_district_name', self::BANDUNG_SELATAN_DISTRICTS)
@@ -609,7 +621,7 @@ class DetectedBuildingController extends Controller
                 ]
             ];
         });
-        return response()->json(['type'=>'FeatureCollection','features'=>$features->values()]);
+        return ['type'=>'FeatureCollection','features'=>$features->values()];
     }
 
     private function invalidateStatsCache(): void
@@ -625,6 +637,56 @@ class DetectedBuildingController extends Controller
         }
     }
     public function geojson(Request $request): JsonResponse
+    {
+        // Short-TTL cache shared across users. Quantize the bbox to ~1.1 km
+        // (0.01°) so adjacent pans coalesce onto the same cache entry —
+        // critical for the cold-start case where the first three API calls
+        // can each take >1 s of MariaDB cold-cache time.
+        $cacheKey = $this->geojsonCacheKey($request, 'sat');
+        if ($cacheKey) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) return response()->json($cached);
+        }
+        $payload = $this->computeGeojson($request);
+        if ($cacheKey) Cache::put($cacheKey, $payload, 60);
+        return response()->json($payload);
+    }
+
+    private function geojsonCacheKey(Request $r, string $variant): ?string
+    {
+        // Only cache stable shapes — skip when the bbox is missing (rare,
+        // means the whole-kabupaten scan which is the slowest path and
+        // therefore the most worth caching, so allow it explicitly below).
+        $parts = [
+            'v' => 'gj1',
+            'k' => $variant,
+            'sw_lat' => $r->get('sw_lat'),
+            'sw_lng' => $r->get('sw_lng'),
+            'ne_lat' => $r->get('ne_lat'),
+            'ne_lng' => $r->get('ne_lng'),
+            'limit'  => (int) $r->get('limit', 2000),
+            'min_area' => $r->get('min_area'),
+            'district' => $r->get('district'),
+            'pbg_status' => $r->get('pbg_status'),
+            'function_type' => $r->get('function_type'),
+            'business_category' => $r->get('business_category'),
+            'data_source' => $r->get('data_source'),
+            'kbli_title' => $r->get('kbli_title'),
+            'unmatched_only' => $r->boolean('unmatched_only') ? '1' : '0',
+        ];
+        // Bucket the bbox to ~0.01° so neighbouring viewports share a cache
+        // entry. 0.01° ≈ 1.1 km at the equator, so the user sees at most a
+        // ~1 km misalignment of dots relative to their current pan — fine
+        // for the cluster representation.
+        foreach (['sw_lat', 'sw_lng', 'ne_lat', 'ne_lng'] as $b) {
+            if ($parts[$b] !== null && $parts[$b] !== '') {
+                $parts[$b] = number_format(round((float) $parts[$b] / 0.01) * 0.01, 3, '.', '');
+            }
+        }
+        return 'geojson:' . md5(json_encode($parts));
+    }
+
+    private function computeGeojson(Request $request): array
     {
         $q = $this->scopeBandungSelatan(DetectedBuilding::query());
         // Kalau bbox disediakan, force pakai composite lat/lng index (MariaDB planner cenderung salah pilih index matched_pbg_task_id pas WHERE IS NULL)
@@ -684,6 +746,6 @@ class DetectedBuildingController extends Controller
                     'pbg_status_name'=>$pbg?->status_name,
                 ]];
         });
-        return response()->json(['type'=>'FeatureCollection','features'=>$features->values()]);
+        return ['type'=>'FeatureCollection','features'=>$features->values()];
     }
 }
