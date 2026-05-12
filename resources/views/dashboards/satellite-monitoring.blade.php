@@ -309,42 +309,39 @@ document.addEventListener('DOMContentLoaded', function() {
     map.fitBounds(BS_BOUNDS);
     window.addEventListener('resize', clampMinZoom);
 
-    // Base map = Esri World Imagery (satellite). Required at every zoom
-    // level — staff Bapenda cross-checks building polygons against the
-    // actual rooftop image, so falling back to a street map removes the
-    // whole visual context.
+    // Satellite imagery — primary visual reference for cross-checking
+    // building footprints against actual rooftops. We layer two sources
+    // so the user always sees imagery, never a blank/cream canvas:
     //
-    // Esri only exposes one host (server.arcgisonline.com), so at zoom-out
-    // the browser's per-host parallel-connection cap (6 by default) makes
-    // initial paint slow. Mitigations applied below:
-    //   - keepBuffer: 4 → preload an extra ring of tiles in the background
-    //     so when user pans, tiles are already cached.
-    //   - NO bounds restriction → Leaflet caps requests to map.maxBounds
-    //     anyway; the extra tileLayer-level bounds was being too aggressive
-    //     and skipping edge tiles at the lowest zoom level.
-    //   - updateWhenZooming: false + updateWhenIdle: true → defer tile
-    //     fetches until the user stops scrolling, so we don't queue
-    //     intermediate-zoom tiles that will be thrown away.
+    //   1) Google Hybrid (4 subdomains mt0..mt3) — fast multi-host CDN,
+    //      paints in well under a second from Indonesia. Used as the
+    //      BASE so the first frame is satellite, not beige.
+    //   2) Esri World Imagery — single-host but higher-resolution and
+    //      the authoritative source. Stacked on top with full opacity;
+    //      once it loads it replaces the Google view seamlessly.
+    //
+    // Both layers free, no API key. No bounds restriction at tileLayer
+    // level — the map's maxBounds already caps panning, and a per-layer
+    // bounds was clipping edge tiles at the lowest zoom.
+    const googleHybrid = L.tileLayer(
+        'https://mt{s}.google.com/vt/lyrs=y&hl=id&x={x}&y={y}&z={z}',
+        {
+            subdomains: ['0','1','2','3'],
+            attribution: 'Google Satellite',
+            maxZoom: 19, noWrap: true, keepBuffer: 4,
+        }
+    ).addTo(map);
     const esriImagery = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
             attribution: 'Esri World Imagery',
-            maxZoom: 19,
-            noWrap: true,
-            keepBuffer: 4,
-            updateWhenZooming: false,
-            updateWhenIdle: true,
-            crossOrigin: true,
+            maxZoom: 19, noWrap: true, keepBuffer: 4,
         }
     ).addTo(map);
+    esriImagery.on('tileerror', e => console.warn('[esri tileerror]', e?.coords));
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
         maxZoom: 19, pane: 'overlayPane', bounds: BS_BOUNDS, noWrap: true,
-        updateWhenIdle: true,
     }).addTo(map);
-    // Force the initial tile fetch as soon as the layer is added so the
-    // satellite imagery starts loading immediately on page open instead of
-    // waiting for the first user interaction.
-    esriImagery.redraw();
 
     // Layer polygon kecamatan (GeoJSON dari BPS). Di-load async — tidak blocking render peta.
     const districtLayer = L.layerGroup().addTo(map);
