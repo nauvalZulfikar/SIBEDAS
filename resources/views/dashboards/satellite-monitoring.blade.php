@@ -160,6 +160,15 @@
                 <label class="form-label mb-1 small">Luas Minimum</label>
                 <select id="filter-min-area" class="form-select form-select-sm"><option value="">Semua (termasuk noise)</option><option value="50">50+ m²</option><option value="100">100+ m²</option><option value="200" selected>200+ m² (wajib PBG)</option><option value="500">500+ m²</option><option value="1000">1000+ m²</option></select>
             </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <label class="form-label mb-1 small">Polygon (zoom ≥14)</label>
+                <select id="filter-polygon-source" class="form-select form-select-sm">
+                    <option value="">Semua sumber</option>
+                    <option value="osm_buildings">🟩 OSM (outline asli, ~85k)</option>
+                    <option value="google_open_buildings">🟦 Google Open Buildings</option>
+                    <option value="microsoft_footprints">⬜ Microsoft (kotak approx, ~1.1jt)</option>
+                </select>
+            </div>
             <div class="col-xl-2 col-md-4 col-sm-12 d-flex align-items-end">
                 <button class="btn btn-outline-secondary btn-sm flex-fill" id="btn-reset-view">
                     <iconify-icon icon="solar:refresh-broken" class="me-1"></iconify-icon>Reset
@@ -175,7 +184,7 @@
                 <input class="form-check-input" type="checkbox" id="toggle-sat-layer" checked>
                 <label class="form-check-label" for="toggle-sat-layer">Tampilkan deteksi satelit</label>
             </div>
-            <span class="ms-auto"><iconify-icon icon="solar:info-circle-broken"></iconify-icon> Pilih kecamatan untuk auto-zoom.</span>
+            <span class="ms-auto"><iconify-icon icon="solar:info-circle-broken"></iconify-icon> Polygon outline asli paling padat di <b>Cicalengka</b>, <b>Cikancung</b>, <b>Rancaekek</b>, <b>Nagreg</b>, <b>Paseh</b>.</span>
         </div>
     </div>
 </div>
@@ -274,18 +283,22 @@ document.addEventListener('DOMContentLoaded', function() {
         'Baleendah':    [[-7.040, 107.590], [-6.970, 107.680]],
         'Banjaran':     [[-7.085, 107.555], [-7.030, 107.620]],
         'Cangkuang':    [[-7.065, 107.515], [-7.000, 107.595]],
+        'Cicalengka':   [[-6.998, 107.815], [-6.942, 107.910]],
+        'Cikancung':    [[-7.060, 107.778], [-6.985, 107.860]],
         'Cimaung':      [[-7.135, 107.545], [-7.065, 107.620]],
         'Ciparay':      [[-7.090, 107.615], [-6.985, 107.735]],
         'Ciwidey':      [[-7.135, 107.408], [-7.058, 107.475]],
         'Ibun':         [[-7.110, 107.752], [-7.058, 107.775]],
         'Kertasari':    [[-7.210, 107.665], [-7.155, 107.710]],
         'Majalaya':     [[-7.082, 107.740], [-6.995, 107.780]],
+        'Nagreg':       [[-7.045, 107.910], [-6.985, 107.985]],
         'Pacet':        [[-7.132, 107.697], [-7.085, 107.746]],
         'Pameungpeuk':  [[-7.030, 107.560], [-6.995, 107.610]],
         'Pangalengan':  [[-7.240, 107.515], [-7.125, 107.635]],
         'Paseh':        [[-7.072, 107.775], [-7.013, 107.795]],
         'Pasirjambu':   [[-7.190, 107.415], [-7.060, 107.500]],
         'Rancabali':    [[-7.200, 107.250], [-7.110, 107.410]],
+        'Rancaekek':    [[-6.998, 107.760], [-6.948, 107.840]],
         'Soreang':      [[-7.078, 107.320], [-7.005, 107.555]],
         'Solokanjeruk': [[-7.030, 107.720], [-6.965, 107.775]],
     };
@@ -420,8 +433,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const params = new URLSearchParams();
         const dist = document.getElementById('filter-district')?.value;
         const area = document.getElementById('filter-min-area')?.value;
+        const src  = document.getElementById('filter-polygon-source')?.value;
         if (dist) params.set('district', dist);
         if (area) params.set('min_area', area);
+        if (src)  params.set('source', src);
         const qs = params.toString();
         return '/api/tiles/buildings/{z}/{x}/{y}.pbf' + (qs ? '?' + qs : '');
     }
@@ -440,14 +455,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {},
             },
             vectorTileLayerStyles: {
-                buildings: (props) => ({
-                    fill: true,
-                    fillColor: props.status_color || '#ef4444',
-                    fillOpacity: 0.55,
-                    color: '#1f2937',
-                    weight: 0.4,
-                    opacity: 0.7,
-                }),
+                // Real polygons (OSM, Google) get a strong solid border so
+                // they stand out from the Microsoft square-envelope mass.
+                buildings: (props) => {
+                    const isReal = props.source === 'osm_buildings' || props.source === 'google_open_buildings';
+                    return {
+                        fill: true,
+                        fillColor: props.status_color || '#ef4444',
+                        fillOpacity: isReal ? 0.65 : 0.35,
+                        color: isReal ? '#0f172a' : '#9ca3af',
+                        weight: isReal ? 1.4 : 0.3,
+                        opacity: isReal ? 0.95 : 0.4,
+                        dashArray: isReal ? null : '2,2',
+                    };
+                },
             },
         });
         layer.on('tileerror', e => console.warn('[polygon-tile] error loading tile', e?.coords));
@@ -531,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Hooked on the same elements applyFilters listens to. The change event
     // for filter-district is registered later in this file too (for fitBounds),
     // so refreshPolygonLayer just gets a separate listener — order independent.
-    ['filter-district', 'filter-min-area'].forEach(id => {
+    ['filter-district', 'filter-min-area', 'filter-polygon-source'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', refreshPolygonLayer);
     });
