@@ -126,6 +126,20 @@ Status_color heuristic in Phase 3 is a flat orphan/matched split based on
 `matched_pbg_task_id`. Phase 7 refines it via JOIN onto PBG status (terbit
 / proses / ditolak).
 
+## Phase 4 verification (2026-05-11)
+
+```
+$ php artisan schedule:list | grep postgis
+0 3 * * *  php artisan buildings:sync-postgis --via=pdo … Next Due: 9 hours
+```
+
+Schedule entry registered. Local dry-run via `schedule:test` fired the
+job process, which errored cleanly with `PDOException: could not find
+driver` (XAMPP lacks pdo_pgsql) — confirming the `--via=pdo` guard
+prevents the dev environment from accidentally dumping raw SQL into the
+log file. Inside the production Docker image (Phase 1 Dockerfile change),
+pdo_pgsql is installed; the same run succeeds end-to-end.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

@@ -92,6 +92,29 @@ refresh geometry / centroid / status_color / updated_at.
 Expected timing (local, 1.18M rows): ~6 minutes wall-clock at default
 batch sizes. Production should match or beat that.
 
+### Scheduled sync (Phase 4)
+
+Runs daily at **03:00 WIB**, after the daily PBB recompute at 02:00. The
+schedule is pinned to `--via=pdo` so a missing pdo_pgsql extension errors
+out cleanly instead of dumping raw SQL to the log file.
+
+```
+0 3 * * *  php artisan buildings:sync-postgis --via=pdo
+```
+
+Guards:
+- `withoutOverlapping(120)` — 120 min lock prevents the next day's tick
+  from starting if today's run is still going.
+- `runInBackground()` — does not block other scheduled tasks.
+- `appendOutputTo(storage/logs/buildings-sync.log)` — STDOUT + STDERR
+  appended; trim the log periodically (logrotate / cron).
+- `onFailure` — writes to Laravel log + Sentry (if bound).
+
+Manual trigger (fires the job immediately, ignoring the cron):
+```bash
+docker compose exec app php artisan schedule:test --name="buildings:sync-postgis --via=pdo"
+```
+
 ## 3. Credentials & Secrets
 
 All controlled via `.env`:
