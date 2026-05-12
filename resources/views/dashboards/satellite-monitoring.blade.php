@@ -309,34 +309,42 @@ document.addEventListener('DOMContentLoaded', function() {
     map.fitBounds(BS_BOUNDS);
     window.addEventListener('resize', clampMinZoom);
 
-    // Base map (perf fix): Esri World Imagery is the visual reference for
-    // building cross-check, but its CDN can be 1-2 s per tile from Indonesia
-    // — at zoom-out 20+ tiles = 20+ s blank canvas. Use CartoDB Voyager
-    // (4-subdomain CDN, ~50 ms/tile globally) as the IMMEDIATE base so the
-    // map paints quickly, then overlay Esri imagery (semi-transparent so
-    // the basemap shows through during slow loads). Both layers exposed
-    // via the layer-control top-right.
-    const cartoBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        subdomains: ['a','b','c','d'],
-        attribution: '&copy; CARTO &copy; OpenStreetMap',
-        maxZoom: 19, bounds: BS_BOUNDS, noWrap: true,
-        keepBuffer: 4,
-    }).addTo(map);
-    const esriImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Esri World Imagery', maxZoom: 19, bounds: BS_BOUNDS, noWrap: true,
-        opacity: 0.85,
-        keepBuffer: 2,
-    }).addTo(map);
+    // Base map = Esri World Imagery (satellite). Required at every zoom
+    // level — staff Bapenda cross-checks building polygons against the
+    // actual rooftop image, so falling back to a street map removes the
+    // whole visual context.
+    //
+    // Esri only exposes one host (server.arcgisonline.com), so at zoom-out
+    // the browser's per-host parallel-connection cap (6 by default) makes
+    // initial paint slow. Mitigations applied below:
+    //   - keepBuffer: 4 → preload an extra ring of tiles in the background
+    //     so when user pans, tiles are already cached.
+    //   - NO bounds restriction → Leaflet caps requests to map.maxBounds
+    //     anyway; the extra tileLayer-level bounds was being too aggressive
+    //     and skipping edge tiles at the lowest zoom level.
+    //   - updateWhenZooming: false + updateWhenIdle: true → defer tile
+    //     fetches until the user stops scrolling, so we don't queue
+    //     intermediate-zoom tiles that will be thrown away.
+    const esriImagery = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+            attribution: 'Esri World Imagery',
+            maxZoom: 19,
+            noWrap: true,
+            keepBuffer: 4,
+            updateWhenZooming: false,
+            updateWhenIdle: true,
+            crossOrigin: true,
+        }
+    ).addTo(map);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
         maxZoom: 19, pane: 'overlayPane', bounds: BS_BOUNDS, noWrap: true,
+        updateWhenIdle: true,
     }).addTo(map);
-    // Layer control so the user can disable the slow satellite imagery if
-    // they want a pure-vector view.
-    L.control.layers(
-        null,
-        { 'CartoDB Voyager (cepat)': cartoBase, 'Esri Imagery (satelit)': esriImagery },
-        { collapsed: true, position: 'topright' }
-    ).addTo(map);
+    // Force the initial tile fetch as soon as the layer is added so the
+    // satellite imagery starts loading immediately on page open instead of
+    // waiting for the first user interaction.
+    esriImagery.redraw();
 
     // Layer polygon kecamatan (GeoJSON dari BPS). Di-load async — tidak blocking render peta.
     const districtLayer = L.layerGroup().addTo(map);
