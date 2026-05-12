@@ -118,6 +118,47 @@ Fitur baru (April 2026).
 - Statistik per kecamatan di **Dashboard → Kecamatan Stats**.
 - Untuk staf lapangan: filter "tanpa izin" → cetak daftar untuk verifikasi langsung.
 
+### 8a. Polygon Mode pada Peta (May 2026)
+
+Sejak update **vector-tiles**, peta `/dashboards/satellite-monitoring`
+otomatis switch antara dua tampilan tergantung tingkat zoom:
+
+| Zoom | Tampilan | Kapan dipakai |
+|---|---|---|
+| **< 14** (zoom out) | **Cluster mode** — titik berwarna dan angka cluster (mode lama) | Lihat distribusi se-kabupaten / per kecamatan |
+| **≥ 14** (zoom in) | **Polygon mode** — outline tepat tiap bangunan, warna sesuai status PBG | Verifikasi lapangan / audit lokasi spesifik |
+
+Indikator mode aktif muncul sebagai **badge** di kanan header peta:
+abu-abu *Cluster* atau biru *Polygon*.
+
+**Yang berubah pas pindah ke polygon mode:**
+- Tiap bangunan punya outline sendiri (bukan titik); warna ngikut status
+  PBG (hijau = SK Terbit, merah = Tanpa Izin, dll. — sama kaya legenda).
+- Klik polygon → **panel verifikasi** di sebelah kanan kebuka langsung
+  dengan ID, luas, dan kecamatan bangunan tsb. Tombol *Confirmed Illegal
+  / Legal / Under Review / False Positive* sama persis dengan cluster mode.
+- Filter **Kecamatan** dan **Luas Minimum** ikut menyaring polygon
+  (dropdown lain belum di-forward ke polygon — masih ngaruh ke statistik).
+
+**Siapa yang bisa lihat polygon?**
+Cuma role dengan PBB clearance **level_2 (admin) ke atas**. Akun
+`user` (level_1) tetap di cluster mode forever — polygon dianggap PII
+karena memetakan persis rumah individual.
+
+**Yang umum ditanyakan:**
+
+- *"Kok zoom dalam tetep cuma titik?"* → cek role login Anda. Kalau bukan
+  admin, polygon disengaja dimatikan.
+- *"Polygon-nya kotak banget, kayak ngarang."* → Itu **square envelope
+  fallback** untuk bangunan yang sumbernya cuma punya titik + luas
+  (Google centroid-only / Microsoft / Sentinel). Re-import dari Google
+  Open Buildings BigQuery dengan kolom `geometry` ngubah ini jadi
+  polygon asli (lihat `docs/vector-tiles/RUNBOOK.md` §7).
+- *"Polygon ga update setelah saya verify."* → biasanya hilang dalam 1–2
+  detik (cache invalidation di-queue async). Kalau masih lama, cek
+  bahwa queue worker jalan (`docker compose exec app supervisorctl
+  status laravel-queue-worker`).
+
 ---
 
 ## 9. Quick Search

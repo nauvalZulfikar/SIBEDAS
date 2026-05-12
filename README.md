@@ -45,7 +45,20 @@ Browser → Port 8000 → Nginx → PHP-FPM → MariaDB
 
 ```
 Internet → Reverse Proxy (80/443) → Internal Nginx → PHP-FPM → MariaDB
+                                                              ↓
+                                                   PostGIS + Martin + Redis (vector-tiles, optional)
 ```
+
+### Vector-tiles polygon layer (optional)
+
+Building footprint polygons on `/dashboards/satellite-monitoring` are
+served by three sidecar containers: `postgis` (spatial DB),
+`martin` (tile server), `redis` (1-hour tile cache). The feature is
+behind a flag — set `VECTOR_TILES_ENABLED=true` in `.env` after
+running `docker compose up -d postgis martin redis` + the one-time
+backfill (`docker compose exec app php artisan postgis:migrate && php artisan buildings:sync-postgis`).
+End-to-end design lives in `docs/vector-tiles/ARCHITECTURE.md`;
+ops procedures in `docs/vector-tiles/RUNBOOK.md`.
 
 ## 🔧 Configuration
 
