@@ -213,6 +213,48 @@ minimum-zoom decision for the polygon layer in Phase 11):
 | 16 | 33,155 |
 | 18 | 1,733 |
 
+## Phase 7 verification (2026-05-11)
+
+`building_tile(z, x, y, query_params json)` deployed in PostGIS and
+auto-published by Martin at `/building_tile/{z}/{x}/{y}`.
+
+**Subtle gotcha caught here**: `buildings.geom` is stored in 4326 (WGS84)
+but `ST_TileEnvelope(z, x, y)` returns 3857 (Web Mercator). The first cut
+of the function returned 0 bytes because `geom && envelope` was comparing
+raw coords across SRIDs. Fix is in `002_create_tile_function.sql`:
+
+- WHERE clause: `geom && ST_Transform(ST_TileEnvelope(...), 4326)` so the
+  GIST index on `buildings(geom)` is used.
+- ST_AsMVTGeom: `ST_Transform(geom, 3857)` projected to match the
+  envelope's CRS.
+
+### Filter sweep at Bandung centre
+
+| URL | Tile bytes |
+|---|---|
+| `building_tile/14/13086/8513` | 297,537 |
+| `building_tile/14/13086/8513?district=Soreang` | 15,499 |
+| `building_tile/14/13086/8513?source=osm_buildings` | 0 *(sparse here)* |
+| `building_tile/14/13086/8513?min_area=200` | 54,127 |
+| `building_tile/16/52346/34054` | 18,318 |
+| `building_tile/16/52346/34054?min_area=500` | 768 |
+| `building_tile/18/209387/136218` | 834 |
+
+The district filter alone shaves 20× off the payload — confirms server-side
+filtering belongs here, not in the browser.
+
+### Performance
+
+`EXPLAIN ANALYZE` of the tile function with district filter at z=14:
+
+```
+Execution Time: 48.639 ms
+Buffers: shared hit=1375
+```
+
+48 ms wall-clock for a filtered tile — sub-100ms is the budget for
+Phase 14 cache MISS path.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

@@ -189,6 +189,13 @@ file tile.pbf                          # → "data" (binary protobuf)
 |---|---|---|
 | martin | 64 MB reserved / 256 MB cap | 0.5 cap |
 
+### Tile sources
+
+| Path | Source | Filterable | Notes |
+|---|---|---|---|
+| `/buildings.1/{z}/{x}/{y}` | Raw table column (Phase 6) | no | Auto-published; emits every column as a property |
+| `/building_tile/{z}/{x}/{y}` | Function (Phase 7) | `?district=&status=&source=&min_area=` | **Use this** — narrow property set, server-side filter, SRID-correct |
+
 ### Tile size profile
 
 Sampled at the Bandung-centre tile:
