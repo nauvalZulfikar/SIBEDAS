@@ -90,6 +90,42 @@ Artisan command `php artisan postgis:migrate` registered (visible in
 `php artisan list`). Will be the canonical path in production
 (staging/prod Docker images bundle `pdo_pgsql`).
 
+## Phase 3 verification (2026-05-11)
+
+Full sync executed against the local 1.18M-row dataset:
+
+```
+$ php artisan buildings:sync-postgis --insert-batch=500 --via=stdout \
+    2> stderr.log | docker exec -i sibedas_postgis psql -q ...
+
+Total to sync: 1182221 (chunk=5000, insert_batch=500)
+Done. processed=1182221, synced=1182221, skipped=0, elapsed=365.22s
+```
+
+Throughput: **~3.2k rows/sec** end-to-end (MySQL read → PHP SQL build →
+psql apply), single thread.
+
+Spatial sanity checks (PostGIS):
+
+| Query | Result |
+|---|---|
+| `SELECT COUNT(*) FROM buildings` | 1,182,221 |
+| `WHERE geom && ST_MakeEnvelope(107.50, -7.05, 107.55, -7.00, 4326)` (Soreang bbox) | 28,173 |
+| `GROUP BY status_color` | green=10,073 / red=1,172,148 |
+| `GROUP BY source` | microsoft_footprints=1,097,530 / osm_buildings=84,691 |
+| Sample `ST_AsText(geom)` | `POLYGON((107.30006 -6.8009768, …))` |
+
+Disk:
+
+| | |
+|---|---|
+| Table size | 400 MB |
+| With indexes | 624 MB |
+
+Status_color heuristic in Phase 3 is a flat orphan/matched split based on
+`matched_pbg_task_id`. Phase 7 refines it via JOIN onto PBG status (terbit
+/ proses / ditolak).
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

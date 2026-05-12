@@ -63,6 +63,35 @@ Get-Content database/migrations/postgis/001_create_buildings.sql -Raw |
 Both routes are idempotent. Migrations are tracked in the
 `postgis_migrations` table.
 
+### Sync buildings (Phase 3)
+
+The command `buildings:sync-postgis` mirrors MySQL → PostGIS.
+
+Production / staging (uses Laravel DB::connection('postgis')):
+```bash
+docker compose exec app php artisan buildings:sync-postgis
+```
+
+Dev (XAMPP without `pdo_pgsql`) — print SQL to stdout, pipe to psql:
+```bash
+php artisan buildings:sync-postgis --insert-batch=500 --via=stdout \
+  2> /dev/null \
+  | docker exec -i sibedas_postgis psql -U sibedas_spatial -d sibedas_spatial -q
+```
+
+Options:
+- `--limit=N` — cap rows (testing)
+- `--chunk=5000` — MySQL read batch size
+- `--insert-batch=500` — PostGIS upsert batch size
+- `--from-id=N` — resume from a primary key (exclusive)
+- `--via=auto|pdo|stdout` — output backend (auto picks pdo if extension loaded)
+
+Sync is idempotent: rows are upserted on conflict by `id`. Re-runs only
+refresh geometry / centroid / status_color / updated_at.
+
+Expected timing (local, 1.18M rows): ~6 minutes wall-clock at default
+batch sizes. Production should match or beat that.
+
 ## 3. Credentials & Secrets
 
 All controlled via `.env`:
