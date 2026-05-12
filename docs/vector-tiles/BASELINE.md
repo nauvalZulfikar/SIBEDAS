@@ -41,6 +41,27 @@ This document freezes the "before" picture so each phase's regression can be che
 | `osm_buildings` | (sparse, infill) | ✅ stored in `geometry_geojson` |
 | `sentinel_cv` | (few) | ❌ resolution too coarse |
 
+## Phase 1 verification (2026-05-11)
+
+PostGIS sidecar provisioned and reachable:
+
+```
+$ docker compose exec postgis psql -U sibedas_spatial -d sibedas_spatial \
+    -c "SELECT PostGIS_Version(), version();"
+            postgis_version            |   version
+---------------------------------------+-------------------------------
+ 3.4 USE_GEOS=1 USE_PROJ=1 USE_STATS=1 | PostgreSQL 16.4 on x86_64-pc-linux-musl
+```
+
+Container `sibedas_postgis` healthy on port `127.0.0.1:5432`. Volume
+`sibedas_postgis_data` created. Laravel connection `postgis` defined in
+`config/database.php` (unused until Phase 3 sync command lands).
+
+Local XAMPP PHP lacks `pdo_pgsql`; the Docker production image now installs
+it (`Dockerfile` updated in both `local` and `production` stages). Local
+verification via tinker requires enabling the extension manually — skip if
+not testing the connection locally.
+
 ## Acceptance criteria for Phase 20 (final rollout)
 
 When polygons are live, the following must hold:

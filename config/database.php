@@ -99,6 +99,23 @@ return [
             'sslmode' => 'prefer',
         ],
 
+        // PostGIS sidecar — used only by vector-tiles polygon layer.
+        // Activated by VECTOR_TILES_ENABLED in config/features.php.
+        // Schema migrations live in database/migrations/postgis/.
+        'postgis' => [
+            'driver' => 'pgsql',
+            'host' => env('POSTGIS_HOST', '127.0.0.1'),
+            'port' => env('POSTGIS_PORT', '5432'),
+            'database' => env('POSTGIS_DB', 'sibedas_spatial'),
+            'username' => env('POSTGIS_USER', 'sibedas_spatial'),
+            'password' => env('POSTGIS_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

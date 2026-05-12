@@ -120,6 +120,41 @@ services:
                     cpus: "0.5"
 
     # ==========================================================
+    # POSTGIS: Spatial database for building-footprint polygons
+    # (used by vector-tiles polygon layer — see docs/vector-tiles/)
+    # Stays idle / unused until VECTOR_TILES_ENABLED=true.
+    # ==========================================================
+    postgis:
+        image: postgis/postgis:16-3.4-alpine
+        container_name: sibedas_postgis
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: ${POSTGIS_DB:-sibedas_spatial}
+            POSTGRES_USER: ${POSTGIS_USER:-sibedas_spatial}
+            POSTGRES_PASSWORD: ${POSTGIS_PASSWORD:-changeme}
+        ports:
+            # Bind to loopback only; the app reaches it via the docker network.
+            # Exposed on host for one-off psql/pgAdmin from the VPS shell.
+            - "127.0.0.1:${POSTGIS_PORT:-5432}:5432"
+        volumes:
+            - sibedas_postgis_data:/var/lib/postgresql/data
+        networks:
+            - sibedas_network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGIS_USER:-sibedas_spatial} -d ${POSTGIS_DB:-sibedas_spatial}"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+        deploy:
+            resources:
+                limits:
+                    memory: 1G
+                    cpus: "0.5"
+                reservations:
+                    memory: 256M
+
+    # ==========================================================
     # DATABASE: MariaDB 10.6
     # ==========================================================
     db:
@@ -167,6 +202,8 @@ services:
 
 volumes:
     sibedas_dbdata:
+        driver: local
+    sibedas_postgis_data:
         driver: local
     sibedas_certbot_www:
         driver: local
