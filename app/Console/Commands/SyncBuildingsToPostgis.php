@@ -76,9 +76,20 @@ class SyncBuildingsToPostgis extends Command
         while ($processed < $total) {
             $remaining = $total - $processed;
             $take = min($chunk, $remaining);
-            $rows = $mysql->table('detected_buildings')
-                ->where('id', '>', $lastId)
-                ->orderBy('id')
+            // LEFT JOIN pbg_task so statusColor() can emit the 4-state
+            // colour palette (terbit / proses / ditolak / tanpa_izin) that
+            // matches the cluster-mode dot legend, instead of the previous
+            // binary red/green orphan-vs-matched.
+            $rows = $mysql->table('detected_buildings as db')
+                ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
+                ->select(
+                    'db.id', 'db.latitude', 'db.longitude', 'db.estimated_area_m2',
+                    'db.detection_source', 'db.geometry_geojson', 'db.matched_pbg_task_id',
+                    'db.verification_status', 'db.building_district_name', 'db.building_ward_name',
+                    'pt.status as pbg_status'
+                )
+                ->where('db.id', '>', $lastId)
+                ->orderBy('db.id')
                 ->limit($take)
                 ->get();
             if ($rows->isEmpty()) break;
@@ -180,12 +191,24 @@ class SyncBuildingsToPostgis extends Command
         return stripos($json, '"polygon"') !== false || stripos($json, '"multipolygon"') !== false;
     }
 
+    /**
+     * 4-state colour palette aligned with the cluster-mode dot legend in
+     * resources/views/dashboards/satellite-monitoring.blade.php (STATE_COLOR).
+     * PBG status codes come from the join on pbg_task.status:
+     *   - 20            → terbit (SK Terbit, green)
+     *   - 3, 9, 22      → ditolak (red-grey)
+     *   - other non-null → proses (yellow)
+     *   - NULL match     → tanpa_izin (red)
+     */
     private function statusColor(object $row): string
     {
-        // Same palette as the existing satellite-monitoring legend.
-        // Refined by PBG status JOIN in Phase 7; for now a flat heuristic.
-        if (!$row->matched_pbg_task_id) return '#ef4444'; // red — orphan
-        return '#22c55e'; // green — matched
+        if (!$row->matched_pbg_task_id) return '#ef4444';     // tanpa_izin
+        $s = $row->pbg_status ?? null;
+        if ($s === null)                  return '#ef4444';   // orphan FK → treat as tanpa_izin
+        $s = (int) $s;
+        if ($s === 20)                    return '#22c55e';   // terbit
+        if (in_array($s, [3, 9, 22], true)) return '#6b7280'; // ditolak
+        return '#f59e0b';                                      // proses
     }
 
     /**

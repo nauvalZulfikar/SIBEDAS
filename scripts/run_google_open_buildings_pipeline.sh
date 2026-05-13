@@ -15,6 +15,21 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
+# Ensure the gcloud SDK is reachable when this script is invoked from a
+# shell that started before the user PATH was updated (Git Bash inherits
+# PATH at launch, not at command time).
+for candidate in \
+    "/d/dev-tools/google-cloud-sdk/bin" \
+    "D:/dev-tools/google-cloud-sdk/bin" \
+    "$HOME/google-cloud-sdk/bin"; do
+    if [ -d "$candidate" ]; then
+        case ":$PATH:" in
+            *":$candidate:"*) ;;
+            *) export PATH="$candidate:$PATH" ;;
+        esac
+    fi
+done
 TS=$(date +%Y%m%d-%H%M%S)
 LOG="tmp/google-pipeline-${TS}.log"
 mkdir -p tmp

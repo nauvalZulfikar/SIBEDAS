@@ -30,6 +30,17 @@ DECLARE
     f_source         text := NULLIF(query_params->>'source', '');
     f_exclude_source text := NULLIF(query_params->>'exclude_source', '');
     f_min_area       numeric := NULLIF(query_params->>'min_area', '')::numeric;
+    -- permit_state maps to the 4-color palette stored in buildings.status_color
+    -- (terbit / proses / ditolak / luar_sistem aka tanpa_izin).
+    f_permit_state   text := NULLIF(query_params->>'permit_state', '');
+    f_permit_color   text := CASE LOWER(f_permit_state)
+        WHEN 'terbit'      THEN '#22c55e'
+        WHEN 'proses'      THEN '#f59e0b'
+        WHEN 'ditolak'     THEN '#6b7280'
+        WHEN 'luar_sistem' THEN '#ef4444'
+        WHEN 'tanpa_izin'  THEN '#ef4444'
+        ELSE NULL
+    END;
 BEGIN
     -- buildings.geom is stored in 4326; ST_TileEnvelope returns 3857.
     -- Project the envelope back to 4326 for the && index probe so the
@@ -60,6 +71,7 @@ BEGIN
           AND (f_status         IS NULL OR b.verification_status = f_status)
           AND (f_source         IS NULL OR b.source = f_source)
           AND (f_exclude_source IS NULL OR b.source <> f_exclude_source)
+          AND (f_permit_color   IS NULL OR b.status_color = f_permit_color)
           AND (f_min_area       IS NULL OR b.area_m2 >= f_min_area)
         LIMIT 50000
     ) AS tile

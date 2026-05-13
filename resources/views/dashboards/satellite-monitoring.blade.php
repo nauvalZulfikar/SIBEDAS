@@ -435,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dist = document.getElementById('filter-district')?.value;
         const area = document.getElementById('filter-min-area')?.value;
         const src  = document.getElementById('filter-polygon-source')?.value;
+        const pbg  = document.getElementById('filter-pbg-status')?.value;
         if (dist) params.set('district', dist);
         if (area) params.set('min_area', area);
         // 'real_only' is a synthetic UI value — translate it to
@@ -443,6 +444,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // straight through as source=.
         if (src === 'real_only') params.set('exclude_source', 'microsoft_footprints');
         else if (src) params.set('source', src);
+        // PBG status filter maps onto the precomputed status_color in
+        // PostGIS (terbit/proses/ditolak/luar_sistem).
+        if (pbg) params.set('permit_state', pbg);
         const qs = params.toString();
         return '/api/tiles/buildings/{z}/{x}/{y}.pbf' + (qs ? '?' + qs : '');
     }
@@ -558,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Hooked on the same elements applyFilters listens to. The change event
     // for filter-district is registered later in this file too (for fitBounds),
     // so refreshPolygonLayer just gets a separate listener — order independent.
-    ['filter-district', 'filter-min-area', 'filter-polygon-source'].forEach(id => {
+    ['filter-district', 'filter-min-area', 'filter-polygon-source', 'filter-pbg-status'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', refreshPolygonLayer);
     });
