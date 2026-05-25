@@ -128,6 +128,19 @@ services:
         image: postgis/postgis:16-3.4-alpine
         container_name: sibedas_postgis
         restart: unless-stopped
+        # Tile-function workload is GiST-index heavy on 5.2M building rows;
+        # the default 128 MB shared_buffers keeps recycling pages → cold queries.
+        # 2 GB buffers + 3 GB effective_cache_size lets the geom index stay
+        # resident, cutting tile-query time ~5x. work_mem=64MB helps the
+        # ST_Transform sort/hash steps avoid spilling to disk.
+        command: >-
+            postgres
+            -c shared_buffers=2GB
+            -c effective_cache_size=3GB
+            -c work_mem=64MB
+            -c maintenance_work_mem=512MB
+            -c max_wal_size=2GB
+            -c random_page_cost=1.1
         environment:
             POSTGRES_DB: ${POSTGIS_DB:-sibedas_spatial}
             POSTGRES_USER: ${POSTGIS_USER:-sibedas_spatial}
@@ -149,10 +162,10 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 1G
-                    cpus: "0.5"
+                    memory: 4G
+                    cpus: "1.0"
                 reservations:
-                    memory: 256M
+                    memory: 2G
 
     # ==========================================================
     # REDIS: tile cache for the vector-tiles polygon layer (Phase 14).

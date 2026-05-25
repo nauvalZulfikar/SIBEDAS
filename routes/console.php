@@ -32,3 +32,24 @@ Schedule::command("buildings:sync-postgis --via=pdo")
         }
     });
 
+// ====================================================================
+// Tier-1 nightly aggregate refresh — runs after the postgis mirror at
+// 03:00 has had ~30 minutes to settle. Cheap (~1-2 min) so daily is fine.
+// ====================================================================
+Schedule::command("sibedas:nightly --skip-sync")
+    ->dailyAt("03:30")
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/sibedas-nightly.log'))
+    ->onFailure(fn () => \Log::error('Scheduled sibedas:nightly failed — see storage/logs/sibedas-nightly.log'));
+
+// ====================================================================
+// Tier-2 weekly warmup — tile cache + 31 KRK PDF pre-cache. Heavier
+// (~15-30 min) so once a week, Sunday → Monday early morning.
+// ====================================================================
+Schedule::command("sibedas:weekly")
+    ->weeklyOn(1, "04:00")               // 1 = Monday
+    ->withoutOverlapping(180)
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/sibedas-weekly.log'))
+    ->onFailure(fn () => \Log::error('Scheduled sibedas:weekly failed — see storage/logs/sibedas-weekly.log'));
+

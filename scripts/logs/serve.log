@@ -1,0 +1,40 @@
+  forking is not supported on this platform
+
+   INFO  Server running on [http://127.0.0.1:8002].  
+
+  Press Ctrl+C to stop the server
+
+  2026-05-18 12:16:20 /login .................................................................................. ~ 48s
+  2026-05-18 12:16:20 /login ............................................................................... ~ 1m 16s
+  2026-05-18 12:17:08 ......................................................................................... ~ 28s
+
+   INFO  Environment modified. Restarting server...  
+
+  forking is not supported on this platform
+
+   INFO  Server running on [http://127.0.0.1:8002].  
+
+  Press Ctrl+C to stop the server
+
+  2026-05-18 12:58:43 /api/bigdata-resume ................................................................ ~ 520.99ms
+  2026-05-18 12:58:44 /api/bigdata-resume ...................................................................... ~ 1s
+  2026-05-18 12:58:45 ......................................................................................... ~ 52s
+  2026-05-18 12:58:44 ......................................................................................... ~ 54s
+  forking is not supported on this platform
+
+   INFO  Server running on [http://127.0.0.1:8002].  
+
+  Press Ctrl+C to stop the server
+
+  forking is not supported on this platform
+
+   INFO  Server running on [http://127.0.0.1:8002].  
+
+  Press Ctrl+C to stop the server
+
+  forking is not supported on this platform
+
+   INFO  Server running on [http://127.0.0.1:8002].  
+
+  Press Ctrl+C to stop the server
+

@@ -37,6 +37,30 @@ use Illuminate\Support\Facades\Route;
 
 require __DIR__ . '/auth.php';
 
+// Phase 3 — KRK print view. Public on purpose so headless Chrome can
+// load it without solving Sanctum/Cookie auth. Tokenized signed URL in
+// the future (TODO: ->middleware('signed') once we issue per-render tokens).
+Route::get('/dashboards/krk-print/{kecamatan}', [\App\Http\Controllers\Dashboards\KrkPrintController::class, 'show'])
+    ->name('dashboard.krk-print')
+    ->where('kecamatan', '[A-Za-z ]+');
+
+// Phase 3 — server-rendered KRK PDF download. Auth'd in production but
+// open during dev so headless flow works without cookie passthrough.
+Route::get('/dashboards/krk-export/{kecamatan}.pdf', [\App\Http\Controllers\Dashboards\KrkPrintController::class, 'export'])
+    ->name('dashboard.krk-export')
+    ->where('kecamatan', '[A-Za-z ]+');
+
+// Phase 3 — same-origin proxy for RTRW vector tiles. Public, read-only;
+// avoids the CORS preflight that breaks Leaflet vectorGrid when fetching
+// Martin directly. Only the rtrw_pola_ruang.1 source is exposed.
+Route::get('/print-tiles/rtrw/{z}/{x}/{y}', function (int $z, int $x, int $y) {
+    $upstream = "http://127.0.0.1:3000/rtrw_pola_ruang.1/{$z}/{$x}/{$y}";
+    $resp = \Illuminate\Support\Facades\Http::timeout(8)->get($upstream);
+    return response($resp->body(), $resp->status())
+        ->header('Content-Type', 'application/x-protobuf')
+        ->header('Cache-Control', 'public, max-age=3600');
+})->where(['z' => '[0-9]+', 'x' => '[0-9]+', 'y' => '[0-9]+']);
+
 Route::get('/search', [QuickSearchController::class, 'index'])->name('search');
 Route::get('/public-search', [QuickSearchController::class, 'public_search'])->name('public-search');
 Route::get('/search-result', [QuickSearchController::class, 'search_result'])->name('search-result');
@@ -68,6 +92,7 @@ Route::group(['middleware' => ['auth', 'validate.api.token.web']], function(){
         Route::get('/outside-system', [PotentialsController::class, 'outside_system'])->name('dashboard.potentials.outside_system');
         Route::get('/satellite-monitoring', [\App\Http\Controllers\Dashboards\SatelliteMonitoringController::class, 'index'])->name('dashboard.satellite-monitoring');
         Route::get('/satelit-pbg', [\App\Http\Controllers\Dashboards\SatelliteMonitoringController::class, 'index'])->name('dashboard.satelit-pbg');
+
     });
     
     // settings

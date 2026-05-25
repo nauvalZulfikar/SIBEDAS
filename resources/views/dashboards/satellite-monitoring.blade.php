@@ -48,8 +48,17 @@
         0%, 90% { opacity: 1; } 100% { opacity: 0; }
     }
     .district-label {
-        background: rgba(13,110,253,0.85); color: #fff; font-size: 10px; font-weight: 600;
-        padding: 2px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none;
+        background: rgba(15,23,42,0.88); color: #fff; font-size: 10px; font-weight: 500;
+        padding: 4px 7px; border-radius: 4px; white-space: nowrap; pointer-events: none;
+        border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.35); line-height: 1.35;
+        text-align: left;
+    }
+    .district-label strong { font-weight: 700; font-size: 11px; }
+    .district-label .kc-stat { display: flex; align-items: center; gap: 4px; margin-top: 1px; }
+    .district-label .kc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .desa-label {
+        background: rgba(37,99,235,0.92); color: #fff; font-size: 9px; font-weight: 600;
+        padding: 1px 5px; border-radius: 3px; white-space: nowrap; pointer-events: none;
         border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 </style>
@@ -106,6 +115,10 @@
                 <label class="form-label mb-1 small">Kecamatan</label>
                 <select id="filter-district" class="form-select form-select-sm"><option value="">Semua Kecamatan</option></select>
             </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <label class="form-label mb-1 small">Desa / Kelurahan</label>
+                <select id="filter-desa" class="form-select form-select-sm" disabled><option value="">Pilih kecamatan dulu</option></select>
+            </div>
             <div class="col-xl-3 col-md-6 col-sm-12">
                 <label class="form-label mb-1 small">Jenis Bangunan</label>
                 <select id="filter-data-source" class="form-select form-select-sm">
@@ -158,25 +171,28 @@
             </div>
             <div class="col-xl-2 col-md-4 col-sm-6">
                 <label class="form-label mb-1 small">Luas Minimum</label>
-                <select id="filter-min-area" class="form-select form-select-sm"><option value="">Semua (termasuk noise)</option><option value="50">50+ m²</option><option value="100">100+ m²</option><option value="200" selected>200+ m² (wajib PBG)</option><option value="500">500+ m²</option><option value="1000">1000+ m²</option></select>
+                <select id="filter-min-area" class="form-select form-select-sm"><option value="" selected>Semua (termasuk noise)</option><option value="50">50+ m²</option><option value="100">100+ m²</option><option value="200">200+ m² (wajib PBG)</option><option value="500">500+ m²</option><option value="1000">1000+ m²</option></select>
             </div>
             <div class="col-xl-2 col-md-4 col-sm-6">
-                <label class="form-label mb-1 small">Sumber polygon (zoom ≥14)</label>
-                <select id="filter-polygon-source" class="form-select form-select-sm">
-                    <option value="real_only" selected>🟩 Outline asli (OSM + Google) ~85k</option>
-                    <option value="osm_buildings">  • Hanya OSM (~85k)</option>
-                    <option value="google_open_buildings">  • Hanya Google Open Buildings (~5 test)</option>
-                    <option value="">Semua termasuk approximation</option>
-                    <option value="microsoft_footprints">⚠️ Microsoft kotak approx (~1.1jt — bukan outline asli)</option>
+                <label class="form-label mb-1 small">Kategori Fungsi</label>
+                <select id="filter-usage-category" class="form-select form-select-sm">
+                    <option value="" selected>Semua</option>
+                    <option value="usaha">🟦 Usaha (komersial/UMKM)</option>
+                    <option value="non_usaha">🟩 Non-Usaha (hunian/sosial)</option>
                 </select>
             </div>
-            <div class="col-xl-2 col-md-4 col-sm-12 d-flex align-items-end">
+            <div class="col-xl-2 col-md-4 col-sm-12 d-flex align-items-end gap-2">
                 <button class="btn btn-outline-secondary btn-sm flex-fill" id="btn-reset-view">
                     <iconify-icon icon="solar:refresh-broken" class="me-1"></iconify-icon>Reset
                 </button>
+                <button class="btn btn-primary btn-sm flex-fill" id="btn-export-krk" title="Generate Lampiran KRK A4 untuk kecamatan terpilih">
+                    <iconify-icon icon="solar:document-broken" class="me-1"></iconify-icon>Cetak KRK
+                </button>
             </div>
         </div>
-        <div class="mt-2 d-flex flex-wrap gap-3 align-items-center small text-muted">
+        <div class="mt-2 d-flex flex-wrap gap-3 align-items-center small text-muted" style="display:none !important">
+            {{-- 2026-05-19: cluster pin toggles di-hide. Keep inputs alive so existing JS
+                 references (toggle-pbg-layer, toggle-sat-layer) jangan throw null deref. --}}
             <div class="form-check form-switch m-0">
                 <input class="form-check-input" type="checkbox" id="toggle-pbg-layer" checked>
                 <label class="form-check-label" for="toggle-pbg-layer">Tampilkan titik PBG (izin dari database)</label>
@@ -195,17 +211,18 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 d-flex align-items-center gap-2">
-                    Peta Deteksi Bangunan — Kab. Kab. Bandung
+                    Peta Deteksi Bangunan — Kab. Bandung
                     <span class="vt-mode-pill cluster" id="vt-mode-pill" title="Zoom in (≥14) untuk lihat polygon">Cluster</span>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success" id="stat-refreshed" style="font-weight:500;font-size:11px" title="Tanggal aggregate stats terakhir di-refresh">🟢 Update: <span id="stat-refreshed-val">—</span></span>
                 </h5>
                 <div class="d-flex flex-wrap gap-2 small">
-                    <span><span class="legend-dot" style="background:#ef4444"></span>Satelit Tanpa Izin</span>
-                    <span><span class="legend-dot" style="background:#22c55e"></span>Satelit SK Terbit</span>
-                    <span><span class="legend-dot" style="background:#f59e0b"></span>Satelit Proses/Dalam Pengurusan</span>
-                    <span><span class="legend-dot" style="background:#6b7280"></span>Satelit PBG Ditolak</span>
+                    <span class="fw-semibold">Polygon (zoom ≥14):</span>
+                    <span><span class="legend-dot" style="background:#2563eb"></span>Non-Usaha (solid)</span>
+                    <span><span class="legend-dot" style="background:#2563eb;border:2px dashed #1e3a8a;width:14px;height:10px;border-radius:2px"></span>Usaha (strip-strip)</span>
+                    <span class="text-muted">· solid = PBG confirmed, pudar = predicted</span>
                     <span class="mx-2">│</span>
-                    <span><span class="legend-dot" style="background:#0d6efd;border:2px solid #fff;box-shadow:0 0 0 1px #0d6efd"></span>Titik PBG SK Terbit</span>
-                    <span><span class="legend-dot" style="background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 1px #f59e0b"></span>Titik PBG Proses</span>
+                    <span><span class="legend-dot" style="background:#0d6efd;border:2px solid #fff;box-shadow:0 0 0 1px #0d6efd"></span>PBG Terbit</span>
+                    <span><span class="legend-dot" style="background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 1px #f59e0b"></span>PBG Proses</span>
                 </div>
             </div>
             <div class="card-body p-0"><div id="satellite-map-wrapper"><div id="satellite-map"></div><div id="map-loading"><div class="spinner"></div><span>Memuat data...</span></div><div id="vt-hint" class="vt-hint"><iconify-icon icon="solar:zoom-in-broken" inline></iconify-icon> Zoom dalam ke level 14+ buat lihat outline polygon tiap bangunan</div></div></div>
@@ -309,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
         maxBounds: BS_BOUNDS,
         maxBoundsViscosity: 1.0,
         worldCopyJump: false,
-        maxZoom: 18,
+        maxZoom: 21,
     }).setView([-7.05, 107.55], 11);
     // Expose for headless QA scripts (Playwright). No-op in production usage.
     window.map = map;
@@ -340,7 +357,9 @@ document.addEventListener('DOMContentLoaded', function() {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
             attribution: 'Esri World Imagery',
-            maxZoom: 19, noWrap: true, keepBuffer: 4,
+            // Esri native imagery caps at 19; allow Leaflet to keep scaling
+            // tiles up to map zoom 21 (upscaled imagery, blurrier but useful).
+            maxZoom: 21, maxNativeZoom: 19, noWrap: true, keepBuffer: 4,
         }
     ).addTo(map);
     const googleHybrid = L.tileLayer(
@@ -348,7 +367,9 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             subdomains: ['0','1','2','3'],
             attribution: 'Google Satellite',
-            maxZoom: 19, noWrap: true, keepBuffer: 4,
+            // Google hybrid has native imagery up to z21 in dense urban areas;
+            // Kab. Bandung typically z20 max — let Leaflet upscale if needed.
+            maxZoom: 21, maxNativeZoom: 21, noWrap: true, keepBuffer: 4,
         }
     ).addTo(map);
     googleHybrid.on('tileerror', e => console.warn('[google tileerror]', e?.coords));
@@ -359,6 +380,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // Layer polygon kecamatan (GeoJSON dari BPS). Di-load async — tidak blocking render peta.
     const districtLayer = L.layerGroup().addTo(map);
     const kecPolygonByName = {}; // name -> Leaflet Layer
+    // Tier 1 filter-gated rendering — choropleth state.
+    let kecChoroplethData = {}; // {name: count} dari stats.unmatched_by_district
+    let kecPbgData = {};        // {name: {terbit, proses, ditolak}} dari stats.pbg_by_district
+    let kecChoroplethMax = 0;
+    function choroplethColor(count) {
+        if (!count || kecChoroplethMax === 0) return '#ffbb33';
+        const pct = count / kecChoroplethMax;
+        if (pct > 0.66) return '#dc2626'; // merah pekat (high density)
+        if (pct > 0.33) return '#f97316'; // orange
+        if (pct > 0.10) return '#fbbf24'; // yellow
+        return '#fde68a';                 // amber pucat (low density)
+    }
+    function fmtId(n) { return Number(n || 0).toLocaleString('id-ID'); }
+    function buildKecLabel(name) {
+        const tanpa = kecChoroplethData[name] || 0;
+        const pbg = kecPbgData[name] || { terbit: 0, proses: 0, ditolak: 0 };
+        if (kecChoroplethMax === 0 && tanpa === 0 && !pbg.terbit && !pbg.proses) return name;
+        return `<strong>${name}</strong>` +
+               `<div class="kc-stat"><span class="kc-dot" style="background:#dc2626"></span>Tanpa izin: <strong>${fmtId(tanpa)}</strong></div>` +
+               `<div class="kc-stat"><span class="kc-dot" style="background:#f59e0b"></span>Proses: <strong>${fmtId(pbg.proses)}</strong></div>` +
+               `<div class="kc-stat"><span class="kc-dot" style="background:#22c55e"></span>Berizin: <strong>${fmtId(pbg.terbit)}</strong></div>`;
+    }
+    function applyChoroplethStyle() {
+        if (!kecPolygonByName || Object.keys(kecPolygonByName).length === 0) return;
+        // Re-compute max in case data changed.
+        const counts = Object.values(kecChoroplethData);
+        kecChoroplethMax = counts.length ? Math.max(...counts) : 0;
+        Object.entries(kecPolygonByName).forEach(([name, layer]) => {
+            const c = kecChoroplethData[name] || 0;
+            layer.setStyle({
+                color: '#ffbb33', weight: 1.2, opacity: 0.85,
+                fillColor: choroplethColor(c),
+                fillOpacity: kecChoroplethMax > 0 ? 0.35 : 0.05,
+                dashArray: '3,3',
+            });
+            layer.unbindTooltip();
+            layer.bindTooltip(buildKecLabel(name), { permanent: true, direction: 'center', className: 'district-label' });
+        });
+    }
     // Semua 31 kecamatan Kab Bandung
     const KAB_BANDUNG = new Set(['Arjasari','Baleendah','Banjaran','Bojongsoang','Cangkuang','Cicalengka','Cikancung','Cilengkrang','Cileunyi','Cimaung','Cimenyan','Ciparay','Ciwidey','Dayeuhkolot','Ibun','Katapang','Kertasari','Kutawaringin','Majalaya','Margaasih','Margahayu','Nagreg','Pacet','Pameungpeuk','Pangalengan','Paseh','Pasirjambu','Rancabali','Rancaekek','Soreang','Solokanjeruk']);
     fetch('/data/kecamatan_kab_bandung.geojson')
@@ -374,18 +434,95 @@ document.addEventListener('DOMContentLoaded', function() {
                 layer.on('click', () => {
                     distSel.value = name;
                     map.fitBounds(layer.getBounds());
+                    renderDesaForCurrentFilter();
                     applyFilters();
                 });
             }
         }).addTo(districtLayer);
+        // If stats already loaded before polygons, paint immediately.
+        applyChoroplethStyle();
     })
     .catch(e => console.error('[kecamatan geojson]', e));
+
+    // ======================================================================
+    // Tier 1 — Desa drill-down: tampilkan polygon kelurahan/desa hanya saat
+    // user pilih satu kecamatan. Outline saja (per-desa stats butuh backend
+    // enrichment, not in this tier).
+    // ======================================================================
+    const desaLayer = L.layerGroup().addTo(map);
+    const desaByKecamatan = {}; // {KECAMATAN_UPPER: [features]}
+    let desaLoaded = false;
+    fetch('/data/kelurahan_kab_bandung.geojson')
+      .then(r => r.json())
+      .then(gj => {
+        (gj.features || []).forEach(f => {
+            const kec = (f.properties?.kecamatan || '').toUpperCase();
+            if (!kec) return;
+            (desaByKecamatan[kec] = desaByKecamatan[kec] || []).push(f);
+        });
+        desaLoaded = true;
+        renderDesaForCurrentFilter();
+    })
+    .catch(e => console.error('[desa geojson]', e));
+
+    // Lookup: desa name → feature (untuk auto-fit & highlight)
+    const desaFeatureByName = {}; // {"KECUPPER||DESA_NAME": feature}
+
+    function renderDesaForCurrentFilter() {
+        desaLayer.clearLayers();
+        if (!desaLoaded) return;
+        const distVal = document.getElementById('filter-district')?.value || '';
+        const desaVal = document.getElementById('filter-desa')?.value || '';
+        if (!distVal) return;
+        const features = desaByKecamatan[distVal.toUpperCase()] || [];
+        if (features.length === 0) return;
+        L.geoJSON({ type: 'FeatureCollection', features }, {
+            style: (feature) => {
+                const name = (feature.properties?.raw_name || feature.properties?.name || '').toUpperCase();
+                const isSelected = desaVal && name === desaVal.toUpperCase();
+                return isSelected
+                    ? { color: '#dc2626', weight: 3, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.18, dashArray: null }
+                    : { color: '#2563eb', weight: 1, opacity: 0.85, fillColor: '#3b82f6', fillOpacity: 0.08, dashArray: '2,3' };
+            },
+            onEachFeature: (feature, layer) => {
+                const raw = feature.properties?.raw_name || feature.properties?.name || '';
+                layer.bindTooltip(raw, { permanent: true, direction: 'center', className: 'desa-label' });
+            }
+        }).addTo(desaLayer);
+    }
+
+    // Populate desa dropdown saat kecamatan berubah
+    function populateDesaDropdown(kecValue) {
+        const desaSel = document.getElementById('filter-desa');
+        desaSel.innerHTML = '';
+        if (!kecValue || !desaLoaded) {
+            desaSel.disabled = true;
+            desaSel.appendChild(new Option('Pilih kecamatan dulu', ''));
+            return;
+        }
+        const features = desaByKecamatan[kecValue.toUpperCase()] || [];
+        if (features.length === 0) {
+            desaSel.disabled = true;
+            desaSel.appendChild(new Option('Data desa belum tersedia', ''));
+            return;
+        }
+        desaSel.disabled = false;
+        desaSel.appendChild(new Option('Semua Desa', ''));
+        const names = features.map(f => f.properties?.raw_name || f.properties?.name || '').filter(Boolean).sort();
+        names.forEach(n => {
+            desaSel.appendChild(new Option(n, n));
+            desaFeatureByName[`${kecValue.toUpperCase()}||${n.toUpperCase()}`] = features.find(f => (f.properties?.raw_name || f.properties?.name) === n);
+        });
+    }
 
     const markers = L.markerClusterGroup({maxClusterRadius:50,showCoverageOnHover:false,
         iconCreateFunction:c=>{const n=c.getChildCount();const d=n>100?50:n>10?40:30;
         return L.divIcon({html:`<div style="background:rgba(239,68,68,0.8);color:#fff;border-radius:50%;width:${d}px;height:${d}px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${n>999?Math.round(n/1000)+'k':n}</div>`,className:'mc',iconSize:L.point(d,d)});}
     });
-    map.addLayer(markers);
+    // Cluster markers replaced by choropleth + per-kecamatan tooltip (2026-05-19).
+    // Layer kept alive (other code still references markers.*) but never
+    // attached to the map.
+    // map.addLayer(markers);
 
     // Layer PBG tasks (dari pbg_task_details) — cluster sama kaya satelit biar konsisten
     const pbgLayer = L.markerClusterGroup({
@@ -401,7 +538,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    map.addLayer(pbgLayer);
+    // PBG cluster also retired in favour of the choropleth approach.
+    // map.addLayer(pbgLayer);
     const PBG_COLORS = {terbit: '#0d6efd', proses: '#f59e0b', ditolak: '#6b7280'};
 
     // ======================================================================
@@ -434,21 +572,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const params = new URLSearchParams();
         const dist = document.getElementById('filter-district')?.value;
         const area = document.getElementById('filter-min-area')?.value;
-        const src  = document.getElementById('filter-polygon-source')?.value;
         const pbg  = document.getElementById('filter-pbg-status')?.value;
+        const cat  = document.getElementById('filter-usage-category')?.value;
+        // 2026-05-19: Microsoft polygons turned out to be uniform rectangles
+        // ("kotak approx") — useless for visual overlay. Exclude them from
+        // the tile layer. OSM (hand-drawn, ~85k) + Google Open Buildings
+        // (some real outlines) carry the visible polygons. Microsoft is
+        // still used for the kecamatan_stats density counter — counts are
+        // reasonable even though shapes aren't.
+        params.set('exclude_source', 'microsoft_footprints');
         if (dist) params.set('district', dist);
         if (area) params.set('min_area', area);
-        // 'real_only' is a synthetic UI value — translate it to
-        // exclude_source=microsoft_footprints on the wire, since the
-        // tile function understands exclude_source. Other values pass
-        // straight through as source=.
-        if (src === 'real_only') params.set('exclude_source', 'microsoft_footprints');
-        else if (src) params.set('source', src);
-        // PBG status filter maps onto the precomputed status_color in
-        // PostGIS (terbit/proses/ditolak/luar_sistem).
         if (pbg) params.set('permit_state', pbg);
-        const qs = params.toString();
-        return '/api/tiles/buildings/{z}/{x}/{y}.pbf' + (qs ? '?' + qs : '');
+        if (cat) params.set('usage_category', cat);
+        return '/api/tiles/buildings/{z}/{x}/{y}.pbf?' + params.toString();
     }
 
     function createPolygonLayer() {
@@ -457,7 +594,9 @@ document.addEventListener('DOMContentLoaded', function() {
             interactive: true,
             getFeatureId: f => f.properties.id,
             minZoom: VECTOR_TILES_MIN_ZOOM,
-            maxZoom: 18,
+            // Vector tiles served natively up to z18; Leaflet upscales to z21.
+            maxZoom: 21,
+            maxNativeZoom: 18,
             bounds: BS_BOUNDS,
             attribution: 'Building footprints (Sibedas + Google Open Buildings + OSM)',
             fetchOptions: {
@@ -465,18 +604,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {},
             },
             vectorTileLayerStyles: {
-                // Real polygons (OSM, Google) get a strong solid border so
-                // they stand out from the Microsoft square-envelope mass.
+                // Semua polygon biru. Usaha dibedain dengan strip-strip
+                // (dashed border tebal); non-usaha solid. Confirmed PBG match
+                // = opacity penuh, predicted = opacity setengah.
                 buildings: (props) => {
-                    const isReal = props.source === 'osm_buildings' || props.source === 'google_open_buildings';
+                    const isUsaha = props.usage_category === 'usaha';
+                    const isConfirmed = props.category_confidence === 'confirmed';
                     return {
                         fill: true,
-                        fillColor: props.status_color || '#ef4444',
-                        fillOpacity: isReal ? 0.65 : 0.35,
-                        color: isReal ? '#0f172a' : '#9ca3af',
-                        weight: isReal ? 1.4 : 0.3,
-                        opacity: isReal ? 0.95 : 0.4,
-                        dashArray: isReal ? null : '2,2',
+                        fillColor: '#2563eb',
+                        fillOpacity: isConfirmed ? 0.55 : 0.3,
+                        color: isUsaha ? '#1e3a8a' : '#1d4ed8',
+                        weight: isUsaha ? 2 : 1,
+                        opacity: isConfirmed ? 1 : 0.7,
+                        dashArray: isUsaha ? '3,3' : null,
                     };
                 },
             },
@@ -544,25 +685,41 @@ document.addEventListener('DOMContentLoaded', function() {
     // Debounced 300 ms so flipping through dropdowns doesn't fire bursts of
     // tile requests.
     let _polygonRefreshTimer = null;
+    // Phase 2 — show spinner during polygon-layer rebuild so user knows the
+    // map is reloading after a filter change (especially when switching to
+    // a dense kecamatan like Baleendah where the tile fetch takes ~1-2s).
+    const _mapLoadingEl = document.getElementById('map-loading');
+    let _pendingTiles = 0;
+    function _setLoading(on) {
+        if (!_mapLoadingEl) return;
+        _mapLoadingEl.classList.toggle('active', !!on);
+    }
     function refreshPolygonLayer() {
         if (!POLYGON_ALLOWED) return;
         if (!L || !L.vectorGrid || window.__vectorGridReady === false) return;
         clearTimeout(_polygonRefreshTimer);
+        _setLoading(true);
         _polygonRefreshTimer = setTimeout(() => {
             const wasOnMap = polygonLayer && map.hasLayer(polygonLayer);
             if (polygonLayer) {
                 try { map.removeLayer(polygonLayer); } catch (_) {}
             }
             _highlightedId = null;
+            _pendingTiles = 0;
             polygonLayer = createPolygonLayer();
+            // Track tile-load lifecycle so we can hide the spinner only once
+            // every requested tile has either returned or failed.
+            polygonLayer.on('tileloadstart', () => { _pendingTiles++; _setLoading(true); });
+            const _done = () => { _pendingTiles = Math.max(0, _pendingTiles - 1); if (_pendingTiles === 0) _setLoading(false); };
+            polygonLayer.on('tileload', _done);
+            polygonLayer.on('tileerror', _done);
             window.__sibedas_polygonLayer = polygonLayer;
             if (wasOnMap || _vtMode === 'polygon') polygonLayer.addTo(map);
+            // Safety net: hide spinner after 8s no matter what (in case events misfire)
+            setTimeout(() => { if (_pendingTiles === 0) _setLoading(false); }, 8000);
         }, 300);
     }
-    // Hooked on the same elements applyFilters listens to. The change event
-    // for filter-district is registered later in this file too (for fitBounds),
-    // so refreshPolygonLayer just gets a separate listener — order independent.
-    ['filter-district', 'filter-min-area', 'filter-polygon-source', 'filter-pbg-status'].forEach(id => {
+    ['filter-district', 'filter-desa', 'filter-min-area', 'filter-pbg-status', 'filter-usage-category'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', refreshPolygonLayer);
     });
@@ -584,8 +741,38 @@ document.addEventListener('DOMContentLoaded', function() {
             if (poly) map.fitBounds(poly.getBounds());
             else if (DISTRICT_BOUNDS[this.value]) map.fitBounds(DISTRICT_BOUNDS[this.value]);
         }
+        populateDesaDropdown(this.value);
+        renderDesaForCurrentFilter();
         loadStats();
     });
+
+    // Desa change → fitBounds ke polygon desa + re-render highlight
+    const desaSel = document.getElementById('filter-desa');
+    desaSel.addEventListener('change', function() {
+        const kec = document.getElementById('filter-district')?.value || '';
+        if (this.value && kec) {
+            const feat = desaFeatureByName[`${kec.toUpperCase()}||${this.value.toUpperCase()}`];
+            if (feat) {
+                const layer = L.geoJSON(feat);
+                map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+            }
+        } else if (kec) {
+            // Desa di-clear: zoom out ke kecamatan
+            const poly = kecPolygonByName[kec];
+            if (poly) map.fitBounds(poly.getBounds());
+            else if (DISTRICT_BOUNDS[kec]) map.fitBounds(DISTRICT_BOUNDS[kec]);
+        }
+        renderDesaForCurrentFilter();
+    });
+
+    // Init desa dropdown once desa geojson loaded (in case kecamatan was pre-selected)
+    const _desaWatcher = setInterval(() => {
+        if (desaLoaded) {
+            clearInterval(_desaWatcher);
+            const initKec = distSel.value;
+            if (initKec) populateDesaDropdown(initKec);
+        }
+    }, 200);
 
     // Konversi pilihan dropdown jadi param API. Value yg diawali `ft_` artinya filter
     // PBG function_type (sub-jenis bangunan), selain itu adalah data_source (sumber Luar Sistem).
@@ -625,6 +812,18 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (tsEl) {
                 tsEl.textContent = '';
             }
+            // Phase 1 — update badge "Update terakhir" di map header
+            const refreshedVal = document.getElementById('stat-refreshed-val');
+            if (refreshedVal) {
+                refreshedVal.textContent = ts
+                    ? new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : '—';
+            }
+
+            // Tier 1 — feed choropleth from stats (raw unmatched, before PBG-status mask).
+            kecChoroplethData = d.unmatched_by_district || {};
+            kecPbgData = d.pbg_by_district || {};
+            applyChoroplethStyle();
 
             if (d.unmatched_by_district) {
                 const tb = document.getElementById('district-tbody');
@@ -766,8 +965,58 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     let lastShown = {sat: 0, pbg: 0, limit: 0};
+    // Rank 1 optimization: at low zoom (≤13), fetch pre-aggregated clusters
+    // from the server instead of up to 5K individual markers. Reduces payload
+    // ~100× and skips client-side MarkerCluster entirely.
+    const CLUSTER_MAX_ZOOM = 13;
+    async function fetchSatelliteClusters(b, z, f, signal) {
+        const useBbox = f.dist
+            ? {sw: BS_BOUNDS[0], ne: BS_BOUNDS[1]}
+            : {sw: [b.getSouth(), b.getWest()], ne: [b.getNorth(), b.getEast()]};
+        const p = new URLSearchParams({zoom: String(z), sw_lat: useBbox.sw[0], sw_lng: useBbox.sw[1], ne_lat: useBbox.ne[0], ne_lng: useBbox.ne[1]});
+        if (f.dist) p.set('district', f.dist);
+        if (f.area) p.set('min_area', f.area);
+        Object.entries(dataSourceParams(f.dsrc)).forEach(([k, v]) => p.set(k, v));
+
+        const r = await fetch(`${API}/clusters?${p}`, {headers: H, signal});
+        if (!r.ok) throw new Error(`clusters HTTP ${r.status}`);
+        const gj = await r.json();
+        markers.clearLayers();
+        if (!gj.features) return;
+        const STATE_COLOR = {terbit:'#22c55e', proses:'#f59e0b', ditolak:'#6b7280', tanpa_izin:'#ef4444'};
+        gj.features.forEach(ft => {
+            const [lng, lat] = ft.geometry.coordinates;
+            const pr = ft.properties;
+            const cnt = pr.count || 1;
+            const color = STATE_COLOR[pr.permit_state] || '#ef4444';
+            const d = cnt > 500 ? 44 : cnt > 100 ? 36 : cnt > 20 ? 28 : 22;
+            const icon = L.divIcon({
+                html: `<div style="background:${color};color:#fff;border-radius:50%;width:${d}px;height:${d}px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);opacity:0.9">${cnt > 999 ? Math.round(cnt/1000) + 'k' : cnt}</div>`,
+                className: 'mc-srv', iconSize: L.point(d, d)
+            });
+            const m = L.marker([lat, lng], {icon});
+            m.bindPopup(`<b>Cluster: ${cnt.toLocaleString('id-ID')} bangunan</b><br>Status: ${pr.permit_state}<br>Rata-rata luas: ${pr.area_avg_m2 || '-'} m²<br><small>Zoom in untuk lihat individual</small>`);
+            markers.addLayer(m);
+        });
+        lastShown.sat = gj.features.length;
+    }
     async function fetchSatellite(b, z, f, signal) {
+        // 2026-05-19: cluster pins di-retire. Detail bangunan sekarang lewat
+        // polygon layer di z14+; per-kecamatan totals lewat choropleth tooltip.
+        markers.clearLayers();
+        lastShown.sat = 0;
+        return;
+        // eslint-disable-next-line no-unreachable -- old cluster path kept for ref
         if (!f.showSat) { markers.clearLayers(); lastShown.sat = 0; return; }
+        if (!f.dist && !f.pbgStatus && z <= CLUSTER_MAX_ZOOM) {
+            markers.clearLayers();
+            lastShown.sat = 0;
+            return;
+        }
+        // Server-side cluster mode for low zoom — skip individual marker fetch.
+        if (z <= CLUSTER_MAX_ZOOM && !f.pbgStatus) {
+            return fetchSatelliteClusters(b, z, f, signal);
+        }
         // Limit: district filter aktif = ambil lebih banyak (karena pool-nya udah kecil).
         const limit = f.dist ? 10000 : (z <= 11 ? 800 : z <= 13 ? 1500 : z <= 15 ? 3000 : 5000);
         lastShown.limit = limit;
@@ -818,8 +1067,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fetchPbg(b, f, signal) {
+        // 2026-05-19: PBG cluster pins di-retire bareng cluster satelit.
+        // Detail PBG sekarang lewat polygon click (di-link ke verify panel).
         pbgLayer.clearLayers();
+        lastShown.pbg = 0;
+        return;
+        // eslint-disable-next-line no-unreachable -- old PBG path kept for ref
         if (!f.showPbg) return;
+        const z = map.getZoom();
+        if (!f.dist && !f.pbgStatus && z <= CLUSTER_MAX_ZOOM) {
+            lastShown.pbg = 0;
+            return;
+        }
         // Status "Luar Sistem" = bangunan tanpa PBG record. PBG layer (titik-titik dari
         // database PBG) inherently nggak punya entri buat ini — skip fetch biar nggak
         // tampilin titik yg keliru.
@@ -856,6 +1115,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const el = document.getElementById('map-counter');
         if (!el) return;
         const f = readFilters();
+        const z = map.getZoom();
+        // Tier 1 filter-gated mode — kalau belum pilih kecamatan & low zoom, kasih hint.
+        if (!f.dist && !f.pbgStatus && z <= CLUSTER_MAX_ZOOM && f.showSat) {
+            el.innerHTML = '<strong>Mode overview kabupaten</strong> — warna kecamatan = density bangunan tanpa izin. <span class="fw-semibold">Klik kecamatan</span> atau pilih dari dropdown filter untuk lihat detail bangunan.';
+            return;
+        }
         const dist = f.dist || 'area ini';
         const parts = [];
         if (f.showSat) parts.push(`${Number(lastShown.sat).toLocaleString('id-ID')} deteksi satelit`);
@@ -888,10 +1153,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Tier 1 — pan/zoom debounce 300ms (bumped from 250ms).
     let loadMapTimer = null;
     function loadMap() {
         clearTimeout(loadMapTimer);
-        loadMapTimer = setTimeout(doLoadMap, 250);
+        loadMapTimer = setTimeout(doLoadMap, 300);
     }
 
     document.querySelectorAll('.verify-btn').forEach(b => b.addEventListener('click', async function() {
@@ -937,11 +1203,32 @@ document.addEventListener('DOMContentLoaded', function() {
         distSel.value = '';
         document.getElementById('filter-data-source').value = '';
         document.getElementById('filter-pbg-status').value = '';
-        document.getElementById('filter-min-area').value = '200';
+        document.getElementById('filter-min-area').value = '';
+        const usageCat = document.getElementById('filter-usage-category');
+        if (usageCat) usageCat.value = '';
+        populateDesaDropdown('');
         document.getElementById('toggle-sat-layer').checked = true;
         document.getElementById('toggle-pbg-layer').checked = true;
         map.fitBounds(BS_BOUNDS);
+        renderDesaForCurrentFilter();
         loadStats(); loadMap();
+    });
+    // Phase 3 — KRK PDF export button.
+    document.getElementById('btn-export-krk')?.addEventListener('click', async function() {
+        const kec = document.getElementById('filter-district')?.value;
+        if (!kec) { alert('Pilih kecamatan dulu sebelum cetak KRK.'); return; }
+        const prev = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
+        try {
+            // Direct link triggers download — handles long generation gracefully.
+            window.location.href = `/dashboards/krk-export/${encodeURIComponent(kec)}.pdf`;
+            // Restore button after a short delay since we navigate to download
+            setTimeout(() => { this.disabled = false; this.innerHTML = prev; }, 4000);
+        } catch (e) {
+            alert('Gagal generate: ' + e.message);
+            this.disabled = false; this.innerHTML = prev;
+        }
     });
     document.getElementById('toggle-sat-layer').addEventListener('change', loadMap);
     document.getElementById('toggle-pbg-layer').addEventListener('change', loadMap);
@@ -975,12 +1262,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (next === 'polygon') {
             if (map.hasLayer(markers)) map.removeLayer(markers);
             if (polygonLayer && !map.hasLayer(polygonLayer)) map.addLayer(polygonLayer);
+            // Hide kecamatan choropleth + desa outline at z>=14. At polygon-
+            // mode zoom the user is reading individual buildings; the colored
+            // kecamatan/desa fill obscures them. Labels also get re-added
+            // when zooming back out below.
+            if (map.hasLayer(districtLayer)) map.removeLayer(districtLayer);
+            if (map.hasLayer(desaLayer)) map.removeLayer(desaLayer);
             if (_modePill) { _modePill.textContent = 'Polygon'; _modePill.classList.remove('cluster'); _modePill.classList.add('polygon'); _modePill.title = 'Outline tiap bangunan — zoom out untuk kembali ke cluster'; }
         } else {
             // Remove the polygon layer entirely. Crucially NOT by hiding the
             // tile pane (that also holds Esri + Google base imagery and blanks
             // the whole map at zoom-out).
             if (polygonLayer && map.hasLayer(polygonLayer)) map.removeLayer(polygonLayer);
+            // Restore kecamatan / desa overlays for overview zoom.
+            if (!map.hasLayer(districtLayer)) map.addLayer(districtLayer);
+            if (!map.hasLayer(desaLayer)) {
+                map.addLayer(desaLayer);
+                renderDesaForCurrentFilter();
+            }
             const f = readFilters();
             if (f.showSat && !map.hasLayer(markers)) map.addLayer(markers);
             if (_modePill) { _modePill.textContent = 'Cluster'; _modePill.classList.remove('polygon'); _modePill.classList.add('cluster'); _modePill.title = 'Zoom in (≥14) untuk lihat polygon'; }

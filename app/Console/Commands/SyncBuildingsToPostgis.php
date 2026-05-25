@@ -153,8 +153,11 @@ class SyncBuildingsToPostgis extends Command
         if (abs($lat) < 0.0001 && abs($lng) < 0.0001) return null;
 
         if (!empty($row->geometry_geojson) && $this->looksLikePolygon($row->geometry_geojson)) {
-            // Trust the stored GeoJSON (OSM ingest path writes valid polygons here)
-            $geomSql = 'ST_GeomFromGeoJSON(' . $this->literal($row->geometry_geojson) . ')';
+            // Trust the stored GeoJSON (OSM ingest path writes valid polygons here).
+            // ST_GeometryN(ST_Multi(...), 1) coerces MultiPolygon → first Polygon so
+            // it fits the strict GEOMETRY(Polygon, 4326) column. Single-polygon GeoJSON
+            // passes through unchanged.
+            $geomSql = 'ST_GeometryN(ST_Multi(ST_GeomFromGeoJSON(' . $this->literal($row->geometry_geojson) . ')), 1)';
         } else {
             $area = max((float) ($row->estimated_area_m2 ?? 100), 1);
             $halfM = sqrt($area) / 2;
@@ -195,8 +198,8 @@ class SyncBuildingsToPostgis extends Command
      * 4-state colour palette aligned with the cluster-mode dot legend in
      * resources/views/dashboards/satellite-monitoring.blade.php (STATE_COLOR).
      * PBG status codes come from the join on pbg_task.status:
-     *   - 20            → terbit (SK Terbit, green)
-     *   - 3, 9, 22      → ditolak (red-grey)
+     *   - 20            → terbit (SK Terbit, BLUE to match PBG cluster pin)
+     *   - 3, 9, 22      → ditolak (grey)
      *   - other non-null → proses (yellow)
      *   - NULL match     → tanpa_izin (red)
      */
@@ -206,7 +209,7 @@ class SyncBuildingsToPostgis extends Command
         $s = $row->pbg_status ?? null;
         if ($s === null)                  return '#ef4444';   // orphan FK → treat as tanpa_izin
         $s = (int) $s;
-        if ($s === 20)                    return '#22c55e';   // terbit
+        if ($s === 20)                    return '#0d6efd';   // terbit (matches PBG_COLORS.terbit)
         if (in_array($s, [3, 9, 22], true)) return '#6b7280'; // ditolak
         return '#f59e0b';                                      // proses
     }

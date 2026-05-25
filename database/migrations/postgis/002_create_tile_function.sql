@@ -30,11 +30,12 @@ DECLARE
     f_source         text := NULLIF(query_params->>'source', '');
     f_exclude_source text := NULLIF(query_params->>'exclude_source', '');
     f_min_area       numeric := NULLIF(query_params->>'min_area', '')::numeric;
+    f_usage_category text := NULLIF(query_params->>'usage_category', '');
     -- permit_state maps to the 4-color palette stored in buildings.status_color
     -- (terbit / proses / ditolak / luar_sistem aka tanpa_izin).
     f_permit_state   text := NULLIF(query_params->>'permit_state', '');
     f_permit_color   text := CASE LOWER(f_permit_state)
-        WHEN 'terbit'      THEN '#22c55e'
+        WHEN 'terbit'      THEN '#0d6efd'
         WHEN 'proses'      THEN '#f59e0b'
         WHEN 'ditolak'     THEN '#6b7280'
         WHEN 'luar_sistem' THEN '#ef4444'
@@ -53,6 +54,8 @@ BEGIN
             b.id,
             b.status_color,
             b.source,
+            b.usage_category,
+            b.category_confidence,
             CASE
                 WHEN b.area_m2 IS NULL THEN 'unknown'
                 WHEN b.area_m2 <  50    THEN 'tiny'
@@ -73,7 +76,15 @@ BEGIN
           AND (f_exclude_source IS NULL OR b.source <> f_exclude_source)
           AND (f_permit_color   IS NULL OR b.status_color = f_permit_color)
           AND (f_min_area       IS NULL OR b.area_m2 >= f_min_area)
-        LIMIT 50000
+          AND (f_usage_category IS NULL OR b.usage_category = f_usage_category)
+          -- Sampling rule (Phase 2 update):
+          --   * If a district filter is set, render FULL polygon set — user
+          --     opted into a narrow scope, so completeness > performance.
+          --   * Otherwise (semua-kecamatan overview), sample 1/5 at z14-15
+          --     to keep dense viewport tiles like Baleendah/Cimenyan responsive.
+          --     At z>=16 viewport is small enough that no sampling is needed.
+          AND (f_district IS NOT NULL OR z >= 16 OR (b.id % 5 = 0))
+        LIMIT 10000
     ) AS tile
     WHERE tile.geom IS NOT NULL;
 

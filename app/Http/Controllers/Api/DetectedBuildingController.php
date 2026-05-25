@@ -748,4 +748,107 @@ class DetectedBuildingController extends Controller
         });
         return ['type'=>'FeatureCollection','features'=>$features->values()];
     }
+
+    /**
+     * Server-side cluster endpoint (Rank 1 optimization). Aggregates detected
+     * buildings into a small set of grid cells per status_color, so the browser
+     * at zoom <= 13 receives ~100-500 cluster summaries instead of up to 10K
+     * individual markers.
+     *
+     * Returns a FeatureCollection where each Feature is a cluster centroid
+     * with properties: count, permit_state, color, area_avg_m2.
+     *
+     * Grid step is sized to the zoom so cells span roughly 50-100 viewport
+     * pixels — comparable to what L.markerClusterGroup produces dynamically,
+     * just precomputed by the database.
+     */
+    public function clusters(Request $request): JsonResponse
+    {
+        $zoom = max(6, min(14, (int) $request->get('zoom', 10)));
+        // Grid step in degrees per zoom — calibrated so each cell ≈ ~80 pixels.
+        // World ≈ 256 * 2^z pixels wide at zoom z; 1 px = 360 / (256 * 2^z) deg.
+        // 80 px = 360 * 80 / (256 * 2^z) = 112.5 / 2^z deg.
+        $step = 112.5 / pow(2, $zoom);
+
+        // Same coarse bbox cache key as geojson — adjacent pans coalesce onto
+        // one query. TTL 15 min (cluster data is fine to be stale, only counts).
+        $cacheKey = $this->clustersCacheKey($request, $zoom);
+        if ($cacheKey) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) return response()->json($cached);
+        }
+
+        // Pre-aggregated cluster query over PostGIS. To stay fast cold, we
+        // ignore the request bbox and aggregate the full kabupaten — the
+        // result is only a few hundred buckets (~10 KB), so the browser can
+        // render all of them and pan/zoom freely without re-fetching. The
+        // expensive part (the ~30 s full-table GROUP BY) happens once per
+        // (zoom, filters) per day; the daily prewarm cron keeps it warm.
+        $districtFilter = '';
+        $minAreaFilter = '';
+        $bindings = ['step' => $step];
+        if ($request->filled('district') && in_array($request->district, self::BANDUNG_SELATAN_DISTRICTS, true)) {
+            $districtFilter = ' AND district = :district';
+            $bindings['district'] = $request->district;
+        }
+        if ($request->filled('min_area')) {
+            $minAreaFilter = ' AND area_m2 >= :min_area';
+            $bindings['min_area'] = (float) $request->min_area;
+        }
+
+        $sql = "SELECT
+                    ROUND(ST_X(centroid)::numeric / :step, 0) * :step AS lng_bucket,
+                    ROUND(ST_Y(centroid)::numeric / :step, 0) * :step AS lat_bucket,
+                    CASE
+                        WHEN status_color = '#0d6efd' THEN 'terbit'
+                        WHEN status_color = '#22c55e' THEN 'terbit'
+                        WHEN status_color = '#f59e0b' THEN 'proses'
+                        WHEN status_color = '#6b7280' THEN 'ditolak'
+                        ELSE 'tanpa_izin'
+                    END AS state,
+                    COUNT(*) AS cnt,
+                    AVG(ST_Y(centroid)) AS lat_avg,
+                    AVG(ST_X(centroid)) AS lng_avg,
+                    AVG(area_m2) AS area_avg
+                FROM buildings
+                WHERE 1=1
+                    $districtFilter
+                    $minAreaFilter
+                GROUP BY lat_bucket, lng_bucket, state
+                LIMIT 2000";
+
+        $clusters = collect(DB::connection('postgis')->select($sql, $bindings));
+
+        $features = $clusters->map(function ($c) {
+            return [
+                'type' => 'Feature',
+                'geometry' => ['type' => 'Point', 'coordinates' => [(float) $c->lng_avg, (float) $c->lat_avg]],
+                'properties' => [
+                    'count'        => (int) $c->cnt,
+                    'permit_state' => $c->state,
+                    'area_avg_m2'  => $c->area_avg ? round((float) $c->area_avg, 1) : null,
+                ],
+            ];
+        });
+
+        $payload = ['type' => 'FeatureCollection', 'features' => $features->values()];
+        if ($cacheKey) Cache::put($cacheKey, $payload, 86400);  // 24 h — refreshed by daily prewarm cron
+        return response()->json($payload);
+    }
+
+    private function clustersCacheKey(Request $r, int $zoom): ?string
+    {
+        // Bbox is intentionally NOT in the key — the endpoint returns the
+        // full kabupaten aggregate, browser handles pan/zoom client-side.
+        $parts = [
+            'v' => 'cluster2',
+            'z' => $zoom,
+            'district' => $r->get('district'),
+            'min_area' => $r->get('min_area'),
+            'function_type' => $r->get('function_type'),
+            'data_source' => $r->get('data_source'),
+            'kbli_title' => $r->get('kbli_title'),
+        ];
+        return 'cluster:' . md5(json_encode($parts));
+    }
 }

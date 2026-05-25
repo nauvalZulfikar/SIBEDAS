@@ -18,9 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
  *   - feature-flag gate (config('features.vector_tiles_enabled'))
  *   - min-zoom guard (server side, in addition to the frontend gate)
  *   - whitelisted querystring filters forwarded to building_tile()
- *   - ETag + Cache-Control so the browser caches each tile for an hour
+ *   - ETag + Cache-Control so the browser caches each tile for 24 h
  *   - rate limiter applied at the route level
- *   - Phase 14: Redis tile cache. Upstream tiles are stored 1 h by
+ *   - Phase 14: Redis tile cache. Upstream tiles are stored 24 h by
  *     (z, x, y, filter-hash). Cache hits skip Martin entirely; the
  *     X-Cache response header reports HIT vs MISS.
  */
@@ -29,8 +29,10 @@ class TilesController extends Controller
     /** Filter keys forwarded to the PostGIS function. Anything else is dropped. */
     private const ALLOWED_FILTERS = ['district', 'status', 'source', 'exclude_source', 'min_area', 'permit_state'];
 
-    /** Tile cache TTL in seconds. 1 h matches the browser Cache-Control. */
-    private const CACHE_TTL = 3600;
+    /** Tile cache TTL in seconds. 24 h — buildings table only refreshes on
+     *  scheduled sync (daily prewarm cron). Long TTL turns first-load lag into
+     *  one-shot pain instead of per-hour cold misses. */
+    private const CACHE_TTL = 86400;
 
     public function buildings(Request $request, int $z, int $x, int $y): Response
     {
@@ -59,7 +61,7 @@ class TilesController extends Controller
         if ($request->header('If-None-Match') === $etag) {
             return response('', 304)
                 ->header('ETag', $etag)
-                ->header('Cache-Control', 'public, max-age=3600');
+                ->header('Cache-Control', 'public, max-age=86400');
         }
 
         // Cache lookup — Redis store is configured in config/cache.php; falls
@@ -76,7 +78,7 @@ class TilesController extends Controller
             return response($cached['body'], $cached['status'])
                 ->header('Content-Type', 'application/x-protobuf')
                 ->header('Content-Length', (string) strlen($cached['body']))
-                ->header('Cache-Control', 'public, max-age=3600')
+                ->header('Cache-Control', 'public, max-age=86400')
                 ->header('ETag', $etag)
                 ->header('X-Cache', 'HIT');
         }
@@ -103,7 +105,7 @@ class TilesController extends Controller
             $this->cacheStore($cacheKey, 200, '');
             return response('', 200)
                 ->header('Content-Type', 'application/x-protobuf')
-                ->header('Cache-Control', 'public, max-age=3600')
+                ->header('Cache-Control', 'public, max-age=86400')
                 ->header('ETag', $etag)
                 ->header('X-Cache', 'MISS');
         }
@@ -121,7 +123,7 @@ class TilesController extends Controller
         return response($body, 200)
             ->header('Content-Type', 'application/x-protobuf')
             ->header('Content-Length', (string) strlen($body))
-            ->header('Cache-Control', 'public, max-age=3600')
+            ->header('Cache-Control', 'public, max-age=86400')
             ->header('ETag', $etag)
             ->header('X-Cache', 'MISS');
     }
