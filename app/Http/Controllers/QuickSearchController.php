@@ -35,7 +35,7 @@ class QuickSearchController extends Controller
                 'pbg_task.*',
                 DB::raw('(SELECT name_building FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as name_building'),
                 DB::raw('(SELECT nilai_retribusi_bangunan FROM pbg_task_retributions WHERE pbg_task_retributions.pbg_task_uid = pbg_task.uuid LIMIT 1) as nilai_retribusi_bangunan'),
-                DB::raw('(SELECT note FROM pbg_statuses WHERE pbg_statuses.pbg_task_uuid = pbg_task.uuid LIMIT 1) as note')
+                DB::raw('(SELECT note FROM pbg_statuses WHERE pbg_statuses.pbg_task_uuid = pbg_task.uuid ORDER BY id DESC LIMIT 1) as note')
             ])
             ->orderBy('pbg_task.id', 'desc');
 
@@ -102,7 +102,7 @@ class QuickSearchController extends Controller
                 'pbg_task.*',
                 DB::raw('(SELECT name_building FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as name_building'),
                 DB::raw('(SELECT nilai_retribusi_bangunan FROM pbg_task_retributions WHERE pbg_task_retributions.pbg_task_uid = pbg_task.uuid LIMIT 1) as nilai_retribusi_bangunan'),
-                DB::raw('(SELECT note FROM pbg_statuses WHERE pbg_statuses.pbg_task_uuid = pbg_task.uuid LIMIT 1) as note')
+                DB::raw('(SELECT note FROM pbg_statuses WHERE pbg_statuses.pbg_task_uuid = pbg_task.uuid ORDER BY id DESC LIMIT 1) as note')
             ])
             ->where(function ($q) use ($search) {
                 $q->where('pbg_task.registration_number', 'LIKE', "%$search%")

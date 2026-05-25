@@ -71,7 +71,11 @@ class PbgTask extends Model
 
     public function pbg_status()
     {
-        return $this->hasOne(PbgStatus::class, 'pbg_task_uuid', 'uuid');
+        // latestOfMany() picks the most recent status row per task. Without it,
+        // hasOne returns the row with the smallest id — typically the initial
+        // "Verifikasi Kelengkapan Dokumen" entry whose note is still null,
+        // hiding catatan that arrived in later status transitions.
+        return $this->hasOne(PbgStatus::class, 'pbg_task_uuid', 'uuid')->latestOfMany();
     }
 
     /**
