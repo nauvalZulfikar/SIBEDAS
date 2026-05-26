@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class PbbReconciliationService
 {
-    private const CACHE_TTL_SEC = 3600;
+    private const CACHE_TTL_SEC = 86400;
     private const CACHE_KEY_PREFIX = 'pbb_recon_v1:';
 
     public function getKabSummary(): array

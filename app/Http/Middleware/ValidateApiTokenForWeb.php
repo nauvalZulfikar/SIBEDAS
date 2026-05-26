@@ -19,34 +19,32 @@ class ValidateApiTokenForWeb
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip validation untuk non-authenticated routes
         if (!Auth::check()) {
             return $next($request);
         }
 
-        // Skip validation untuk API routes (sudah ditangani oleh auth:sanctum)
         if ($request->is('api/*')) {
             return $next($request);
         }
 
         $user = Auth::user();
         $sessionToken = Session::get('api_token');
-        
-        // Jika tidak ada token di session, generate token baru
+
         if (!$sessionToken) {
             $this->generateNewToken($user);
             return $next($request);
         }
 
-        // Validasi token API
+        $cacheKey = 'tok_ok_' . $user->id;
+        if (Cache::has($cacheKey)) {
+            return $next($request);
+        }
+
         if (!$this->isTokenValid($sessionToken, $user)) {
-            // Token invalid, check apakah ada user lain yang login
             if ($this->hasOtherUserLoggedIn($user)) {
-                // User lain sudah login, force logout user ini
                 $this->forceLogout($request, 'User lain telah login. Silakan login ulang.');
                 return $this->redirectToLogin($request, 'User lain telah login. Silakan login ulang.');
             } else {
-                // Generate token baru jika tidak ada user lain
                 $this->generateNewToken($user);
             }
         }
@@ -74,7 +72,7 @@ class ValidateApiTokenForWeb
         $cacheKey = 'tok_ok_' . $user->id;
 
         // Cache hasil validasi selama 5 menit agar tidak query DB setiap request
-        return Cache::remember($cacheKey, 300, function () use ($user, $hashedToken) {
+        return Cache::remember($cacheKey, 86400, function () use ($user, $hashedToken) {
             return PersonalAccessToken::where('tokenable_id', $user->id)
                 ->where('tokenable_type', get_class($user))
                 ->where('token', $hashedToken)

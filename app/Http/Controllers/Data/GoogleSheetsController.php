@@ -14,7 +14,7 @@ class GoogleSheetsController extends Controller
     public function index(Request $request)
     {
         $menu_id = $request->query('menu_id');
-        $user_menu_permission = $this->permissions[$menu_id];
+        $user_menu_permission = $this->permissions[$menu_id] ?? ['allow_create' => false, 'allow_update' => false, 'allow_destroy' => false];
         return view('data.google-sheet.index', compact('user_menu_permission'));
     }
 

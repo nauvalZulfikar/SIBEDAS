@@ -95,6 +95,7 @@ export default defineConfig(({ mode }) => {
                     "resources/js/dashboards/leader.js",
                     "resources/js/dashboards/reconciliation.js",
                     "resources/js/dashboards/satelit-pbg-pbb.js",
+                    "resources/js/dashboards/lack-of-potential.js",
                     // roles
                     "resources/js/roles/index.js",
                     "resources/js/roles/create.js",

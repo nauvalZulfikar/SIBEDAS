@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PbgTask;
 use App\Traits\GlobalApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -21,41 +22,42 @@ class DashboardController extends Controller
 
         $year = (int) $request->get('year');
 
-        // Business: function_type LIKE usaha OR (non-business with unit > 1), status non-verified
-        // Dashboard shows combined 2 years: ($year-1) + $year
-        $query = PbgTask::where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->where(function ($q3) {
-                        $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
-                        ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
-                    })
-                    ->orWhere(function ($q3) {
-                        $q3->where(function ($q4) {
-                            $q4->where(function ($q5) {
-                                $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                                ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
-                            })
-                            ->orWhereNull('function_type');
+        $result = Cache::remember('dashboard_business_doc_' . $year, 86400, function () use ($year) {
+            // Business: function_type LIKE usaha OR (non-business with unit > 1), status non-verified
+            // Dashboard shows combined 2 years: ($year-1) + $year
+            $query = PbgTask::where(function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->where(function ($q3) {
+                            $q3->whereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%fungsi usaha%'])
+                            ->orWhereRaw("LOWER(TRIM(function_type)) LIKE ?", ['%sebagai tempat usaha%']);
                         })
-                        ->whereHas('pbg_task_detail', function ($q4) {
-                            $q4->where('unit', '>', 1);
+                        ->orWhere(function ($q3) {
+                            $q3->where(function ($q4) {
+                                $q4->where(function ($q5) {
+                                    $q5->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                                    ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                                })
+                                ->orWhereNull('function_type');
+                            })
+                            ->whereHas('pbg_task_detail', function ($q4) {
+                                $q4->where('unit', '>', 1);
+                            });
                         });
-                    });
+                    })
+                    ->whereIn("status", PbgTaskStatus::getNonVerified());
                 })
-                ->whereIn("status", PbgTaskStatus::getNonVerified());
-            })
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31']);
+                ->where('is_valid', true)
+                ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31']);
 
-        $taskCount = $query->count();
-        $taskTotal = (clone $query)
-            ->leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
-            ->sum('ptr.nilai_retribusi_bangunan') ?? 0;
+            $taskCount = $query->count();
+            $taskTotal = (clone $query)
+                ->leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
+                ->sum('ptr.nilai_retribusi_bangunan') ?? 0;
 
-        return $this->resSuccess([
-            "count" => $taskCount,
-            "total" => $taskTotal
-        ]);
+            return ["count" => $taskCount, "total" => $taskTotal];
+        });
+
+        return $this->resSuccess($result);
     }
     public function nonBusinnessDocument(Request $request){
         $request->validate([
@@ -64,36 +66,37 @@ class DashboardController extends Controller
 
         $year = (int) $request->get('year');
 
-        // Non-business: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1), status non-verified
-        // Dashboard shows combined 2 years: ($year-1) + $year
-        $query = PbgTask::where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->where(function ($q3) {
-                        $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
-                        ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+        $result = Cache::remember('dashboard_non_business_doc_' . $year, 86400, function () use ($year) {
+            // Non-business: function_type NOT LIKE usaha AND (unit IS NULL OR unit <= 1), status non-verified
+            // Dashboard shows combined 2 years: ($year-1) + $year
+            $query = PbgTask::where(function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->where(function ($q3) {
+                            $q3->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%fungsi usaha%'])
+                            ->whereRaw("LOWER(TRIM(function_type)) NOT LIKE ?", ['%sebagai tempat usaha%']);
+                        })
+                        ->orWhereNull('function_type');
                     })
-                    ->orWhereNull('function_type');
+                    ->whereIn("status", PbgTaskStatus::getNonVerified())
+                    ->where(function ($q3) {
+                        $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
+                            $q4->where('unit', '>', 1);
+                        })
+                        ->orWhereDoesntHave('pbg_task_detail');
+                    });
                 })
-                ->whereIn("status", PbgTaskStatus::getNonVerified())
-                ->where(function ($q3) {
-                    $q3->whereDoesntHave('pbg_task_detail', function ($q4) {
-                        $q4->where('unit', '>', 1);
-                    })
-                    ->orWhereDoesntHave('pbg_task_detail');
-                });
-            })
-            ->where('is_valid', true)
-            ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31']);
+                ->where('is_valid', true)
+                ->whereBetween('start_date', [($year - 1) . '-01-01', $year . '-12-31']);
 
-        $taskCount = $query->count();
-        $taskTotal = (clone $query)
-            ->leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
-            ->sum('ptr.nilai_retribusi_bangunan') ?? 0;
+            $taskCount = $query->count();
+            $taskTotal = (clone $query)
+                ->leftJoin('pbg_task_retributions as ptr', 'pbg_task.uuid', '=', 'ptr.pbg_task_uid')
+                ->sum('ptr.nilai_retribusi_bangunan') ?? 0;
 
-        return $this->resSuccess([
-            "count" => $taskCount,
-            "total" => $taskTotal
-        ]);
+            return ["count" => $taskCount, "total" => $taskTotal];
+        });
+
+        return $this->resSuccess($result);
     }
     public function allTaskDocuments(Request $request){
         $request->validate([
@@ -102,24 +105,21 @@ class DashboardController extends Controller
 
         $current_year = $request->get('year');
 
-        $startOfYear = "$current_year-01-01 00:00:00";
-        $endOfYear = "$current_year-12-31 23:59:59";
-        $query = once( function () use ($startOfYear, $endOfYear) {
-            return DB::table('pbg_task as pt')
-            ->leftJoin('pbg_task_retributions as ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid')
-            ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
-            ->select(
-                DB::raw('COUNT(DISTINCT pt.id) as task_count'),
-                DB::raw('SUM(ptr.nilai_retribusi_bangunan) as total_retribution')
-            )
-            ->first();
+        $result = Cache::remember('dashboard_all_tasks_' . $current_year, 86400, function () use ($current_year) {
+            $startOfYear = "$current_year-01-01 00:00:00";
+            $endOfYear = "$current_year-12-31 23:59:59";
+            $query = DB::table('pbg_task as pt')
+                ->leftJoin('pbg_task_retributions as ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid')
+                ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
+                ->select(
+                    DB::raw('COUNT(DISTINCT pt.id) as task_count'),
+                    DB::raw('SUM(ptr.nilai_retribusi_bangunan) as total_retribution')
+                )
+                ->first();
+            return ["count" => $query->task_count ?? 0, "total" => $query->total_retribution ?? 0];
         });
-        $taskCount = $query->task_count ?? 0;
-        $taskTotal = $query->total_retribution ?? 0;
-        return $this->resSuccess([
-            "count" => $taskCount,
-            "total" => $taskTotal
-        ]);
+
+        return $this->resSuccess($result);
     }
 
     public function verificationDocuments(Request $request){
@@ -129,26 +129,21 @@ class DashboardController extends Controller
 
         $current_year = $request->get('year');
 
-        $startOfYear = "$current_year-01-01 00:00:00";
-        $endOfYear = "$current_year-12-31 23:59:59";
-        $query = once( function () use ($startOfYear, $endOfYear){
-            return DB::table('pbg_task AS pt')
+        $result = Cache::remember('dashboard_verification_docs_' . $current_year, 86400, function () use ($current_year) {
+            $startOfYear = "$current_year-01-01 00:00:00";
+            $endOfYear = "$current_year-12-31 23:59:59";
+            $query = DB::table('pbg_task AS pt')
                 ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
                 ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid')
                 ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
                 ->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) = ?', [strtolower(trim('Selesai Verifikasi'))])
-                ->selectRaw('COUNT(pt.id) AS total_data, 
-                            SUM(ptr.nilai_retribusi_bangunan) AS total_retribution') 
+                ->selectRaw('COUNT(pt.id) AS total_data,
+                            SUM(ptr.nilai_retribusi_bangunan) AS total_retribution')
                 ->first();
-        }); 
+            return ["count" => $query->total_data ?? 0, "total" => $query->total_retribution ?? 0];
+        });
 
-        $taskCount = $query->total_data ?? 0;
-        $taskTotal = $query->total_retribution ?? 0;
-
-        return $this->resSuccess([
-            "count"=> $taskCount,
-            "total"=> $taskTotal
-        ]);
+        return $this->resSuccess($result);
     }
 
     public function nonVerificationDocuments(Request $request){
@@ -158,54 +153,53 @@ class DashboardController extends Controller
 
         $current_year = $request->get('year');
 
-        $startOfYear = "$current_year-01-01 00:00:00";
-        $endOfYear = "$current_year-12-31 23:59:59";
-
-        $query = once(function () use ($startOfYear, $endOfYear) {
-            return DB::table('pbg_task AS pt')
-            ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
-            ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid') // Join tabel pbg_task_retributions
-            ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
-            ->where(function ($query) {
-                $query->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) != ?', [strtolower(trim('Selesai Verifikasi'))])
-                    ->orWhereNull('ptgs.status_verifikasi'); // Include NULL values
-            })
-            ->selectRaw('COUNT(pt.id) AS total_data, 
-                        SUM(ptr.nilai_retribusi_bangunan) AS total_retribution') // Menambahkan SUM dari pbg_task_retributions
-            ->first();
+        $result = Cache::remember('dashboard_non_verification_docs_' . $current_year, 86400, function () use ($current_year) {
+            $startOfYear = "$current_year-01-01 00:00:00";
+            $endOfYear = "$current_year-12-31 23:59:59";
+            $query = DB::table('pbg_task AS pt')
+                ->leftJoin('pbg_task_google_sheet AS ptgs', 'pt.registration_number', '=', 'ptgs.no_registrasi')
+                ->leftJoin('pbg_task_retributions AS ptr', 'pt.uuid', '=', 'ptr.pbg_task_uid') // Join tabel pbg_task_retributions
+                ->whereBetween("pt.start_date", [$startOfYear, $endOfYear])
+                ->where(function ($query) {
+                    $query->whereRaw('LOWER(TRIM(ptgs.status_verifikasi)) != ?', [strtolower(trim('Selesai Verifikasi'))])
+                        ->orWhereNull('ptgs.status_verifikasi'); // Include NULL values
+                })
+                ->selectRaw('COUNT(pt.id) AS total_data,
+                            SUM(ptr.nilai_retribusi_bangunan) AS total_retribution') // Menambahkan SUM dari pbg_task_retributions
+                ->first();
+            return ["count" => $query->total_data ?? 0, "total" => $query->total_retribution ?? 0];
         });
 
-        $taskCount = $query->total_data ?? 0;
-        $taskTotal = $query->total_retribution ?? 0;
-
-        return $this->resSuccess([
-            "count"=> $taskCount,
-            "total"=> $taskTotal
-        ]);
+        return $this->resSuccess($result);
     }
 
     public function pbgTaskDocuments(Request $request){
         $request->validate([
             'status' => 'required|string'
         ]);
-        
-        $businessData = DB::table('pbg_task')
-        ->leftJoin('pbg_task_retributions', 'pbg_task.uuid', '=', 'pbg_task_retributions.pbg_task_uid')
-        ->select(
-            DB::raw('COUNT(DISTINCT pbg_task.id) as task_count'),
-            DB::raw('SUM(pbg_task_retributions.nilai_retribusi_bangunan) as total_retribution')
-        )
-        ->where(function ($query) use ($request) {
-            $query->where("pbg_task.status", "=", $request->get('status'));
-        })
-        ->first();
-        $taskCount = $businessData->task_count;
-        $taskTotal = $businessData->total_retribution;
-        $result = [
-            "count" => $taskCount,
-            "series" => [$taskCount],
-            "total" => $taskTotal
-        ];
+
+        $status = $request->get('status');
+
+        $result = Cache::remember('dashboard_pbg_docs_' . $status, 86400, function () use ($status) {
+            $businessData = DB::table('pbg_task')
+                ->leftJoin('pbg_task_retributions', 'pbg_task.uuid', '=', 'pbg_task_retributions.pbg_task_uid')
+                ->select(
+                    DB::raw('COUNT(DISTINCT pbg_task.id) as task_count'),
+                    DB::raw('SUM(pbg_task_retributions.nilai_retribusi_bangunan) as total_retribution')
+                )
+                ->where("pbg_task.status", "=", $status)
+                ->first();
+
+            $taskCount = $businessData->task_count;
+            $taskTotal = $businessData->total_retribution;
+
+            return [
+                "count" => $taskCount,
+                "series" => [$taskCount],
+                "total" => $taskTotal
+            ];
+        });
+
         return $this->resSuccess($result);
     }
 }

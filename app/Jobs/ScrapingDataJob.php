@@ -16,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
 class ScrapingDataJob implements ShouldQueue
@@ -259,6 +260,7 @@ class ScrapingDataJob implements ShouldQueue
                 BigdataResume::generateResumeData($import_datasource->id, date('Y'), "simbg");
                 BigdataResume::generateResumeData($import_datasource->id, date('Y'), "leader");
                 Log::info("BigData resume generated successfully");
+                Artisan::call('cache:warm-dashboard');
             } catch (\Throwable $brErr) {
                 Log::warning("BigData resume skipped: " . $brErr->getMessage());
             }

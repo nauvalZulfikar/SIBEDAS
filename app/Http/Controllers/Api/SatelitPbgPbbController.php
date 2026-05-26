@@ -29,7 +29,7 @@ class SatelitPbgPbbController extends Controller
         'Rancaekek','Soreang','Solokanjeruk',
     ];
 
-    private const CACHE_TTL = 600; // 10 min
+    private const CACHE_TTL = 86400; // 24 h
     private const CACHE_KEY = 'satelit_pbg_pbb_summary_v1';
 
     public function __construct()

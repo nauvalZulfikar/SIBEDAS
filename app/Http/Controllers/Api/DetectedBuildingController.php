@@ -202,7 +202,7 @@ class DetectedBuildingController extends Controller
 
     private function getKecamatanListForSource(string $source, ?string $kbli = null): array
     {
-        return Cache::remember("source_kec_{$source}_" . md5((string) $kbli), 600, function () use ($source, $kbli) {
+        return Cache::remember("source_kec_{$source}_" . md5((string) $kbli), 86400, function () use ($source, $kbli) {
             switch ($source) {
                 case 'pariwisata':
                     $q = DB::table('tourisms')
@@ -316,7 +316,7 @@ class DetectedBuildingController extends Controller
         if ($fnType !== '' || $bCat !== '' || $dSrc !== '' || $pbgSt !== '') {
             $source = $request->get('source', 'all');
             $key = self::STATS_CACHE_KEY . "_{$source}_a{$minArea}_f{$fnType}_b{$bCat}_d{$dSrc}_p{$pbgSt}_k" . md5($kbli);
-            $payload = Cache::remember($key, 600, fn () => $this->computeStats($request));
+            $payload = Cache::remember($key, 86400, fn () => $this->computeStats($request));
             return response()->json($payload);
         }
 
@@ -379,7 +379,7 @@ class DetectedBuildingController extends Controller
 
     private function functionTypeBreakdown(): array
     {
-        return Cache::remember(self::STATS_CACHE_KEY . '_fn_types', 600, function () {
+        return Cache::remember(self::STATS_CACHE_KEY . '_fn_types', 86400, function () {
             $byFunctionType = array_fill_keys(array_keys(self::FUNCTION_TYPE_CATEGORIES), 0);
             $rows = DB::table('detected_buildings as db')
                 ->join('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')

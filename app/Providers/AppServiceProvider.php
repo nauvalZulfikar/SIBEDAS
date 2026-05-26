@@ -8,8 +8,10 @@ use App\Services\ServicePbgTask;
 use App\Services\ServiceTabPbgTask;
 use App\Services\ServiceTokenSIMBG;
 use App\View\Components\Circle;
+use App\Auth\CachedUserProvider;
 use Auth;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -51,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Auth::provider('cached-eloquent', function ($app, array $config) {
+            return new CachedUserProvider($app['hash'], $config['model']);
+        });
+
         Blade::component('circle', Circle::class);
 
         // Vector-tile proxy rate limit (Phase 8). 120 tiles/min/user covers
@@ -63,20 +69,24 @@ class AppServiceProvider extends ServiceProvider
             $user = Auth::user();
 
             if ($user) {
-                $menus = Menu::whereHas('roles', function ($query) use ($user) {
-                        $query->whereIn('roles.id', $user->roles->pluck('id'))
-                            ->where('role_menu.allow_show', 1);
-                    })
-                    ->with(['children' => function ($query) use ($user) {
-                        $query->whereHas('roles', function ($subQuery) use ($user) {
-                            $subQuery->whereIn('roles.id', $user->roles->pluck('id'))
-                                    ->where('role_menu.allow_show', 1);
+                $menus = Cache::remember('sidebar_menus_' . $user->id, 86400, function () use ($user) {
+                    $result = Menu::whereHas('roles', function ($query) use ($user) {
+                            $query->whereIn('roles.id', $user->roles->pluck('id'))
+                                ->where('role_menu.allow_show', 1);
                         })
-                        ->orderBy('sort_order', 'asc');
-                    }])
-                    ->whereNull('parent_id') // Ambil hanya menu utama
-                    ->orderBy('sort_order', 'asc')
-                    ->get();
+                        ->with(['children' => function ($query) use ($user) {
+                            $query->whereHas('roles', function ($subQuery) use ($user) {
+                                $subQuery->whereIn('roles.id', $user->roles->pluck('id'))
+                                        ->where('role_menu.allow_show', 1);
+                            })
+                            ->orderBy('sort_order', 'asc');
+                        }])
+                        ->whereNull('parent_id')
+                        ->orderBy('sort_order', 'asc')
+                        ->get();
+                    $result->each(fn ($m) => $m->setRelation('children', $m->children));
+                    return $result;
+                });
             } else {
                 $menus = collect();
             }
