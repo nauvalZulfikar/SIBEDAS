@@ -234,8 +234,8 @@ class EnrichGooglePlaces extends Command
             month_key CHAR(7) NOT NULL,
             api_key VARCHAR(50) NULL
         )");
-        DB::statement("CREATE INDEX IF NOT EXISTS idx_api_log_month ON google_places_api_log (month_key)");
-        DB::statement("CREATE INDEX IF NOT EXISTS idx_api_log_key_month ON google_places_api_log (api_key, month_key)");
+        try { DB::statement("CREATE INDEX idx_api_log_month ON google_places_api_log (month_key)"); } catch (\Exception $e) {}
+        try { DB::statement("CREATE INDEX idx_api_log_key_month ON google_places_api_log (api_key, month_key)"); } catch (\Exception $e) {}
     }
 
     private function getMonthlyUsageForKey(string $key): int
