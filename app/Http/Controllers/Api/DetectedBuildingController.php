@@ -263,7 +263,7 @@ class DetectedBuildingController extends Controller
         if ($request->filled('source')) $q->where('detection_source', $request->source);
         if ($request->filled('district')) $q->where('building_district_name', $request->district);
         if ($request->boolean('unmatched_only')) $q->whereNull('matched_pbg_task_id');
-        if ($request->filled('min_area')) $q->where('estimated_area_m2', '>=', $request->min_area);
+        if ($request->filled('min_area')) $q->whereRaw('COALESCE(actual_area_m2, estimated_area_m2) >= ?', [$request->min_area]);
         if ($request->filled('min_confidence')) $q->where('confidence_score', '>=', $request->min_confidence);
         if ($request->filled('function_type')) $this->applyFunctionTypeFilter($q, $request->function_type);
         if ($request->filled('business_category')) $this->applyBusinessCategoryFilter($q, $request->business_category);
@@ -329,9 +329,12 @@ class DetectedBuildingController extends Controller
         $agg = [
             'total_detected' => 0, 'permit_valid' => 0, 'permit_in_process' => 0, 'permit_rejected' => 0,
             'match_orphan' => 0, 'unmatched' => 0, 'without_permit' => 0,
+            'without_permit_area_m2' => 0.0, 'without_permit_retribution' => 0.0,
+            'without_permit_enriched_area_m2' => 0.0, 'without_permit_enriched_retribution' => 0.0,
             'pbg_total' => 0, 'pbg_terbit' => 0, 'pbg_proses' => 0, 'pbg_ditolak' => 0,
         ];
         $unmatchedByDistrict = [];
+        $retributionByDistrict = [];
         $pbgByDistrict = [];
         foreach ($rows as $r) {
             $agg['total_detected']      += $r->total_detected;
@@ -341,16 +344,22 @@ class DetectedBuildingController extends Controller
             $agg['match_orphan']        += $r->orphan_count;
             $agg['unmatched']           += $r->unmatched_count;
             $agg['without_permit']      += $r->without_permit_total;
+            $agg['without_permit_area_m2']     += (float) $r->without_permit_area_m2;
+            $agg['without_permit_retribution'] += (float) $r->without_permit_retribution;
+            $agg['without_permit_enriched_area_m2']     += (float) $r->without_permit_enriched_area_m2;
+            $agg['without_permit_enriched_retribution'] += (float) $r->without_permit_enriched_retribution;
             $agg['pbg_total']           += $r->pbg_total;
             $agg['pbg_terbit']          += $r->pbg_terbit;
             $agg['pbg_proses']          += $r->pbg_proses;
             $agg['pbg_ditolak']         += $r->pbg_ditolak;
             $unmatchedByDistrict[$r->kecamatan] = $r->without_permit_total;
+            $retributionByDistrict[$r->kecamatan] = (float) $r->without_permit_retribution;
             $pbgByDistrict[$r->kecamatan] = [
                 'terbit' => $r->pbg_terbit, 'proses' => $r->pbg_proses, 'ditolak' => $r->pbg_ditolak,
             ];
         }
         arsort($unmatchedByDistrict);
+        arsort($retributionByDistrict);
 
         return response()->json([
             'total_detected'        => $agg['total_detected'],
@@ -360,8 +369,14 @@ class DetectedBuildingController extends Controller
             'match_orphan'          => $agg['match_orphan'],
             'unmatched'             => $agg['unmatched'],
             'without_permit'        => $agg['without_permit'],
+            'without_permit_area_m2'     => round($agg['without_permit_area_m2'], 2),
+            'without_permit_retribution' => round($agg['without_permit_retribution'], 2),
+            'without_permit_enriched_area_m2'     => round($agg['without_permit_enriched_area_m2'], 2),
+            'without_permit_enriched_retribution' => round($agg['without_permit_enriched_retribution'], 2),
+            'without_permit_unenriched_retribution' => round($agg['without_permit_retribution'] - $agg['without_permit_enriched_retribution'], 2),
             'permit_rate'           => $agg['total_detected'] > 0 ? round($agg['permit_valid'] / $agg['total_detected'] * 100, 2) : 0,
             'unmatched_by_district' => $unmatchedByDistrict,
+            'retribution_by_district' => $retributionByDistrict,
             'pbg_total'             => $agg['pbg_total'],
             'pbg_by_status_category'=> ['terbit' => $agg['pbg_terbit'], 'proses' => $agg['pbg_proses'], 'ditolak' => $agg['pbg_ditolak']],
             'pbg_by_district'       => $pbgByDistrict,
@@ -403,7 +418,7 @@ class DetectedBuildingController extends Controller
         $q = $this->scopeBandungSelatan(DetectedBuilding::query());
         if ($request->filled('source')) $q->where('detection_source',$request->source);
         $minArea = (int) $request->get('min_area', 0);
-        if ($minArea > 0) $q->where('estimated_area_m2', '>=', $minArea);
+        if ($minArea > 0) $q->whereRaw('COALESCE(actual_area_m2, estimated_area_m2) >= ?', [$minArea]);
         if ($request->filled('function_type')) $this->applyFunctionTypeFilter($q, $request->function_type);
         if ($request->filled('business_category')) $this->applyBusinessCategoryFilter($q, $request->business_category);
         if ($request->filled('data_source')) $this->applyDataSourceFilter($q, $request->data_source, $request->get('kbli_title'));
@@ -414,7 +429,7 @@ class DetectedBuildingController extends Controller
         $breakdownQ = DB::table('detected_buildings as db')
             ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
             ->whereIn('db.kecamatan', self::BANDUNG_SELATAN_DISTRICTS);
-        if ($minArea > 0) $breakdownQ->where('db.estimated_area_m2', '>=', $minArea);
+        if ($minArea > 0) $breakdownQ->whereRaw('COALESCE(db.actual_area_m2, db.estimated_area_m2) >= ?', [$minArea]);
         if ($request->filled('function_type')) {
             $kw = self::FUNCTION_TYPE_CATEGORIES[strtolower($request->function_type)] ?? [];
             if ($kw) {
@@ -451,7 +466,7 @@ class DetectedBuildingController extends Controller
                   ->orWhereNull('pt.id')
                   ->orWhereIn('pt.status', [3, 9, 22]);
             });
-        if ($minArea > 0) $byDistrictQ->where('db.estimated_area_m2', '>=', $minArea);
+        if ($minArea > 0) $byDistrictQ->whereRaw('COALESCE(db.actual_area_m2, db.estimated_area_m2) >= ?', [$minArea]);
         if ($request->filled('function_type')) {
             $kw = self::FUNCTION_TYPE_CATEGORIES[strtolower($request->function_type)] ?? [];
             if ($kw) {
@@ -708,7 +723,7 @@ class DetectedBuildingController extends Controller
         if ($request->filled('district') && in_array($request->district, self::BANDUNG_SELATAN_DISTRICTS, true)) {
             $q->where('detected_buildings.kecamatan', $request->district);
         }
-        if ($request->filled('min_area')) $q->where('estimated_area_m2','>=',$request->min_area);
+        if ($request->filled('min_area')) $q->whereRaw('COALESCE(actual_area_m2, estimated_area_m2) >= ?', [$request->min_area]);
         if ($request->filled('function_type')) $this->applyFunctionTypeFilter($q, $request->function_type);
         if ($request->filled('business_category')) $this->applyBusinessCategoryFilter($q, $request->business_category);
         if ($request->filled('data_source')) $this->applyDataSourceFilter($q, $request->data_source, $request->get('kbli_title'));
@@ -720,10 +735,10 @@ class DetectedBuildingController extends Controller
         $buildings = $q->with(['matchedPbgTask:id,function_type,owner_name,registration_number,status,status_name'])
             ->select(
                 'detected_buildings.id','detected_buildings.latitude','detected_buildings.longitude',
-                'detected_buildings.estimated_area_m2','detected_buildings.matched_pbg_task_id',
+                'detected_buildings.estimated_area_m2','detected_buildings.actual_area_m2','detected_buildings.matched_pbg_task_id',
                 'detected_buildings.kecamatan'
             )
-            ->orderByDesc('detected_buildings.estimated_area_m2')
+            ->orderByRaw('COALESCE(detected_buildings.actual_area_m2, detected_buildings.estimated_area_m2) DESC')
             ->limit($limit)->get();
         $features = $buildings->map(function ($b) {
             $pbg = $b->matchedPbgTask;
@@ -736,7 +751,8 @@ class DetectedBuildingController extends Controller
             return ['type'=>'Feature','geometry'=>['type'=>'Point','coordinates'=>[(float)$b->longitude,(float)$b->latitude]],
                 'properties'=>[
                     'id'=>$b->id,
-                    'area_m2'=>$b->estimated_area_m2,
+                    'area_m2'=>(float)($b->actual_area_m2 ?? $b->estimated_area_m2),
+                    'area_m2_bbox'=>$b->estimated_area_m2,
                     'permit_state'=>$permitState,
                     'has_valid_permit'=>$permitState === 'terbit',
                     'district'=>$b->kecamatan,
