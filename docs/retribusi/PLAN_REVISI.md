@@ -72,8 +72,30 @@ faktor = `ST_Area(polygon)/ST_Area(ST_Envelope(polygon))` atas 231.047 OSM polyg
 
 ⚠️ Catatan: validasi brief "id 1588 < 2000 m²" **tak tercapai** by design — itu mengandaikan polygon asli yang tak pernah ada. Diganti: flag `area_suspect` utk review manual.
 
-## Fase 2 — place_type → fungsi_bg
-_(diisi saat eksekusi)_
+## Fase 2 — place_type → fungsi_bg ✅
+**Yang berubah**
+- Migration `2026_05_30_151000_create_place_type_function_mapping_table` (place_type PK · fungsi_bg · confidence enum · notes). ⚠️ Collation `place_type` dipaksa `utf8mb4_general_ci` agar match `property_enrichment` (DB default = unicode_ci → kalau tidak, JOIN error "illegal mix of collations").
+- Seeder `PlaceTypeFunctionMappingSeeder` — **145 mapping** (diperluas dari daftar brief utk menutup place_type frekuensi tinggi nyata: hotel, coffee_shop, manufacturer, grocery_store, dll). Target fungsi_bg valid: Hunian / Usaha / Usaha (UMKM) / Sosial Budaya / **Keagamaan (rate 0 — exempt)** / Campuran Besar/Kecil.
+- `RefreshKecamatanStats` — Source B: JOIN `property_enrichment` + `place_type_function_mapping` utk bangunan tanpa-izin **tanpa PBG** (unmatched/orphan). Prioritas PBG-ditolak (Source A) menang (0 overlap di data ini). `manual_review`/`low` → dipaksa Hunian. **`area_suspect` di-exclude** dari upgrade tarif (bbox blob tak boleh dinaikkan ke Usaha).
+
+**Validasi**
+| Cek | Hasil |
+|---|---|
+| Coverage place_type (5.389 baris) | auto 2.673 · empty 2.000 · manual_review 366 · unmapped 350 |
+| Enriched building coverage | **338 → 3.146** (+2.808 Google non-suspect) |
+| Toko Besi Saribaja | building_materials_store → Fungsi Usaha ✓ |
+| Rumah Helmi | housing_complex → Fungsi Hunian ✓ |
+| Masjid Al Jihad | mosque → Fungsi Keagamaan (Rp 0, exempt) ✓ |
+| Suspect blob inflasi (ditemukan & dibuang) | 231 suspect = 2,7 jt m² (mis. "kost" 86.164 m²) di-exclude |
+
+**Dampak (bucket 0):**
+| | After P1 | After P2 | Δ |
+|---|---|---|---|
+| without_permit_retribution | Rp 1.191.929 jt | **Rp 1.343.571 jt** | +12,7% |
+| enriched_retribution | Rp 202,7 jt | **Rp 216.073 jt (≈216 M)** | coverage ↑ |
+| enriched_area_m2 | 23.162 | 7.008.565 | — |
+
+Catatan: enriched naik karena bangunan komersil/sosial tanpa-izin kini pakai tarif fungsi asli (bukan Hunian). Total naik krn reklasifikasi Hunian→Usaha pd 7 jt m². Bangunan enriched cenderung besar (bias seleksi Google Places + sisa merge bbox); `area_suspect` sudah dibuang dr enrichment.
 
 ## Fase 3 — aktual vs potensi
 _(diisi saat eksekusi)_

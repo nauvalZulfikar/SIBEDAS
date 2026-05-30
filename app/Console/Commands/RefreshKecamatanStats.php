@@ -116,6 +116,32 @@ class RefreshKecamatanStats extends Command
                     $enrArea        += (float) $er->area;
                     $enrRetribution += (float) $er->area * (float) $rate;
                 }
+
+                // Source B — enrichment Google Places (property_enrichment.place_type)
+                // utk bangunan tanpa-izin TANPA PBG (unmatched/orphan). PBG-ditolak
+                // (Source A di atas) selalu menang; di sini hanya pt.id NULL (disjoint dr A).
+                // confidence manual_review/low → dipaksa Hunian (jangan diam² Usaha).
+                $enrB = DB::table('detected_buildings as db')
+                    ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
+                    ->join('property_enrichment as pe', 'pe.detected_building_id', '=', 'db.id')
+                    ->join('place_type_function_mapping as m', 'm.place_type', '=', 'pe.place_type')
+                    ->where('db.kecamatan', $kc)
+                    ->whereRaw('(db.matched_pbg_task_id IS NULL OR pt.id IS NULL)')
+                    // Jangan upgrade ke tarif Usaha/Campuran utk bbox blob yg luasnya
+                    // sudah di-flag tak dipercaya — biarkan di pool unenriched (Hunian).
+                    ->where('db.area_suspect', false);
+                if ($bucket > 0) $enrB->whereRaw('COALESCE(db.actual_area_m2, db.estimated_area_m2) >= ?', [$bucket]);
+                $enrBRows = $enrB
+                    ->groupByRaw("CASE WHEN m.confidence = 'auto' THEN m.fungsi_bg ELSE 'Fungsi Hunian' END")
+                    ->selectRaw("CASE WHEN m.confidence = 'auto' THEN m.fungsi_bg ELSE 'Fungsi Hunian' END AS fn,
+                                 SUM(COALESCE(db.actual_area_m2, db.estimated_area_m2)) AS area")->get();
+                foreach ($enrBRows as $er) {
+                    // fungsi_bg dr mapping dijamin ada di retribution_estimates; default Hunian.
+                    $rate = $rates[$er->fn] ?? $ratePerM2;
+                    $enrArea        += (float) $er->area;
+                    $enrRetribution += (float) $er->area * (float) $rate; // Keagamaan rate=0 → 0 (exempt)
+                }
+
                 $enrArea = round($enrArea, 2);
                 $enrRetribution = round($enrRetribution, 2);
 
