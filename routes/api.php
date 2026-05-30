@@ -46,6 +46,8 @@ Route::get('/health/pbb', [PbbHealthController::class, 'pbb'])->name('api.health
 
 // Combined dashboard endpoint (read-only aggregate, no PII) — Satelit ↔ PBG ↔ PBB
 Route::get('/satelit-pbg-pbb/summary', [SatelitPbgPbbController::class, 'summary'])->name('api.satelit-pbg-pbb.summary');
+// Ringkasan retribusi potensi vs realisasi per kecamatan (read-only, no PII)
+Route::get('/dashboards/retribusi-summary', [\App\Http\Controllers\Api\RetribusiSummaryController::class, 'index'])->name('api.dashboards.retribusi-summary');
 Route::group(['middleware' => 'auth:sanctum'], function (){
     // users
     Route::controller(UsersController::class)->group(function(){

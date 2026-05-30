@@ -61,6 +61,19 @@ class RefreshKecamatanStats extends Command
             ->whereIn('district_name', self::BS_DISTRICTS)
             ->pluck('district_code', 'district_name');
 
+        // 2b) Realisasi retribusi per kecamatan (pbg_task_retributions ⨝ pbg_task_details
+        // via pbg_task_uid; prasarana=0 di data ini → nilai = nilai_retribusi_bangunan).
+        //   paid    = SK PBG Terbit (status 20) → retribusi sudah tertagih.
+        //   pending = SKRD/proses pembayaran, belum terbit & belum rejected (3,9,22 = tanpa-izin).
+        $retribByKec = DB::table('pbg_task_retributions as r')
+            ->join('pbg_task_details as d', 'd.pbg_task_uid', '=', 'r.pbg_task_uid')
+            ->whereIn('d.building_district_name', self::BS_DISTRICTS)
+            ->groupBy('d.building_district_name')
+            ->selectRaw("d.building_district_name AS kc,
+                SUM(CASE WHEN d.status = 20 THEN r.nilai_retribusi_bangunan + COALESCE(r.nilai_prasarana,0) ELSE 0 END) AS paid,
+                SUM(CASE WHEN d.status NOT IN (20,3,9,22) AND r.nilai_retribusi_bangunan > 0 THEN r.nilai_retribusi_bangunan + COALESCE(r.nilai_prasarana,0) ELSE 0 END) AS pending")
+            ->get()->keyBy('kc');
+
         $now = now();
         $rows = 0;
         foreach (self::BS_DISTRICTS as $kc) {
@@ -70,6 +83,9 @@ class RefreshKecamatanStats extends Command
             $pbgProses = $pbg ? (int)$pbg->proses : 0;
             $pbgDitolak = $pbg ? (int)$pbg->ditolak : 0;
             $code = $districtCodeMap->get($kc);
+            $retr = $retribByKec->get($kc);
+            $actualPaid = $retr ? round((float)$retr->paid, 2) : 0.0;
+            $actualPending = $retr ? round((float)$retr->pending, 2) : 0.0;
 
             foreach (self::AREA_BUCKETS as $bucket) {
                 $q = DB::table('detected_buildings as db')
@@ -164,6 +180,10 @@ class RefreshKecamatanStats extends Command
                         'without_permit_retribution' => $wpRetribution,
                         'without_permit_enriched_area_m2'     => $enrArea,
                         'without_permit_enriched_retribution' => $enrRetribution,
+                        // Realisasi retribusi (bucket-independent, sama spt pbg_*).
+                        'actual_retribution_paid'    => $actualPaid,
+                        'actual_retribution_pending' => $actualPending,
+                        'total_potensi_combined'     => round($wpRetribution + $actualPending, 2),
                         'pbg_total'               => $pbgTotal,
                         'pbg_terbit'              => $pbgTerbit,
                         'pbg_proses'              => $pbgProses,

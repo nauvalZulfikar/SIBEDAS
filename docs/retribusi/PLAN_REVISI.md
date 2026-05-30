@@ -97,5 +97,43 @@ faktor = `ST_Area(polygon)/ST_Area(ST_Envelope(polygon))` atas 231.047 OSM polyg
 
 Catatan: enriched naik karena bangunan komersil/sosial tanpa-izin kini pakai tarif fungsi asli (bukan Hunian). Total naik krn reklasifikasi Hunian→Usaha pd 7 jt m². Bangunan enriched cenderung besar (bias seleksi Google Places + sisa merge bbox); `area_suspect` sudah dibuang dr enrichment.
 
-## Fase 3 — aktual vs potensi
-_(diisi saat eksekusi)_
+## Fase 3 — aktual vs potensi ✅
+**Yang berubah**
+- Migration `2026_05_30_152000_add_actual_retribution_to_kecamatan_stats`: `actual_retribution_paid`, `actual_retribution_pending`, `total_potensi_combined`.
+- `KecamatanStat` model: fillable + casts utk 3 kolom baru.
+- `RefreshKecamatanStats` step 2b: `pbg_task_retributions ⨝ pbg_task_details` **via `pbg_task_uid`** (bukan `detail_id` — itu cuma match 19 baris). Amount = `nilai_retribusi_bangunan + nilai_prasarana` (prasarana=0). paid=status 20; pending=status NOT IN (20,3,9,22) & nilai>0. `total_potensi_combined = without_permit_retribution + pending`.
+- Endpoint **`GET /api/dashboards/retribusi-summary`** (`RetribusiSummaryController`, publik read-only, no PII) → `{ totals, per_kecamatan:[{potensi_total, potensi_enriched, paid, pending, gap_pct}] }`.
+
+**Validasi**
+| Cek | Hasil |
+|---|---|
+| Soreang: sum manual vs stored | paid Rp 5.036.934.394 + pending Rp 417.591.134 — **MATCH** ✓ |
+| Endpoint HTTP | **200**, 31 kecamatan, totals lengkap ✓ |
+| Gap potensi vs paid | **96,0%** total (mustahil 0% ✓ — tak ada bug join) |
+| Screenshot browser | `/tmp/retr_summary_endpoint.png` (Brave headless) ✓ |
+
+**Totals (bucket 0):** potensi Rp 1.344 T · enriched Rp 216 M · **paid Rp 53,8 M** · pending Rp 3,8 M · combined Rp 1.347 T · **gap 96,0%**.
+
+---
+
+## RINGKASAN EKSEKUSI
+
+**Runtime:** recompute-area 22,7 s · refresh ~12 s/run · total hands-on ~30 mnt (jauh < ETA 1 minggu — premis Fase 1 berubah jadi operasi murah).
+
+**Perubahan angka retribusi total Kab Bandung (tanpa-izin):**
+| Tahap | without_permit_retribution | Δ kumulatif vs baseline |
+|---|---|---|
+| Baseline | Rp 1.922.465 jt | — |
+| Fase 1 (fill-factor) | Rp 1.191.929 jt | −38,0% |
+| Fase 2 (place_type) | Rp 1.343.571 jt | −30,1% |
+| Fase 3 (realisasi) | Rp 1.343.571 jt (+ paid/pending/gap) | **−30,1%** |
+
+**Anomali yang ditemukan:**
+1. **Premis Fase 1 salah** — footprint Microsoft tak pernah di-ingest sbg polygon (geometry_geojson NULL, PostGIS geom=bbox 5-titik). Recompute-from-polygon mustahil → pivot ke fill-factor empiris 0,62.
+2. **648 bbox blob raksasa** (`area_suspect`, mis. id 1588 = 52rb m², "kost" 86rb m²) — Microsoft ML merge bangunan berdempetan. Di-flag review; fill-factor seragam tak bisa membenarkan.
+3. **231 suspect blob meng-inflasi enriched** 2,7 jt m² → di-exclude dari upgrade tarif.
+4. **0 overlap** property_enrichment ↔ PBG-ditolak → Google enrichment 100% additif.
+5. **Collation drift** — DB default unicode_ci tapi `property_enrichment.place_type` general_ci → mapping table dipaksa general_ci.
+6. **Join key retribusi** = `pbg_task_uid`, bukan `detail_id` (detail_id cuma 19 match dari 5.959).
+7. **Kecamatan gap negatif** (Nagreg dll) — paid > combined potensi krn paid mencakup semua PBG terbit (taat izin), sedang potensi cuma bangunan tanpa-izin. Bukan bug; sinyal kepatuhan tinggi / deteksi tanpa-izin rendah di kec tsb.
+8. Ekspektasi brief "≈5.959 PBG-ditolak enriched" keliru — itu jumlah baris `pbg_task_retributions`; PBG-ditolak ber-fungsi dalam scope sebenarnya **338**.
