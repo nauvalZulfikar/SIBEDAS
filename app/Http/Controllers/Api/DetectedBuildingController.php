@@ -374,6 +374,9 @@ class DetectedBuildingController extends Controller
             'without_permit_enriched_area_m2'     => round($agg['without_permit_enriched_area_m2'], 2),
             'without_permit_enriched_retribution' => round($agg['without_permit_enriched_retribution'], 2),
             'without_permit_unenriched_retribution' => round($agg['without_permit_retribution'] - $agg['without_permit_enriched_retribution'], 2),
+            // unenriched = ASUMSI (tarif Hunian default, fungsi belum diketahui) → batas bawah, bukan nilai pasti.
+            'without_permit_unenriched_is_assumption' => true,
+            'retribution_assumption_note' => 'Bagian unenriched memakai tarif Hunian default (Rp 9.181,50/m²) karena fungsi bangunan belum diketahui — estimasi batas bawah. Angka terpercaya = enriched.',
             'permit_rate'           => $agg['total_detected'] > 0 ? round($agg['permit_valid'] / $agg['total_detected'] * 100, 2) : 0,
             'unmatched_by_district' => $unmatchedByDistrict,
             'retribution_by_district' => $retributionByDistrict,

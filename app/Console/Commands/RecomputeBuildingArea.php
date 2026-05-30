@@ -6,35 +6,35 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Isi detected_buildings.actual_area_m2 — estimasi luas yang lebih realistis
- * daripada estimated_area_m2 (bounding box).
+ * Isi detected_buildings.actual_area_m2.
  *
- * CATATAN PENTING (kenapa BUKAN recompute-from-polygon seperti brief awal):
- * footprint Microsoft TIDAK pernah di-ingest sebagai polygon — baik
- * detected_buildings.geometry_geojson (NULL semua) maupun PostGIS
- * public.buildings.geom (5-titik = bounding box). ST_Area atas kotak = luas
- * kotak (rasio recompute/estimated = 1,0014 → no-op). Jadi luas asli tak bisa
- * "dipulihkan". Sebagai gantinya:
+ * KOREKSI 2026-05-30 — faktor fill 0,62 DIBATALKAN.
+ * Asumsi awal "estimated_area_m2 = bounding box yang kegedean 30-60%" TERBUKTI
+ * SALAH. Verifikasi (cocok 400 bangunan ke footprint Microsoft asli dari sumber
+ * GlobalMLBuildingFootprints): estimated_area_m2 SUDAH = luas polygon asli —
+ *   rasio tersimpan / luas_polygon_asli = 1,007  (cocok)
+ *   rasio tersimpan / luas_bbox_kotak   = 0,637  (TIDAK cocok)
+ * → khusus pada bangunan kompleks (>5 titik) tersimpan ikut polygon, bukan kotak.
+ * Karena itu Microsoft TIDAK dikoreksi (factor default = 1.0). Mengalikan 0,62
+ * justru bikin luas 38% terlalu kecil.
  *
- *   - Microsoft footprint  → estimated_area_m2 × FILL_FACTOR (faktor isian
- *     bbox→footprint, diturunkan empiris dari 231.047 polygon OSM nyata:
- *     median ST_Area(poly)/ST_Area(bbox) = 0,6158 → dibulatkan 0,62).
- *   - OSM dgn polygon nyata (>5 titik) → ST_Area(UTM48S) sebenarnya (PostGIS).
- *   - OSM kotak (≤5 titik) → dibiarkan NULL; konsumen pakai
- *     COALESCE(actual_area_m2, estimated_area_m2) sebagai fallback legacy.
+ *   - Microsoft footprint  → estimated_area_m2 × factor (default 1.0 = apa adanya).
+ *   - OSM polygon nyata (>5 titik) → ST_Area(UTM48S) presisi dari PostGIS
+ *     (≈ identik dgn estimated; tetap dihitung utk akurasi maksimal bentuk kompleks).
+ *   - OSM kotak (≤5 titik) → NULL; konsumen pakai COALESCE(actual, estimated).
  *
- * area_suspect = bbox raksasa yang mustahil utk satu footprint (kemungkinan
- * blob ke-merge, mis. id 1588 = 51.949 m²) → masuk antrean review manual;
- * fill-factor seragam pun tak bisa membenarkannya.
+ * area_suspect = footprint raksasa (>threshold) yg perlu review manual — mis.
+ * id 1588 = 51.949 m². Di sumber Microsoft pun segitu (bukan artefak bbox),
+ * jadi ini anomali DATA SUMBER (ML merge/struktur besar), bukan kesalahan ukur.
  */
 class RecomputeBuildingArea extends Command
 {
     protected $signature = 'buildings:recompute-area
         {--chunk=2000 : Jumlah id per batch update OSM}
-        {--suspect-threshold=10000 : Ambang luas bbox (m²) utk flag area_suspect}
-        {--factor=0.62 : Fill-factor bbox→footprint utk Microsoft}';
+        {--suspect-threshold=10000 : Ambang luas (m²) utk flag area_suspect (review manual)}
+        {--factor=1.0 : Pengali luas Microsoft (default 1.0 = apa adanya; faktor 0,62 lama TERBUKTI salah)}';
 
-    protected $description = 'Hitung detected_buildings.actual_area_m2 (fill-factor Microsoft + ST_Area polygon OSM nyata).';
+    protected $description = 'Hitung detected_buildings.actual_area_m2 (Microsoft apa adanya + ST_Area polygon OSM nyata + flag suspect).';
 
     public function handle(): int
     {

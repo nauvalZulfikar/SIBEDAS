@@ -1,5 +1,31 @@
 # Revisi Pipeline Retribusi — Log Eksekusi
 
+> ## ⚠️ KOREKSI 2026-05-30 (baca dulu)
+> **Faktor fill 0,62 di Fase 1 DIBATALKAN — asumsi awalnya salah.**
+> Verifikasi (cocok 400 bangunan ke footprint Microsoft asli) membuktikan
+> `estimated_area_m2` **sudah = luas polygon asli**, bukan bounding box:
+> - tersimpan / luas_polygon = **1,007** (cocok) · tersimpan / luas_bbox = **0,637** (tidak)
+> - bangunan kompleks (>5 titik) pun ikut polygon → bukti tegas.
+>
+> Akibatnya angka "Rp 1,3 T" (hasil ×0,62) **salah, understate 38%**.
+> **Angka terkoreksi: Rp 2,167 T** (luas asli + reklasifikasi fungsi Fase 2).
+> Default `--factor` di kode kini **1.0** (Microsoft apa adanya).
+>
+> **Flag asumsi:** porsi *unenriched* (fungsi belum diketahui, tarif Hunian default)
+> kini ditandai `is_assumption=true` di endpoint & stats. Hanya **16,1%** potensi
+> yang fungsinya terverifikasi (enriched Rp 348,5 M); sisanya **asumsi batas bawah**.
+>
+> | Versi | Potensi | Status |
+> |---|---|---|
+> | Awal (no revisi) | Rp 1,922 T | semua Hunian |
+> | ×0,62 + Fase 2 | Rp 1,344 T | ❌ SALAH (luas dikecilin keliru) |
+> | **Terkoreksi (factor 1.0 + Fase 2+3)** | **Rp 2,167 T** | ✅ enriched Rp 348,5 M + unenriched Rp 1,819 T (asumsi) |
+>
+> Δ vs awal Rp 1,922 T = **+12,7%** (efek sah: komersil tanpa-izin → tarif Usaha).
+
+---
+
+
 Branch: `revisi-retribusi-2026-05-30` · DB: MySQL `sibedas` (2.403.038 detected_buildings) · PostGIS `sibedas_postgis_local` (db `sibedas_spatial`)
 
 ## Baseline (sebelum revisi, `kecamatan_stats` bucket 0, refreshed 2026-05-30 06:45)
