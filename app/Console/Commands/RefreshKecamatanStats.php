@@ -90,7 +90,10 @@ class RefreshKecamatanStats extends Command
             foreach (self::AREA_BUCKETS as $bucket) {
                 $q = DB::table('detected_buildings as db')
                     ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-                    ->where('db.kecamatan', $kc);
+                    // kecamatan_verified = hasil point-in-polygon BATAS_KECAMATAN_DESA
+                    // resmi (kolom `kecamatan` lama bocor: ribuan bangunan KBB/Cianjur
+                    // salah label). Bangunan luar Kab Bandung → verified NULL → tak terhitung.
+                    ->where('db.kecamatan_verified', $kc);
                 // Pakai luas terkoreksi (actual_area_m2) kalau ada, fallback ke
                 // estimated_area_m2 (legacy bbox) kalau belum di-recompute.
                 if ($bucket > 0) $q->whereRaw('COALESCE(db.actual_area_m2, db.estimated_area_m2) >= ?', [$bucket]);
@@ -117,7 +120,7 @@ class RefreshKecamatanStats extends Command
                 // pakai tarif/m² sesuai fungsi (akurat). Sisanya unenriched → Hunian.
                 $enrQ = DB::table('detected_buildings as db')
                     ->join('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-                    ->where('db.kecamatan', $kc)
+                    ->where('db.kecamatan_verified', $kc)
                     ->whereIn('pt.status', [3, 9, 22])
                     ->whereNotNull('pt.function_type')
                     ->where('pt.function_type', '!=', '');
@@ -141,7 +144,7 @@ class RefreshKecamatanStats extends Command
                     ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
                     ->join('property_enrichment as pe', 'pe.detected_building_id', '=', 'db.id')
                     ->join('place_type_function_mapping as m', 'm.place_type', '=', 'pe.place_type')
-                    ->where('db.kecamatan', $kc)
+                    ->where('db.kecamatan_verified', $kc)
                     ->whereRaw('(db.matched_pbg_task_id IS NULL OR pt.id IS NULL)')
                     // Jangan upgrade ke tarif Usaha/Campuran utk bbox blob yg luasnya
                     // sudah di-flag tak dipercaya — biarkan di pool unenriched (Hunian).

@@ -210,11 +210,11 @@ class OpenAIService
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => "You are an assistant that classifies text into one of the following categories:
+                    'content' => "You are an assistant that classifies text into EXACTLY ONE of the following categories:
                     - reklame (ads or product/service promotions)
                     - business_or_industries (business or industries in general)
                     - customers (customers, consumers, or service users)
-                    - pbg (tasks related to Building Approval - general info, status, document number)
+                    - pbg (tasks related to Building Approval - general info, status, document number; ALSO use this when the user is searching for or asking about a SPECIFIC PERSON by name, e.g. 'cari rida nurhayati', 'siapa ahmad budi', 'data si fulan' — even with possible typos)
                     - retribusi (retributions related to PBG)
                     - spatial_plannings (spatial planning)
                     - tourisms (tourism and tourist destinations)
@@ -223,7 +223,10 @@ class OpenAIService
                     - dokumen_per_noreg (detailed document status per registration number: which specific documents are missing, not compliant, or not yet uploaded for a given noreg — use this when user asks about specific registration number's document details)
                     - dokumen_resume (dashboard summary of document deficiencies: RAB/KRK/DLH shortage counts, verified vs non-verified totals, business vs non-business document statistics, overall PBG data summary)
 
-                    Respond with only one of the categories above without any additional explanation."
+                    DEFAULT — If the user is searching by a person's name, applicant name, or business name (e.g. 'cari X', 'siapa X', 'data X', possibly with typos), classify as `pbg`.
+                    DEFAULT — If unsure, classify as `pbg`.
+
+                    Respond with ONLY the category snake_case keyword (e.g. `pbg`). No quotes, no explanation, no punctuation."
                 ],
                 [
                     'role' => 'user',
@@ -231,8 +234,29 @@ class OpenAIService
                 ],
             ],
         ]);
-    
-        return trim($response['choices'][0]['message']['content'] ?? 'No response');
+
+        $raw = trim($response['choices'][0]['message']['content'] ?? '');
+        // Normalize: lowercase, strip non-alphanumeric/underscore
+        $norm = strtolower(preg_replace('/[^a-z0-9_]/i', '', $raw));
+
+        $valid = [
+            'reklame', 'business_or_industries', 'customers',
+            'pbg', 'retribusi', 'spatial_plannings',
+            'tourisms', 'umkms', 'pbg_tracking',
+            'dokumen_resume', 'dokumen_per_noreg',
+        ];
+
+        if (in_array($norm, $valid, true)) {
+            return $norm;
+        }
+        // Substring match (handles 'pbg.' or 'category:pbg')
+        foreach ($valid as $cat) {
+            if (str_contains($norm, $cat)) {
+                return $cat;
+            }
+        }
+        // Fallback — never reject the user.
+        return 'pbg';
     }
 
     public function createMainQuery($classify, $prompt, $chatHistory)
@@ -309,6 +333,24 @@ class OpenAIService
                 - Table Name: $tableName
                 - Available Columns: $columns
                 $extraContext
+
+                FUZZY NAME MATCHING (MANDATORY) — Indonesian person/owner/business names are very often typo'd
+                (e.g. 'suhairi' vs 'suhaeri', 'rahmat' vs 'rohmat'). Whenever the user is searching by a
+                person's name, owner name, applicant name, business name, or any free-text identifier
+                (typical columns: name, owner_name, nama_pemilik, nama_pemohon, nama_usaha, business_name),
+                you MUST expand the WHERE clause to also match phonetically via SOUNDEX.
+
+                Pattern — instead of:
+                    WHERE owner_name LIKE '%iri suhairi%'
+                you MUST write:
+                    WHERE (
+                        owner_name LIKE '%iri suhairi%'
+                        OR SOUNDEX(owner_name) = SOUNDEX('iri suhairi')
+                        OR SOUNDEX(REPLACE(owner_name, ' ', '')) = SOUNDEX(REPLACE('iri suhairi', ' ', ''))
+                    )
+
+                Apply the same OR-SOUNDEX expansion to every name-like column referenced in the search.
+                Never use SOUNDEX on dates, numbers, IDs, or registration numbers — only on name/text fields.
 
                 Generate only the SQL query without any explanation or additional text.
                 The query should include `LIMIT 10` to restrict the results."

@@ -223,7 +223,7 @@ class PublicSearch {
 
     initDatatable() {
         const tableContainer = document.getElementById(
-            "datatable-public-search"
+            "datatable-public-search",
         );
 
         const config = {
@@ -233,6 +233,7 @@ class PublicSearch {
                 { name: "Nama Pemilik", width: "150px" },
                 { name: "Kondisi", width: "120px" },
                 { name: "Nomor Registrasi", width: "180px" },
+                { name: "Koordinat", width: "160px" },
                 { name: "Status", width: "120px" },
                 { name: "Jenis Fungsi", width: "150px" },
                 { name: "Nama Bangunan", width: "200px" },
@@ -258,35 +259,59 @@ class PublicSearch {
                     // Check if data is empty
                     if (!data.data || data.data.length === 0) {
                         this.showEmptyState(
-                            data.message || "Tidak ada data yang ditemukan"
+                            data.message || "Tidak ada data yang ditemukan",
                         );
                         return [];
                     }
 
-                    return data.data.map((item) => [
-                        item.id || "-",
-                        item.name || "-",
-                        item.owner_name || "-",
-                        item.condition || "-",
-                        item.registration_number || "-",
-                        item.status_name || "-",
-                        item.function_type || "-",
-                        item.name_building || "-",
-                        item.consultation_type || "-",
-                        item.due_date || "-",
-                        item.nilai_retribusi_bangunan
-                            ? addThousandSeparators(
-                                  item.nilai_retribusi_bangunan
-                              )
-                            : "-",
-                        item.note || "-",
-                    ]);
+                    return data.data.map((item) => {
+                        const lat =
+                            item.latitude !== null &&
+                            item.latitude !== undefined &&
+                            item.latitude !== ""
+                                ? parseFloat(item.latitude)
+                                : null;
+                        const lng =
+                            item.longitude !== null &&
+                            item.longitude !== undefined &&
+                            item.longitude !== ""
+                                ? parseFloat(item.longitude)
+                                : null;
+                        const koordinatCell =
+                            lat !== null &&
+                            lng !== null &&
+                            !isNaN(lat) &&
+                            !isNaN(lng)
+                                ? html(
+                                      `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener" style="font-size:12px">${lat.toFixed(5)}, ${lng.toFixed(5)}</a>`,
+                                  )
+                                : "-";
+                        return [
+                            item.id || "-",
+                            item.name || "-",
+                            item.owner_name || "-",
+                            item.condition || "-",
+                            item.registration_number || "-",
+                            koordinatCell,
+                            item.status_name || "-",
+                            item.function_type || "-",
+                            item.name_building || "-",
+                            item.consultation_type || "-",
+                            item.due_date || "-",
+                            item.nilai_retribusi_bangunan
+                                ? addThousandSeparators(
+                                      item.nilai_retribusi_bangunan,
+                                  )
+                                : "-",
+                            item.note || "-",
+                        ];
+                    });
                 },
                 total: (data) => data.total || 0,
                 error: (error) => {
                     console.error("Datatable error:", error);
                     this.showEmptyState(
-                        "Terjadi kesalahan saat mengambil data"
+                        "Terjadi kesalahan saat mengambil data",
                     );
                 },
             },

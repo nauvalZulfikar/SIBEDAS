@@ -45,6 +45,39 @@
     </div>
 </div>
 
+<div class="card mb-3 border-danger border-opacity-25">
+    <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+            <div class="avatar-md bg-soft-danger rounded me-3"><iconify-icon icon="solar:wad-of-money-broken" class="fs-32 avatar-title text-danger"></iconify-icon></div>
+            <div>
+                <p class="text-muted mb-0">Potensi Retribusi Bangunan Tidak Berizin</p>
+                <h3 class="mb-0 text-danger" id="kpi-retr-total">-</h3>
+                <small class="text-muted">luas <span id="kpi-retr-area">-</span> m² · tarif/m² fungsi (enriched) atau Hunian (default)</small>
+            </div>
+        </div>
+        <div class="row g-2 mt-1">
+            <div class="col-md-6">
+                <div class="border rounded p-2 h-100 bg-soft-success bg-opacity-10">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small fw-semibold text-success"><span class="legend-dot" style="background:#22c55e"></span>Enriched (ada fungsi)</span>
+                        <h5 class="mb-0 text-success" id="kpi-retr-enriched">-</h5>
+                    </div>
+                    <small class="text-muted">prioritas · tarif sesuai fungsi · <span id="kpi-retr-enriched-area">-</span> m²</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="border rounded p-2 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small fw-semibold text-muted"><span class="legend-dot" style="background:#94a3b8"></span>Unenriched (tanpa fungsi)</span>
+                        <h5 class="mb-0" id="kpi-retr-unenriched">-</h5>
+                    </div>
+                    <small class="text-muted">estimasi batas bawah · tarif Hunian</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
@@ -87,14 +120,15 @@
                     <th class="text-end text-warning">PBG Proses</th>
                     <th class="text-end text-danger">Tidak Berizin</th>
                     <th class="text-end">Rasio Berizin</th>
+                    <th class="text-end text-danger">Potensi Retribusi</th>
                 </tr>
             </thead>
             <tbody id="spp-tbody">
-                <tr><td colspan="7" class="text-center text-muted py-4">Memuat data...</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">Memuat data...</td></tr>
             </tbody>
             <tfoot class="table-light fw-bold">
                 <tr id="spp-foot">
-                    <td>TOTAL</td><td colspan="6"></td>
+                    <td>TOTAL</td><td colspan="7"></td>
                 </tr>
             </tfoot>
         </table>

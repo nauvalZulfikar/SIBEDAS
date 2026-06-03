@@ -7,9 +7,9 @@ Dropzone.autoDiscover = false;
 class PbgTasks {
     constructor() {
         const params = new URLSearchParams(window.location.search);
-        this.selectedYear = params.get('year') || '';
-        this.selectedFilter = params.get('filter') || '';
-        this.currentSearch = '';
+        this.selectedYear = params.get("year") || "";
+        this.selectedFilter = params.get("filter") || "";
+        this.currentSearch = "";
         this.currentColFilters = {};
         this.toastMessage = document.getElementById("toast-message");
         this.toastElement = document.getElementById("toastNotification");
@@ -83,25 +83,26 @@ class PbgTasks {
 
         if (this.selectedFilter) {
             const filterLabels = {
-                'potention': 'Total Potensi Berkas',
-                'verified': 'Berkas Lengkap',
-                'non-verified': 'Berkas Belum Lengkap',
-                'business': 'Usaha',
-                'non-business': 'Non Usaha',
-                'issuance-realization-pbg': 'Realisasi SK PBG Terbit',
-                'waiting-click-dpmptsp': 'Berproses di DPMPTSP',
-                'process-in-technical-office': 'Berproses Di Dinas Teknis',
-                'non-business-rab': 'Non Usaha - RAB',
-                'non-business-krk': 'Non Usaha - KRK',
-                'business-rab': 'Usaha - RAB',
-                'business-krk': 'Usaha - KRK',
-                'business-dlh': 'Usaha - DLH',
+                potention: "Total Potensi Berkas",
+                verified: "Berkas Lengkap",
+                "non-verified": "Berkas Belum Lengkap",
+                business: "Usaha",
+                "non-business": "Non Usaha",
+                "issuance-realization-pbg": "Realisasi SK PBG Terbit",
+                "waiting-click-dpmptsp": "Berproses di DPMPTSP",
+                "process-in-technical-office": "Berproses Di Dinas Teknis",
+                "non-business-rab": "Non Usaha - RAB",
+                "non-business-krk": "Non Usaha - KRK",
+                "business-rab": "Usaha - RAB",
+                "business-krk": "Usaha - KRK",
+                "business-dlh": "Usaha - DLH",
             };
-            const label = filterLabels[this.selectedFilter] || this.selectedFilter;
+            const label =
+                filterLabels[this.selectedFilter] || this.selectedFilter;
             const badge = document.createElement("span");
             badge.className = "badge bg-info text-dark";
             badge.style.fontSize = "12px";
-            badge.innerHTML = `Filter: ${label} &nbsp;<a href="?menu_id=${new URLSearchParams(window.location.search).get('menu_id') || ''}" class="text-dark" style="text-decoration:none;">✕</a>`;
+            badge.innerHTML = `Filter: ${label} &nbsp;<a href="?menu_id=${new URLSearchParams(window.location.search).get("menu_id") || ""}" class="text-dark" style="text-decoration:none;">✕</a>`;
             wrapper.appendChild(badge);
         }
 
@@ -109,19 +110,27 @@ class PbgTasks {
     }
 
     async fetchPage(page, search, sort, dir, colFilters) {
-        const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
+        const token = document
+            .querySelector('meta[name="api-token"]')
+            .getAttribute("content");
         let url = `${GlobalConfig.apiHost}/api/request-assignments?page=${page}&per_page=15`;
         if (this.selectedYear) url += `&year=${this.selectedYear}`;
-        if (this.selectedFilter) url += `&filter=${encodeURIComponent(this.selectedFilter)}`;
+        if (this.selectedFilter)
+            url += `&filter=${encodeURIComponent(this.selectedFilter)}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
-        if (sort) url += `&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir || 'asc')}`;
+        if (sort)
+            url += `&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir || "asc")}`;
         if (colFilters) {
             Object.entries(colFilters).forEach(([key, val]) => {
-                if (val) url += `&cf[${encodeURIComponent(key)}]=${encodeURIComponent(val)}`;
+                if (val)
+                    url += `&cf[${encodeURIComponent(key)}]=${encodeURIComponent(val)}`;
             });
         }
         const resp = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
             credentials: "include",
         });
         return resp.json();
@@ -129,11 +138,16 @@ class PbgTasks {
 
     statusBadge(s, name) {
         name = name || "-";
-        if (s === 9 || s === 3)               return `<span class="badge bg-danger" style="white-space:normal">${name}</span>`;
-        if (s === 20 || s === 28)             return `<span class="badge bg-success" style="white-space:normal">${name}</span>`;
-        if (s === 19 || s === 18)             return `<span class="badge bg-primary" style="white-space:normal">${name}</span>`;
-        if (s === 14 || s === 15 || s === 25) return `<span class="badge bg-warning text-dark" style="white-space:normal">${name}</span>`;
-        if (s === 1  || s === 2  || s === 8)  return `<span class="badge bg-secondary" style="white-space:normal">${name}</span>`;
+        if (s === 9 || s === 3)
+            return `<span class="badge bg-danger" style="white-space:normal">${name}</span>`;
+        if (s === 20 || s === 28)
+            return `<span class="badge bg-success" style="white-space:normal">${name}</span>`;
+        if (s === 19 || s === 18)
+            return `<span class="badge bg-primary" style="white-space:normal">${name}</span>`;
+        if (s === 14 || s === 15 || s === 25)
+            return `<span class="badge bg-warning text-dark" style="white-space:normal">${name}</span>`;
+        if (s === 1 || s === 2 || s === 8)
+            return `<span class="badge bg-secondary" style="white-space:normal">${name}</span>`;
         return `<span class="badge bg-info text-dark" style="white-space:normal">${name}</span>`;
     }
 
@@ -171,34 +185,125 @@ class PbgTasks {
         ];
 
         const columns = [
-            { label: "ID",                  key: "id",                  width: "60px",  nowrap: true },
-            { label: "Nama Pemohon",        key: "name",                width: "160px" },
-            { label: "Nama Pemilik",        key: "owner_name",          width: "140px" },
-            { label: "Kondisi",             key: "condition",           width: "100px", nowrap: true, filterable: true },
-            { label: "Nomor Registrasi",    key: "registration_number", width: "145px" },
-            { label: "Nomor Dokumen",       key: "document_number",     width: "135px", nowrap: true },
-            { label: "Alamat",              key: "address",             width: "180px" },
-            { label: "Status",              key: "status_name",         width: "155px", filterable: true },
-            { label: "Jenis Fungsi",        key: "function_type",       width: "145px", filterable: true },
-            { label: "Nama Bangunan",       key: "_name_building",      width: "145px" },
-            { label: "Jenis Konsultasi",    key: "consultation_type",   width: "160px", filterable: true, nowrap: false },
-            { label: "Tanggal Dibuat",      key: "task_created_at",     width: "105px", nowrap: true },
-            { label: "Tanggal Mulai",       key: "start_date",          width: "105px", nowrap: true },
-            { label: "Tanggal Jatuh Tempo", key: "due_date",            width: "105px", nowrap: true },
-            { label: "Luas (m²)",           key: "total_area",          width: "90px",  nowrap: true },
-            { label: "Unit",                key: "unit",                width: "70px",  nowrap: true, filterable: true },
-            { label: "Retribusi",           key: "_retribusi",          width: "125px", nowrap: true },
-            { label: "Usulan Retribusi",   key: "usulan_retribusi",    width: "140px", nowrap: true },
-            { label: "Catatan",             key: "_catatan",            width: "180px" },
-            { label: "Aksi",                key: "_aksi",               width: "135px", nowrap: true, nosort: true },
+            { label: "ID", key: "id", width: "60px", nowrap: true },
+            { label: "Nama Pemohon", key: "name", width: "160px" },
+            { label: "Nama Pemilik", key: "owner_name", width: "140px" },
+            {
+                label: "Kondisi",
+                key: "condition",
+                width: "100px",
+                nowrap: true,
+                filterable: true,
+            },
+            {
+                label: "Nomor Registrasi",
+                key: "registration_number",
+                width: "145px",
+            },
+            {
+                label: "Nomor Dokumen",
+                key: "document_number",
+                width: "135px",
+                nowrap: true,
+            },
+            { label: "Alamat", key: "address", width: "180px" },
+            {
+                label: "Koordinat",
+                key: "_koordinat",
+                width: "140px",
+                nowrap: true,
+                nosort: true,
+            },
+            {
+                label: "Status",
+                key: "status_name",
+                width: "155px",
+                filterable: true,
+            },
+            {
+                label: "Jenis Fungsi",
+                key: "function_type",
+                width: "145px",
+                filterable: true,
+            },
+            { label: "Nama Bangunan", key: "_name_building", width: "145px" },
+            {
+                label: "Jenis Konsultasi",
+                key: "consultation_type",
+                width: "160px",
+                filterable: true,
+                nowrap: false,
+            },
+            {
+                label: "Tanggal Dibuat",
+                key: "task_created_at",
+                width: "105px",
+                nowrap: true,
+            },
+            {
+                label: "Tanggal Mulai",
+                key: "start_date",
+                width: "105px",
+                nowrap: true,
+            },
+            {
+                label: "Tanggal Jatuh Tempo",
+                key: "due_date",
+                width: "105px",
+                nowrap: true,
+            },
+            {
+                label: "Luas (m²)",
+                key: "total_area",
+                width: "90px",
+                nowrap: true,
+            },
+            {
+                label: "Unit",
+                key: "unit",
+                width: "70px",
+                nowrap: true,
+                filterable: true,
+            },
+            {
+                label: "Retribusi",
+                key: "_retribusi",
+                width: "125px",
+                nowrap: true,
+            },
+            {
+                label: "Usulan Retribusi",
+                key: "usulan_retribusi",
+                width: "140px",
+                nowrap: true,
+            },
+            { label: "Catatan", key: "_catatan", width: "180px" },
+            {
+                label: "Aksi",
+                key: "_aksi",
+                width: "135px",
+                nowrap: true,
+                nosort: true,
+            },
         ];
 
         const getVal = (item, key) => {
-            if (key === "_name_building") return item.pbg_task_detail ? item.pbg_task_detail.name_building : "";
-            if (key === "total_area") return item.pbg_task_detail ? item.pbg_task_detail.total_area : "";
-            if (key === "unit") return item.pbg_task_detail ? item.pbg_task_detail.unit : "";
-            if (key === "_retribusi") return item.pbg_task_retributions ? item.pbg_task_retributions.nilai_retribusi_bangunan : "";
-            if (key === "_catatan") return item.pbg_status ? item.pbg_status.note : "";
+            if (key === "_name_building")
+                return item.pbg_task_detail
+                    ? item.pbg_task_detail.name_building
+                    : "";
+            if (key === "total_area")
+                return item.pbg_task_detail
+                    ? item.pbg_task_detail.total_area
+                    : "";
+            if (key === "unit")
+                return item.pbg_task_detail ? item.pbg_task_detail.unit : "";
+            if (key === "_retribusi")
+                return item.pbg_task_retributions
+                    ? item.pbg_task_retributions.nilai_retribusi_bangunan
+                    : "";
+            if (key === "_catatan")
+                return item.pbg_status ? item.pbg_status.note : "";
             if (key === "_aksi") return "";
             return item[key] || "";
         };
@@ -210,45 +315,97 @@ class PbgTasks {
         const buildTable = (items) => {
             const filtered = renderRows(items);
 
-            const headerHtml = columns.map((col, i) => {
-                const w = col.width ? `width:${col.width};min-width:${col.width};` : "";
-                const base = `${w}white-space:nowrap;font-size:13px;padding:8px 12px;background:#f8f9fa;border-bottom:2px solid #dee2e6;`;
-                if (col.nosort) return `<th style="${base}">${col.label}</th>`;
-                const isActive = sortCol === col.key;
-                const arrow = isActive ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕";
-                const activeStyle = isActive ? "color:#0d6efd;" : "color:#6c757d;";
-                return `<th data-colidx="${i}" style="${base}cursor:pointer;user-select:none;">${col.label}<span style="${activeStyle}font-size:10px">${arrow}</span></th>`;
-            }).join("");
+            const headerHtml = columns
+                .map((col, i) => {
+                    const w = col.width
+                        ? `width:${col.width};min-width:${col.width};`
+                        : "";
+                    const base = `${w}white-space:nowrap;font-size:13px;padding:8px 12px;background:#f8f9fa;border-bottom:2px solid #dee2e6;`;
+                    if (col.nosort)
+                        return `<th style="${base}">${col.label}</th>`;
+                    const isActive = sortCol === col.key;
+                    const arrow = isActive
+                        ? sortDir === "asc"
+                            ? " ↑"
+                            : " ↓"
+                        : " ↕";
+                    const activeStyle = isActive
+                        ? "color:#0d6efd;"
+                        : "color:#6c757d;";
+                    return `<th data-colidx="${i}" style="${base}cursor:pointer;user-select:none;">${col.label}<span style="${activeStyle}font-size:10px">${arrow}</span></th>`;
+                })
+                .join("");
 
-            const filterHtml = columns.map((col, i) => {
-                const w = col.width ? `width:${col.width};min-width:${col.width};` : "";
-                if (col.nosort) return `<th style="${w}padding:4px 6px;background:#f8f9fa;"></th>`;
-                if (col.filterable) {
-                    const unique = col.key === "status_name"
-                        ? allStatuses
-                        : [...new Set(items.map(item => getVal(item, col.key)).filter(Boolean))].sort();
-                    const opts = unique.map(v => `<option value="${v}" ${colFilters[col.key] === v ? "selected" : ""}>${v}</option>`).join("");
-                    return `<th style="${w}padding:4px 6px;background:#f8f9fa;"><select class="form-select form-select-sm col-filter" data-key="${col.key}" style="font-size:11px"><option value="">-- Semua --</option>${opts}</select></th>`;
-                }
-                return `<th style="${w}padding:4px 6px;background:#f8f9fa;"><input type="text" class="form-control form-control-sm col-filter" data-key="${col.key}" value="${colFilters[col.key] || ""}" placeholder="..." style="font-size:11px"></th>`;
-            }).join("");
+            const filterHtml = columns
+                .map((col, i) => {
+                    const w = col.width
+                        ? `width:${col.width};min-width:${col.width};`
+                        : "";
+                    if (col.nosort)
+                        return `<th style="${w}padding:4px 6px;background:#f8f9fa;"></th>`;
+                    if (col.filterable) {
+                        const unique =
+                            col.key === "status_name"
+                                ? allStatuses
+                                : [
+                                      ...new Set(
+                                          items
+                                              .map((item) =>
+                                                  getVal(item, col.key),
+                                              )
+                                              .filter(Boolean),
+                                      ),
+                                  ].sort();
+                        const opts = unique
+                            .map(
+                                (v) =>
+                                    `<option value="${v}" ${colFilters[col.key] === v ? "selected" : ""}>${v}</option>`,
+                            )
+                            .join("");
+                        return `<th style="${w}padding:4px 6px;background:#f8f9fa;"><select class="form-select form-select-sm col-filter" data-key="${col.key}" style="font-size:11px"><option value="">-- Semua --</option>${opts}</select></th>`;
+                    }
+                    return `<th style="${w}padding:4px 6px;background:#f8f9fa;"><input type="text" class="form-control form-control-sm col-filter" data-key="${col.key}" value="${colFilters[col.key] || ""}" placeholder="..." style="font-size:11px"></th>`;
+                })
+                .join("");
 
-            const tbodyHtml = filtered.map((item, idx) => {
-                const ret = item.pbg_task_retributions ? addThousandSeparators(item.pbg_task_retributions.nilai_retribusi_bangunan) : "-";
-                const aksi = canUpdate ? `
+            const tbodyHtml = filtered
+                .map((item, idx) => {
+                    const ret = item.pbg_task_retributions
+                        ? addThousandSeparators(
+                              item.pbg_task_retributions
+                                  .nilai_retribusi_bangunan,
+                          )
+                        : "-";
+                    const aksi = canUpdate
+                        ? `
                     <div class="d-flex gap-1 flex-wrap">
                         <a href="/pbg-task/${item.id}" class="btn btn-yellow btn-sm"><iconify-icon icon="mingcute:eye-2-fill" width="13"></iconify-icon></a>
-                        ${item.attachment_berita_acara
-                            ? `<a href="/pbg-task-attachment/${item.attachment_berita_acara.id}?type=berita-acara" class="btn btn-success btn-sm" target="_blank" style="font-size:11px">BA</a>`
-                            : `<button class="btn btn-sm btn-info upload-btn-berita-acara" data-id="${item.id}" style="font-size:11px">BA</button>`}
-                        ${item.attachment_bukti_bayar
-                            ? `<a href="/pbg-task-attachment/${item.attachment_bukti_bayar.id}?type=bukti-bayar" class="btn btn-success btn-sm" target="_blank" style="font-size:11px">BB</a>`
-                            : `<button class="btn btn-sm btn-info upload-btn-bukti-bayar" data-id="${item.id}" style="font-size:11px">BB</button>`}
-                    </div>` : `<span class="text-muted" style="font-size:11px">No Privilege</span>`;
-                const bg = idx % 2 === 0 ? "" : "background:#f9f9f9;";
-                const td = `${bg}padding:8px 12px;font-size:13px;vertical-align:middle;border-color:#dee2e6;`;
-                const tdnw = `${td}white-space:nowrap;overflow:hidden;`;
-                return `<tr style="border-color:#dee2e6;">
+                        ${
+                            item.attachment_berita_acara
+                                ? `<a href="/pbg-task-attachment/${item.attachment_berita_acara.id}?type=berita-acara" class="btn btn-success btn-sm" target="_blank" style="font-size:11px">BA</a>`
+                                : `<button class="btn btn-sm btn-info upload-btn-berita-acara" data-id="${item.id}" style="font-size:11px">BA</button>`
+                        }
+                        ${
+                            item.attachment_bukti_bayar
+                                ? `<a href="/pbg-task-attachment/${item.attachment_bukti_bayar.id}?type=bukti-bayar" class="btn btn-success btn-sm" target="_blank" style="font-size:11px">BB</a>`
+                                : `<button class="btn btn-sm btn-info upload-btn-bukti-bayar" data-id="${item.id}" style="font-size:11px">BB</button>`
+                        }
+                    </div>`
+                        : `<span class="text-muted" style="font-size:11px">No Privilege</span>`;
+                    const bg = idx % 2 === 0 ? "" : "background:#f9f9f9;";
+                    const td = `${bg}padding:8px 12px;font-size:13px;vertical-align:middle;border-color:#dee2e6;`;
+                    const tdnw = `${td}white-space:nowrap;overflow:hidden;`;
+                    const lat = item.pbg_task_detail
+                        ? item.pbg_task_detail.latitude
+                        : null;
+                    const lng = item.pbg_task_detail
+                        ? item.pbg_task_detail.longitude
+                        : null;
+                    const koord =
+                        lat != null && lng != null
+                            ? `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener" style="font-size:12px">${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}</a>`
+                            : "-";
+                    return `<tr style="border-color:#dee2e6;">
                     <td style="${tdnw}">${item.id}</td>
                     <td style="${td}">${item.name || "-"}</td>
                     <td style="${td}">${item.owner_name || "-"}</td>
@@ -256,13 +413,14 @@ class PbgTasks {
                     <td style="${td}">${item.registration_number || "-"}</td>
                     <td style="${tdnw}">${item.document_number || "-"}</td>
                     <td style="${td}">${item.address || "-"}</td>
+                    <td style="${tdnw}">${koord}</td>
                     <td style="${td}">${self.statusBadge(item.status, item.status_name)}</td>
                     <td style="${td}">${item.function_type || "-"}</td>
                     <td style="${td}">${item.pbg_task_detail ? item.pbg_task_detail.name_building : "-"}</td>
                     <td style="${td}">${item.consultation_type || "-"}</td>
-                    <td style="${tdnw}">${item.task_created_at ? item.task_created_at.substring(0,10) : "-"}</td>
-                    <td style="${tdnw}">${item.start_date ? item.start_date.substring(0,10) : "-"}</td>
-                    <td style="${tdnw}">${item.due_date ? item.due_date.substring(0,10) : "-"}</td>
+                    <td style="${tdnw}">${item.task_created_at ? item.task_created_at.substring(0, 10) : "-"}</td>
+                    <td style="${tdnw}">${item.start_date ? item.start_date.substring(0, 10) : "-"}</td>
+                    <td style="${tdnw}">${item.due_date ? item.due_date.substring(0, 10) : "-"}</td>
                     <td style="${tdnw}">${item.pbg_task_detail && item.pbg_task_detail.total_area ? addThousandSeparators(item.pbg_task_detail.total_area) : "-"}</td>
                     <td style="${tdnw}">${item.pbg_task_detail && item.pbg_task_detail.unit ? item.pbg_task_detail.unit : "-"}</td>
                     <td style="${tdnw}">${ret}</td>
@@ -270,26 +428,32 @@ class PbgTasks {
                     <td style="${td}">${item.pbg_status ? item.pbg_status.note : "-"}</td>
                     <td style="${tdnw}">${aksi}</td>
                 </tr>`;
-            }).join("");
+                })
+                .join("");
 
             tableContainer.innerHTML = `
                 <div class="table-responsive" style="border:1px solid #dee2e6;border-radius:4px;">
-                    <table style="width:100%;border-collapse:collapse;min-width:1800px;">
+                    <table style="width:100%;border-collapse:collapse;min-width:1940px;">
                         <thead><tr>${headerHtml}</tr><tr>${filterHtml}</tr></thead>
                         <tbody>${tbodyHtml || `<tr><td colspan="${columns.length}" style="text-align:center;padding:20px;color:#6c757d;">Tidak ada data</td></tr>`}</tbody>
                     </table>
                 </div>`;
 
-            tableContainer.querySelectorAll("th[data-colidx]").forEach(th => {
+            tableContainer.querySelectorAll("th[data-colidx]").forEach((th) => {
                 th.addEventListener("click", () => {
-                    const col = columns[parseInt(th.getAttribute("data-colidx"))];
-                    if (sortCol === col.key) sortDir = sortDir === "asc" ? "desc" : "asc";
-                    else { sortCol = col.key; sortDir = "asc"; }
+                    const col =
+                        columns[parseInt(th.getAttribute("data-colidx"))];
+                    if (sortCol === col.key)
+                        sortDir = sortDir === "asc" ? "desc" : "asc";
+                    else {
+                        sortCol = col.key;
+                        sortDir = "asc";
+                    }
                     loadPage(1, currentSearch);
                 });
             });
 
-            tableContainer.querySelectorAll(".col-filter").forEach(el => {
+            tableContainer.querySelectorAll(".col-filter").forEach((el) => {
                 const isSelect = el.tagName === "SELECT";
                 if (isSelect) {
                     el.addEventListener("change", () => {
@@ -314,7 +478,13 @@ class PbgTasks {
             currentSearch = search;
             self.currentSearch = search;
             self.currentColFilters = colFilters;
-            const data = await self.fetchPage(page, search, sortCol, sortDir, colFilters);
+            const data = await self.fetchPage(
+                page,
+                search,
+                sortCol,
+                sortDir,
+                colFilters,
+            );
             totalPages = data.meta.last_page;
             currentPage = page;
             currentData = data.data;
@@ -327,11 +497,15 @@ class PbgTasks {
             if (!pag) {
                 pag = document.createElement("div");
                 pag.id = "custom-pagination";
-                pag.className = "d-flex align-items-center justify-content-between mt-2 px-1";
-                tableContainer.parentNode.insertBefore(pag, tableContainer.nextSibling);
+                pag.className =
+                    "d-flex align-items-center justify-content-between mt-2 px-1";
+                tableContainer.parentNode.insertBefore(
+                    pag,
+                    tableContainer.nextSibling,
+                );
             }
             pag.innerHTML = `
-                <small class="text-muted">Menampilkan ${((page-1)*15)+1}–${Math.min(page*15, totalRecords)} dari ${totalRecords} data</small>
+                <small class="text-muted">Menampilkan ${(page - 1) * 15 + 1}–${Math.min(page * 15, totalRecords)} dari ${totalRecords} data</small>
                 <div class="d-flex align-items-center gap-2">
                     <button class="btn btn-sm btn-outline-secondary" id="pag-first" ${page <= 1 ? "disabled" : ""}>&laquo;</button>
                     <button class="btn btn-sm btn-outline-secondary" id="pag-prev" ${page <= 1 ? "disabled" : ""}>&lsaquo; Prev</button>
@@ -339,10 +513,24 @@ class PbgTasks {
                     <button class="btn btn-sm btn-outline-secondary" id="pag-next" ${page >= total ? "disabled" : ""}>Next &rsaquo;</button>
                     <button class="btn btn-sm btn-outline-secondary" id="pag-last" ${page >= total ? "disabled" : ""}>&raquo;</button>
                 </div>`;
-            document.getElementById("pag-first").addEventListener("click", () => loadPage(1, currentSearch));
-            document.getElementById("pag-prev").addEventListener("click", () => loadPage(currentPage - 1, currentSearch));
-            document.getElementById("pag-next").addEventListener("click", () => loadPage(currentPage + 1, currentSearch));
-            document.getElementById("pag-last").addEventListener("click", () => loadPage(totalPages, currentSearch));
+            document
+                .getElementById("pag-first")
+                .addEventListener("click", () => loadPage(1, currentSearch));
+            document
+                .getElementById("pag-prev")
+                .addEventListener("click", () =>
+                    loadPage(currentPage - 1, currentSearch),
+                );
+            document
+                .getElementById("pag-next")
+                .addEventListener("click", () =>
+                    loadPage(currentPage + 1, currentSearch),
+                );
+            document
+                .getElementById("pag-last")
+                .addEventListener("click", () =>
+                    loadPage(totalPages, currentSearch),
+                );
         };
 
         loadPage(1, "");
@@ -353,16 +541,23 @@ class PbgTasks {
         if (!btn) return;
 
         btn.addEventListener("click", () => {
-            const token = document.querySelector('meta[name="api-token"]').getAttribute("content");
+            const token = document
+                .querySelector('meta[name="api-token"]')
+                .getAttribute("content");
             // Read year directly from dropdown at click time (most reliable)
             const yearDropdown = document.getElementById("year-filter-select");
-            const activeYear = yearDropdown ? yearDropdown.value : this.selectedYear;
+            const activeYear = yearDropdown
+                ? yearDropdown.value
+                : this.selectedYear;
             let url = `${GlobalConfig.apiHost}/api/pbg-task/export-excel?`;
             if (activeYear) url += `year=${encodeURIComponent(activeYear)}&`;
-            if (this.selectedFilter) url += `filter=${encodeURIComponent(this.selectedFilter)}&`;
-            if (this.currentSearch) url += `search=${encodeURIComponent(this.currentSearch)}&`;
+            if (this.selectedFilter)
+                url += `filter=${encodeURIComponent(this.selectedFilter)}&`;
+            if (this.currentSearch)
+                url += `search=${encodeURIComponent(this.currentSearch)}&`;
             Object.entries(this.currentColFilters).forEach(([key, val]) => {
-                if (val) url += `cf[${encodeURIComponent(key)}]=${encodeURIComponent(val)}&`;
+                if (val)
+                    url += `cf[${encodeURIComponent(key)}]=${encodeURIComponent(val)}&`;
             });
 
             btn.disabled = true;
@@ -372,11 +567,11 @@ class PbgTasks {
                 headers: { Authorization: `Bearer ${token}` },
                 credentials: "include",
             })
-                .then(res => res.blob())
-                .then(blob => {
+                .then((res) => res.blob())
+                .then((blob) => {
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = `pbg-data-${new Date().toISOString().slice(0,10)}.xlsx`;
+                    a.download = `pbg-data-${new Date().toISOString().slice(0, 10)}.xlsx`;
                     a.click();
                 })
                 .finally(() => {
@@ -391,24 +586,38 @@ class PbgTasks {
         this.toastElement = document.getElementById("toastNotification");
         this.toast = new bootstrap.Toast(this.toastElement);
 
-        document.getElementById("sendNotificationBtn").addEventListener("click", () => {
-            this.toastMessage.innerText = "Notifikasi berhasil dikirim!";
-            this.toast.show();
-            let modal = bootstrap.Modal.getInstance(document.getElementById("sendNotificationModal"));
-            modal.hide();
-        });
+        document
+            .getElementById("sendNotificationBtn")
+            .addEventListener("click", () => {
+                this.toastMessage.innerText = "Notifikasi berhasil dikirim!";
+                this.toast.show();
+                let modal = bootstrap.Modal.getInstance(
+                    document.getElementById("sendNotificationModal"),
+                );
+                modal.hide();
+            });
     }
 
     setupFileUploadModal({
-        modalId, dropzoneId, uploadBtnClass, removeBtnId, submitBtnId,
-        fileNameSpanId, fileInfoId, pbgType, bindFlag,
+        modalId,
+        dropzoneId,
+        uploadBtnClass,
+        removeBtnId,
+        submitBtnId,
+        fileNameSpanId,
+        fileInfoId,
+        pbgType,
+        bindFlag,
     }) {
         const modalEl = document.getElementById(modalId);
         const modalInstance = new bootstrap.Modal(modalEl);
         let taskId;
 
         modalEl.addEventListener("hide.bs.modal", () => {
-            if (document.activeElement && modalEl.contains(document.activeElement)) {
+            if (
+                document.activeElement &&
+                modalEl.contains(document.activeElement)
+            ) {
                 document.activeElement.blur();
                 setTimeout(() => document.body.focus(), 10);
             }
@@ -435,7 +644,9 @@ class PbgTasks {
                 autoProcessQueue: false,
                 paramName: "file",
                 headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+                    "X-CSRF-TOKEN": document.querySelector(
+                        'meta[name="csrf-token"]',
+                    ).content,
                     Authorization: `Bearer ${document.querySelector('meta[name="api-token"]').content}`,
                     Accept: "application/json",
                 },
@@ -446,38 +657,63 @@ class PbgTasks {
                     dz.on("addedfile", (file) => {
                         if (dz.files.length > 1) dz.removeFile(dz.files[0]);
                         setTimeout(() => {
-                            document.getElementById(fileNameSpanId).textContent = file.name;
-                            document.getElementById(fileInfoId).classList.remove("d-none");
-                            document.querySelector(".dz-message").classList.add("d-none");
+                            document.getElementById(
+                                fileNameSpanId,
+                            ).textContent = file.name;
+                            document
+                                .getElementById(fileInfoId)
+                                .classList.remove("d-none");
+                            document
+                                .querySelector(".dz-message")
+                                .classList.add("d-none");
                         }, 10);
                     });
                     dz.on("removedfile", () => {
-                        document.getElementById(fileInfoId).classList.add("d-none");
-                        document.getElementById(fileNameSpanId).textContent = "";
-                        document.querySelector(".dz-message").classList.remove("d-none");
+                        document
+                            .getElementById(fileInfoId)
+                            .classList.add("d-none");
+                        document.getElementById(fileNameSpanId).textContent =
+                            "";
+                        document
+                            .querySelector(".dz-message")
+                            .classList.remove("d-none");
                     });
-                    document.getElementById(removeBtnId).addEventListener("click", () => dz.removeAllFiles());
-                    document.getElementById(submitBtnId).addEventListener("click", () => {
-                        if (dz.getQueuedFiles().length > 0) {
-                            dz.processQueue();
-                        } else {
-                            self.toastMessage.innerText = "Please select a file to upload.";
-                            self.toast.show();
-                        }
-                    });
+                    document
+                        .getElementById(removeBtnId)
+                        .addEventListener("click", () => dz.removeAllFiles());
+                    document
+                        .getElementById(submitBtnId)
+                        .addEventListener("click", () => {
+                            if (dz.getQueuedFiles().length > 0) {
+                                dz.processQueue();
+                            } else {
+                                self.toastMessage.innerText =
+                                    "Please select a file to upload.";
+                                self.toast.show();
+                            }
+                        });
                     dz.on("success", () => {
                         dz.removeAllFiles(true);
-                        document.getElementById(fileInfoId).classList.add("d-none");
-                        document.getElementById(fileNameSpanId).textContent = "";
-                        document.querySelector(".dz-message").style.display = "block";
+                        document
+                            .getElementById(fileInfoId)
+                            .classList.add("d-none");
+                        document.getElementById(fileNameSpanId).textContent =
+                            "";
+                        document.querySelector(".dz-message").style.display =
+                            "block";
                         document.activeElement.blur();
-                        setTimeout(() => { document.body.focus(); modalInstance.hide(); }, 50);
-                        self.toastMessage.innerText = "File uploaded successfully!";
+                        setTimeout(() => {
+                            document.body.focus();
+                            modalInstance.hide();
+                        }, 50);
+                        self.toastMessage.innerText =
+                            "File uploaded successfully!";
                         self.toast.show();
                         self.renderTable();
                     });
                     dz.on("error", (file, message) => {
-                        self.toastMessage.innerText = message || "Upload failed!";
+                        self.toastMessage.innerText =
+                            message || "Upload failed!";
                         self.toast.show();
                     });
                 },

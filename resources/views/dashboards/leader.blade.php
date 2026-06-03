@@ -58,7 +58,7 @@
             'document_id' => 'chart-total-potensi',
             'visible_small_circle' => true,
             'style' => 'left:400px;top:150px;',
-            'document_url' => route('pbg-task.index', ['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'all'])
+            'document_url' => route('pbg-task.index', ['menu_id' => $menus->where('url','pbg-task.index')->first()->id, 'filter' => 'potention'])
         ])
         @endcomponent
 

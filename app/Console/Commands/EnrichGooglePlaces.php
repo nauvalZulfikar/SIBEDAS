@@ -20,8 +20,14 @@ class EnrichGooglePlaces extends Command
     private const MONTHLY_CAP_PER_KEY = 5000;
 
     private array $apiKeys = [
-        'AIzaSyAzGOWpzMBDExrT8FWR1RXbpDvir1IVQQ8',
-        'AIzaSyAIBnXUc-g0BpTfgnQFO6cPT1R2145hh-A',
+        'AIzaSyAzGOWpzMBDExrT8FWR1RXbpDvir1IVQQ8', // aureon (auto-skipped: 5608/5000 used in 2026-05)
+        'AIzaSyB5qbRCzElOBRvMJBYagagf2DTPU3GOkLM', // zulfikar.nauval1998
+        'AIzaSyDECoE2jIMGcOFAYIJ5uFyblo_KF-oU3M4', // nauval.zulfikar1998
+        'AIzaSyAIBnXUc-g0BpTfgnQFO6cPT1R2145hh-A', // berbagichatgpt — IP restriction fixed 2026-05-31, ~4994 free
+        'AIzaSyCdgqmNRwMafc0EJB7u6b5tYu7R1Z9KuaU', // zitoccgitw — tested valid 2026-05-31, ~5000 free
+        'AIzaSyCelU8vLzrIZ7aizh_C-ykO9-sFFziL134', // Marlina9869 — tested valid 2026-05-31, ~5000 free
+        // DISABLED 2026-05-31 (tested dead):
+        // 'AIzaSyBqhCiS_HYHVvDIaK5SM6uAuRdOwB753ts', // nauval.saga — 403 Places API (New) not enabled (project 1069693821628)
     ];
 
     private string $apiKey;

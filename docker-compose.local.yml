@@ -14,9 +14,18 @@ services:
       DB_CONNECTION: mariadb
       DB_HOST: db
       DB_PORT: 3306
-      DB_DATABASE: sibedas
+      DB_DATABASE: siebdas_20250815
       DB_USERNAME: root
       DB_PASSWORD: root
+      # Vector-tile polygon layer. app's TilesController proxies tiles to
+      # martin; the buildings:sync-postgis command writes to the postgis
+      # sidecar. Service names resolve on sibedas_network_local.
+      MARTIN_HOST: http://martin:3000
+      POSTGIS_HOST: postgis
+      POSTGIS_PORT: 5432
+      POSTGIS_DB: sibedas_spatial
+      POSTGIS_USER: sibedas_spatial
+      POSTGIS_PASSWORD: changeme
     volumes:
       - .:/var/www
       # Exclude node_modules to prevent conflicts
@@ -57,6 +66,62 @@ services:
     networks:
       - sibedas_network_local
 
+  # PostGIS sidecar for the vector-tile polygon layer (local mirror of the
+  # prod service). Holds the `buildings` table synced from MySQL
+  # detected_buildings via `php artisan buildings:sync-postgis`. Tuning is
+  # lighter than prod — local data is one kabupaten, not 5.2M rows.
+  postgis:
+    # ghcr mirror (PostGIS 3.4 / PG16) — equivalent to prod's
+    # postgis/postgis:16-3.4-alpine. Used locally because Docker Desktop
+    # forces a (locked) keychain lookup for any Docker Hub pull on this box;
+    # ghcr pulls anonymously. Prod compose keeps the official image.
+    image: ghcr.io/baosystems/postgis:16-3.4
+    container_name: sibedas_postgis_local
+    restart: unless-stopped
+    command: >-
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c work_mem=32MB
+      -c maintenance_work_mem=256MB
+      -c random_page_cost=1.1
+    environment:
+      POSTGRES_DB: sibedas_spatial
+      POSTGRES_USER: sibedas_spatial
+      POSTGRES_PASSWORD: changeme
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - sibedas_postgis_data_local:/var/lib/postgresql/data
+    networks:
+      - sibedas_network_local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sibedas_spatial -d sibedas_spatial"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # Martin vector-tile server. Auto-publishes the postgis `buildings` table
+  # at /building_tile/{z}/{x}/{y}; only reachable through app's TilesController.
+  martin:
+    image: ghcr.io/maplibre/martin:v0.14.2
+    container_name: sibedas_martin_local
+    restart: unless-stopped
+    environment:
+      MARTIN_DATABASE_URL: "postgresql://sibedas_spatial:changeme@postgis:5432/sibedas_spatial"
+      RUST_LOG: "martin=info"
+    command: ["--config", "/config/config.yaml"]
+    volumes:
+      - ./docker/martin/config.yaml:/config/config.yaml:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgis:
+        condition: service_healthy
+    networks:
+      - sibedas_network_local
+
   vite:
     build:
       context: .
@@ -76,6 +141,7 @@ services:
 
 volumes:
   sibedas_dbdata_local:
+  sibedas_postgis_data_local:
 
 networks:
   sibedas_network_local:

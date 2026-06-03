@@ -420,7 +420,15 @@
                                                     <dt>Kecamatan</dt>
                                                     <dd>{{$data->pbg_task_detail->building_district_name ?? '-'}}</dd>
                                                     <dt>Koordinat Latitude dan Longitude</dt>
-                                                    <dd>{{$data->pbg_task_detail->latitude ?? '-'}}, {{$data->pbg_task_detail->longitude ?? '-'}}</dd>
+                                                    <dd>
+                                                        @if(!is_null($data->pbg_task_detail->latitude) && !is_null($data->pbg_task_detail->longitude) && $data->pbg_task_detail->latitude !== '' && $data->pbg_task_detail->longitude !== '')
+                                                            <a href="https://www.google.com/maps?q={{ $data->pbg_task_detail->latitude }},{{ $data->pbg_task_detail->longitude }}" target="_blank" rel="noopener">
+                                                                {{ $data->pbg_task_detail->latitude }}, {{ $data->pbg_task_detail->longitude }}
+                                                            </a>
+                                                        @else
+                                                            {{ $data->pbg_task_detail->latitude ?? '-' }}, {{ $data->pbg_task_detail->longitude ?? '-' }}
+                                                        @endif
+                                                    </dd>
                                                 </div>
                                             </div>
                                         </div>

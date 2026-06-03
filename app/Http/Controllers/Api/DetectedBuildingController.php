@@ -49,12 +49,13 @@ class DetectedBuildingController extends Controller
     ];
 
     /**
-     * Scope ke Kab. Bandung Selatan — pakai kolom `kecamatan` (spatial, populated via polygon
-     * GeoJSON BPS). Jauh lebih cepat & akurat daripada bbox OR logic, karena tiap baris udah
-     * di-tag kecamatan yg bener pake point-in-polygon sekali saat migrasi.
+     * Scope ke Kab. Bandung Selatan — pakai kolom `kecamatan_verified` (hasil
+     * point-in-polygon BATAS_KECAMATAN_DESA resmi, 2026). Kolom lama `kecamatan`
+     * bocor: ~1,19 jt bangunan KBB/Cianjur salah label (Baleendah lama 181k → 80k).
+     * Bangunan di luar Kab Bandung → kecamatan_verified NULL → otomatis ter-exclude.
      */
     private function scopeBandungSelatan($q) {
-        return $q->whereIn('kecamatan', self::BANDUNG_SELATAN_DISTRICTS);
+        return $q->whereIn('kecamatan_verified', self::BANDUNG_SELATAN_DISTRICTS);
     }
 
     private function applyFunctionTypeFilter($q, string $cat): void
@@ -176,14 +177,14 @@ class DetectedBuildingController extends Controller
 
         $kecList = $this->getKecamatanListForSource($source, $kbli);
         if (empty($kecList)) return;
-        // Constrain to Bandung Selatan + match Title Case format on detected_buildings.kecamatan.
+        // Constrain to Bandung Selatan + match Title Case format on detected_buildings.kecamatan_verified.
         $kecList = array_values(array_intersect($kecList, self::BANDUNG_SELATAN_DISTRICTS));
         if (empty($kecList)) {
             // Source has data, but none of it falls in Bandung Selatan — return empty result.
             $q->whereRaw('1=0');
             return;
         }
-        $q->whereIn('detected_buildings.kecamatan', $kecList);
+        $q->whereIn('detected_buildings.kecamatan_verified', $kecList);
     }
 
     /** Same as above but for raw DB queries that aliased the table as `db`. */
@@ -197,7 +198,7 @@ class DetectedBuildingController extends Controller
         if (empty($kecList)) return;
         $kecList = array_values(array_intersect($kecList, self::BANDUNG_SELATAN_DISTRICTS));
         if (empty($kecList)) { $q->whereRaw('1=0'); return; }
-        $q->whereIn('db.kecamatan', $kecList);
+        $q->whereIn('db.kecamatan_verified', $kecList);
     }
 
     private function getKecamatanListForSource(string $source, ?string $kbli = null): array
@@ -275,6 +276,31 @@ class DetectedBuildingController extends Controller
         return response()->json($q->orderByDesc('created_at')->paginate(min((int)$request->get('per_page',50),500)));
     }
     public function show(int $id): JsonResponse { return response()->json(DetectedBuilding::with('matchedPbgTask')->findOrFail($id)); }
+
+    /**
+     * Compact property info for the map-tap popup. Joins the master view
+     * (status izin, fungsi, pemilik, potensi retribusi) with Google Places
+     * enrichment (nama tempat, jenis, status buka, rating). Read-only.
+     */
+    public function info(int $id): JsonResponse
+    {
+        $row = DB::table('v_property_master as m')
+            ->leftJoin('property_enrichment as e', 'e.detected_building_id', '=', 'm.id')
+            ->where('m.id', $id)
+            ->selectRaw('
+                m.id, m.latitude, m.longitude, m.status_izin, m.kecamatan, m.kelurahan,
+                m.detection_source, m.verification_status, m.owner_name, m.registration_number,
+                m.pbg_status_name, m.function_type, m.name_building, m.building_address,
+                m.building_type_name, m.best_area, m.area_source, m.potensi_retribusi_rp,
+                e.place_name, e.place_type, e.place_address, e.business_status, e.rating
+            ')
+            ->first();
+
+        if (!$row) {
+            return response()->json(['message' => 'Bangunan tidak ditemukan'], 404);
+        }
+        return response()->json($row);
+    }
     public function updateStatus(Request $request, int $id): JsonResponse
     {
         $request->validate(['verification_status'=>'required|in:unverified,confirmed_illegal,confirmed_legal,false_positive,under_review','notes'=>'nullable|string|max:1000']);
@@ -401,7 +427,7 @@ class DetectedBuildingController extends Controller
             $byFunctionType = array_fill_keys(array_keys(self::FUNCTION_TYPE_CATEGORIES), 0);
             $rows = DB::table('detected_buildings as db')
                 ->join('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-                ->whereIn('db.kecamatan', self::BANDUNG_SELATAN_DISTRICTS)
+                ->whereIn('db.kecamatan_verified', self::BANDUNG_SELATAN_DISTRICTS)
                 ->where('pt.status', 20)
                 ->whereNotNull('pt.function_type')->where('pt.function_type', '!=', '')
                 ->pluck('pt.function_type');
@@ -431,7 +457,7 @@ class DetectedBuildingController extends Controller
         // Breakdown detected by PBG match status. Orphan = FK points to deleted pbg_task.
         $breakdownQ = DB::table('detected_buildings as db')
             ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-            ->whereIn('db.kecamatan', self::BANDUNG_SELATAN_DISTRICTS);
+            ->whereIn('db.kecamatan_verified', self::BANDUNG_SELATAN_DISTRICTS);
         if ($minArea > 0) $breakdownQ->whereRaw('COALESCE(db.actual_area_m2, db.estimated_area_m2) >= ?', [$minArea]);
         if ($request->filled('function_type')) {
             $kw = self::FUNCTION_TYPE_CATEGORIES[strtolower($request->function_type)] ?? [];
@@ -463,7 +489,7 @@ class DetectedBuildingController extends Controller
         // Per-kecamatan "tanpa izin" — group by kolom kecamatan yang udah pre-computed lewat PIP.
         $byDistrictQ = DB::table('detected_buildings as db')
             ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-            ->whereIn('db.kecamatan', self::BANDUNG_SELATAN_DISTRICTS)
+            ->whereIn('db.kecamatan_verified', self::BANDUNG_SELATAN_DISTRICTS)
             ->where(function ($w) {
                 $w->whereNull('db.matched_pbg_task_id')
                   ->orWhereNull('pt.id')
@@ -483,15 +509,15 @@ class DetectedBuildingController extends Controller
         if ($request->filled('data_source')) $this->applyDataSourceToRaw($byDistrictQ, $request->data_source, $request->get('kbli_title'));
         if ($request->filled('pbg_status')) $this->applyPbgStatusToRaw($byDistrictQ, $request->pbg_status);
         $byDistrict = $byDistrictQ
-            ->select('db.kecamatan as kc', DB::raw('COUNT(*) as count'))
-            ->groupBy('db.kecamatan')->orderByDesc('count')
+            ->select('db.kecamatan_verified as kc', DB::raw('COUNT(*) as count'))
+            ->groupBy('db.kecamatan_verified')->orderByDesc('count')
             ->pluck('count', 'kc');
 
         // Jenis bangunan HANYA dari match ke SK PBG Terbit (status=20), biar honest
         $byFunctionType = array_fill_keys(array_keys(self::FUNCTION_TYPE_CATEGORIES), 0);
         $matchedTypes = DB::table('detected_buildings as db')
             ->join('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-            ->whereIn('db.kecamatan', self::BANDUNG_SELATAN_DISTRICTS)
+            ->whereIn('db.kecamatan_verified', self::BANDUNG_SELATAN_DISTRICTS)
             ->where('pt.status', 20)
             ->whereNotNull('pt.function_type')
             ->where('pt.function_type', '!=', '')
@@ -722,9 +748,9 @@ class DetectedBuildingController extends Controller
                     ->orWhereIn('pt_flt.status', [3, 9, 22]);
               });
         }
-        // Filter kecamatan: gunakan kolom yang udah pre-computed — presisi (point-in-polygon BPS) & fast (indexed).
+        // Filter kecamatan: pakai kolom kecamatan_verified (point-in-polygon BATAS resmi) — presisi & indexed.
         if ($request->filled('district') && in_array($request->district, self::BANDUNG_SELATAN_DISTRICTS, true)) {
-            $q->where('detected_buildings.kecamatan', $request->district);
+            $q->where('detected_buildings.kecamatan_verified', $request->district);
         }
         if ($request->filled('min_area')) $q->whereRaw('COALESCE(actual_area_m2, estimated_area_m2) >= ?', [$request->min_area]);
         if ($request->filled('function_type')) $this->applyFunctionTypeFilter($q, $request->function_type);
@@ -739,7 +765,7 @@ class DetectedBuildingController extends Controller
             ->select(
                 'detected_buildings.id','detected_buildings.latitude','detected_buildings.longitude',
                 'detected_buildings.estimated_area_m2','detected_buildings.actual_area_m2','detected_buildings.matched_pbg_task_id',
-                'detected_buildings.kecamatan'
+                'detected_buildings.kecamatan_verified as kecamatan'
             )
             ->orderByRaw('COALESCE(detected_buildings.actual_area_m2, detected_buildings.estimated_area_m2) DESC')
             ->limit($limit)->get();

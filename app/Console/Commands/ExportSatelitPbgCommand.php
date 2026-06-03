@@ -100,9 +100,9 @@ class ExportSatelitPbgCommand extends Command
 
         $q = DB::table('detected_buildings as db')
             ->leftJoin('pbg_task as pt', 'pt.id', '=', 'db.matched_pbg_task_id')
-            ->whereIn('db.kecamatan', self::KECS)
+            ->whereIn('db.kecamatan_verified', self::KECS)
             ->select([
-                'db.id','db.kecamatan',
+                'db.id','db.kecamatan_verified as kecamatan',
                 'db.building_ward_name as kelurahan',
                 'db.latitude','db.longitude',
                 'db.estimated_area_m2 as area',

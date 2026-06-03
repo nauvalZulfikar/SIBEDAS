@@ -1,4 +1,4 @@
-import { Grid } from "gridjs/dist/gridjs.umd.js";
+import { Grid, html } from "gridjs/dist/gridjs.umd.js";
 import "gridjs/dist/gridjs.umd.js";
 import GlobalConfig from "../global-config";
 
@@ -11,15 +11,26 @@ class RequestAssignment {
         new Grid({
             columns: [
                 "ID",
-                {name: "Name", width: "15%"},
-                {name: "Condition", width: "7%"},
+                { name: "Name", width: "15%" },
+                { name: "Condition", width: "7%" },
                 "Registration Number",
                 "Document Number",
-                {name: "Address", width: "30%"},
+                { name: "Address", width: "30%" },
                 "Status",
                 "Function Type",
                 "Consultation Type",
-                {name: "Due Date", width: "7%"},
+                { name: "Due Date", width: "7%" },
+                {
+                    name: "Coordinate",
+                    width: "10%",
+                    sort: false,
+                    formatter: (cell) =>
+                        cell && cell.lat != null && cell.lng != null
+                            ? html(
+                                  `<a href="https://www.google.com/maps?q=${cell.lat},${cell.lng}" target="_blank" rel="noopener">${Number(cell.lat).toFixed(5)}, ${Number(cell.lng).toFixed(5)}</a>`,
+                              )
+                            : "-",
+                },
             ],
             search: {
                 server: {
@@ -57,6 +68,12 @@ class RequestAssignment {
                         item.function_type,
                         item.consultation_type,
                         item.due_date,
+                        item.pbg_task_detail
+                            ? {
+                                  lat: item.pbg_task_detail.latitude,
+                                  lng: item.pbg_task_detail.longitude,
+                              }
+                            : null,
                     ]),
                 total: (data) => data.meta.total,
             },

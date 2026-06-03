@@ -250,6 +250,7 @@ Route::group(['middleware' => 'auth:sanctum'], function (){
         Route::get('/detected-buildings/geojson', 'geojson')->name('api.detected-buildings.geojson');
         Route::get('/detected-buildings/clusters', 'clusters')->name('api.detected-buildings.clusters');
         Route::get('/detected-buildings/pbg-geojson', 'pbgGeojson')->name('api.detected-buildings.pbg-geojson');
+        Route::get('/detected-buildings/{id}/info', 'info')->name('api.detected-buildings.info');
         Route::get('/detected-buildings/{id}', 'show')->name('api.detected-buildings.show');
         Route::put('/detected-buildings/{id}/status', 'updateStatus')->name('api.detected-buildings.update-status');
         Route::post('/detected-buildings/bulk-status', 'bulkUpdateStatus')->name('api.detected-buildings.bulk-status');

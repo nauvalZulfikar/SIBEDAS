@@ -1,4 +1,4 @@
-import { Grid } from "gridjs/dist/gridjs.umd.js";
+import { Grid, html } from "gridjs/dist/gridjs.umd.js";
 import "gridjs/dist/gridjs.umd.js";
 import gridjs from "gridjs/dist/gridjs.umd.js";
 import GlobalConfig from "../global-config";
@@ -21,6 +21,17 @@ class Approval {
                 "Registration Number",
                 "Document Number",
                 { name: "Address", width: "30%" },
+                {
+                    name: "Koordinat",
+                    width: "10%",
+                    sort: false,
+                    formatter: (cell) =>
+                        cell && cell.lat != null && cell.lng != null
+                            ? html(
+                                  `<a href="https://www.google.com/maps?q=${cell.lat},${cell.lng}" target="_blank" rel="noopener" style="font-size:12px">${Number(cell.lat).toFixed(5)}, ${Number(cell.lng).toFixed(5)}</a>`,
+                              )
+                            : "-",
+                },
                 "Status",
                 "Function Type",
                 "Consultation Type",
@@ -74,6 +85,12 @@ class Approval {
                         item.registration_number,
                         item.document_number,
                         item.address,
+                        item.pbg_task_detail
+                            ? {
+                                  lat: item.pbg_task_detail.latitude,
+                                  lng: item.pbg_task_detail.longitude,
+                              }
+                            : null,
                         item.status_name,
                         item.function_type,
                         item.consultation_type,

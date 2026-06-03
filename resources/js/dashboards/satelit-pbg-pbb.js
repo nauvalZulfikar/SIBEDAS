@@ -3,6 +3,35 @@
 // Renders: 4 KPI, 1 stacked bar chart per-kec, 1 table.
 
 const fmt = (n) => (n ?? 0).toLocaleString("id-ID");
+// Rp ringkas: 1,2 M / 850 jt / 12 rb
+const rp = (n) => {
+    n = Number(n) || 0;
+    if (n >= 1e12)
+        return (
+            "Rp " +
+            (n / 1e12).toLocaleString("id-ID", { maximumFractionDigits: 2 }) +
+            " T"
+        );
+    if (n >= 1e9)
+        return (
+            "Rp " +
+            (n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 }) +
+            " M"
+        );
+    if (n >= 1e6)
+        return (
+            "Rp " +
+            (n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 }) +
+            " jt"
+        );
+    if (n >= 1e3)
+        return (
+            "Rp " +
+            (n / 1e3).toLocaleString("id-ID", { maximumFractionDigits: 0 }) +
+            " rb"
+        );
+    return "Rp " + fmt(Math.round(n));
+};
 let chart = null;
 
 async function fetchSummary(minArea) {
@@ -19,14 +48,35 @@ function renderKpi(t) {
     document.getElementById("kpi-sat").textContent = fmt(t.sat_count);
     document.getElementById("kpi-pbb").textContent = fmt(t.pbb_terbangun);
     document.getElementById("kpi-pbg").textContent = fmt(t.pbg_terbit);
-    document.getElementById("kpi-rasio").textContent = (t.rasio_berizin ?? 0).toFixed(2);
+    document.getElementById("kpi-rasio").textContent = (
+        t.rasio_berizin ?? 0
+    ).toFixed(2);
     document.getElementById("kpi-tidak").textContent = fmt(t.tidak_berizin);
+}
+
+function renderRetribusi(t) {
+    document.getElementById("kpi-retr-total").textContent = rp(
+        t.retribusi_total,
+    );
+    document.getElementById("kpi-retr-area").textContent = fmt(
+        Math.round(t.tidak_berizin_area_m2 ?? 0),
+    );
+    document.getElementById("kpi-retr-enriched").textContent = rp(
+        t.retribusi_enriched,
+    );
+    document.getElementById("kpi-retr-enriched-area").textContent = fmt(
+        Math.round(t.tidak_berizin_enriched_area_m2 ?? 0),
+    );
+    document.getElementById("kpi-retr-unenriched").textContent = rp(
+        t.retribusi_unenriched,
+    );
 }
 
 function renderTable(rows, totals) {
     const tb = document.getElementById("spp-tbody");
     if (!rows.length) {
-        tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Tidak ada data</td></tr>';
+        tb.innerHTML =
+            '<tr><td colspan="8" class="text-center text-muted">Tidak ada data</td></tr>';
     } else {
         tb.innerHTML = rows
             .map(
@@ -39,7 +89,8 @@ function renderTable(rows, totals) {
                     <td class="text-end text-warning">${fmt(r.pbg_proses)}</td>
                     <td class="text-end text-danger">${fmt(r.tidak_berizin)}</td>
                     <td class="text-end"><span class="badge bg-${r.rasio_berizin >= 5 ? "success" : "danger"}-subtle text-${r.rasio_berizin >= 5 ? "success" : "danger"}">${r.rasio_berizin.toFixed(2)}%</span></td>
-                </tr>`
+                    <td class="text-end text-danger" title="Enriched ${rp(r.retribusi_enriched)} · Unenriched ${rp(r.retribusi_unenriched)}">${rp(r.retribusi_total)}</td>
+                </tr>`,
             )
             .join("");
     }
@@ -50,7 +101,8 @@ function renderTable(rows, totals) {
         <td class="text-end text-success">${fmt(totals.pbg_terbit)}</td>
         <td class="text-end text-warning">${fmt(totals.pbg_proses)}</td>
         <td class="text-end text-danger">${fmt(totals.tidak_berizin)}</td>
-        <td class="text-end">${(totals.rasio_berizin ?? 0).toFixed(2)}%</td>`;
+        <td class="text-end">${(totals.rasio_berizin ?? 0).toFixed(2)}%</td>
+        <td class="text-end text-danger">${rp(totals.retribusi_total)}</td>`;
 }
 
 function renderChart(rows) {
@@ -61,9 +113,17 @@ function renderChart(rows) {
         { name: "Tidak Berizin", data: rows.map((r) => r.tidak_berizin) },
     ];
     const opts = {
-        chart: { type: "bar", stacked: true, height: 380, toolbar: { show: false } },
+        chart: {
+            type: "bar",
+            stacked: true,
+            height: 380,
+            toolbar: { show: false },
+        },
         plotOptions: { bar: { horizontal: false, columnWidth: "70%" } },
-        xaxis: { categories: cats, labels: { rotate: -45, style: { fontSize: "10px" } } },
+        xaxis: {
+            categories: cats,
+            labels: { rotate: -45, style: { fontSize: "10px" } },
+        },
         yaxis: { labels: { formatter: (v) => fmt(v) } },
         colors: ["#22c55e", "#f59e0b", "#ef4444"],
         legend: { show: false },
@@ -81,6 +141,7 @@ async function load(minArea) {
     try {
         const data = await fetchSummary(minArea);
         renderKpi(data.totals);
+        renderRetribusi(data.totals);
         renderTable(data.per_kec, data.totals);
         renderChart(data.per_kec);
         document.getElementById("last-computed").textContent =

@@ -57,7 +57,7 @@ class QuickSearchResult {
 
     initDatatable() {
         const tableContainer = document.getElementById(
-            "datatable-quick-search-result"
+            "datatable-quick-search-result",
         );
 
         const config = {
@@ -69,6 +69,7 @@ class QuickSearchResult {
                 "Nomor Registrasi",
                 "Nomor Dokumen",
                 { name: "Alamat" },
+                { name: "Koordinat" },
                 "Status",
                 "Jenis Fungsi",
                 { name: "Nama Bangunan" },
@@ -103,23 +104,49 @@ class QuickSearchResult {
             server: {
                 url: this.datatableUrl,
                 then: (data) =>
-                    data.data.map((item) => [
-                        item.id,
-                        item.name,
-                        item.owner_name,
-                        item.condition,
-                        item.registration_number,
-                        item.document_number,
-                        item.address,
-                        item.status_name,
-                        item.function_type,
-                        item.name_building,
-                        item.consultation_type,
-                        item.due_date,
-                        addThousandSeparators(item.nilai_retribusi_bangunan),
-                        item.note || "-",
-                        item,
-                    ]),
+                    data.data.map((item) => {
+                        const lat =
+                            item.latitude !== null &&
+                            item.latitude !== undefined &&
+                            item.latitude !== ""
+                                ? parseFloat(item.latitude)
+                                : null;
+                        const lng =
+                            item.longitude !== null &&
+                            item.longitude !== undefined &&
+                            item.longitude !== ""
+                                ? parseFloat(item.longitude)
+                                : null;
+                        const koordinatCell =
+                            lat !== null &&
+                            lng !== null &&
+                            !isNaN(lat) &&
+                            !isNaN(lng)
+                                ? html(
+                                      `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener" style="font-size:12px">${lat.toFixed(5)}, ${lng.toFixed(5)}</a>`,
+                                  )
+                                : "-";
+                        return [
+                            item.id,
+                            item.name,
+                            item.owner_name,
+                            item.condition,
+                            item.registration_number,
+                            item.document_number,
+                            item.address,
+                            koordinatCell,
+                            item.status_name,
+                            item.function_type,
+                            item.name_building,
+                            item.consultation_type,
+                            item.due_date,
+                            addThousandSeparators(
+                                item.nilai_retribusi_bangunan,
+                            ),
+                            item.note || "-",
+                            item,
+                        ];
+                    }),
                 total: (data) => data.total,
             },
         };

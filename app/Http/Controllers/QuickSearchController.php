@@ -34,6 +34,8 @@ class QuickSearchController extends Controller
             $query = PbgTask::select([
                 'pbg_task.*',
                 DB::raw('(SELECT name_building FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as name_building'),
+                DB::raw('(SELECT latitude FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as latitude'),
+                DB::raw('(SELECT longitude FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as longitude'),
                 DB::raw('(SELECT nilai_retribusi_bangunan FROM pbg_task_retributions WHERE pbg_task_retributions.pbg_task_uid = pbg_task.uuid LIMIT 1) as nilai_retribusi_bangunan'),
                 DB::raw('(SELECT note FROM pbg_statuses WHERE pbg_statuses.pbg_task_uuid = pbg_task.uuid ORDER BY id DESC LIMIT 1) as note')
             ])
@@ -101,6 +103,8 @@ class QuickSearchController extends Controller
             $query = PbgTask::select([
                 'pbg_task.*',
                 DB::raw('(SELECT name_building FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as name_building'),
+                DB::raw('(SELECT latitude FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as latitude'),
+                DB::raw('(SELECT longitude FROM pbg_task_details WHERE pbg_task_details.pbg_task_uid = pbg_task.uuid LIMIT 1) as longitude'),
                 DB::raw('(SELECT nilai_retribusi_bangunan FROM pbg_task_retributions WHERE pbg_task_retributions.pbg_task_uid = pbg_task.uuid LIMIT 1) as nilai_retribusi_bangunan'),
                 DB::raw('(SELECT note FROM pbg_statuses WHERE pbg_statuses.pbg_task_uuid = pbg_task.uuid ORDER BY id DESC LIMIT 1) as note')
             ])

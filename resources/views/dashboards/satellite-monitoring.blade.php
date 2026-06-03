@@ -96,6 +96,43 @@
     </div>
 </div>
 
+<div class="card mb-3 border-danger border-opacity-25"><div class="card-body py-3">
+    <div class="row g-3 align-items-center">
+        <div class="col-lg-5">
+            <div class="d-flex align-items-center">
+                <div class="avatar-md bg-soft-danger rounded me-3"><iconify-icon icon="solar:wad-of-money-broken" class="fs-32 avatar-title text-danger"></iconify-icon></div>
+                <div>
+                    <p class="text-muted mb-0">Potensi Retribusi — Tanpa Izin Sah</p>
+                    <h3 class="mb-0 text-danger" id="stat-retr-total">-</h3>
+                    <small class="text-muted">luas <span id="stat-retr-area">-</span> m² · estimasi</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="border rounded p-2 h-100 bg-soft-success bg-opacity-10">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small fw-semibold text-success">Enriched (ada fungsi)</span>
+                            <h6 class="mb-0 text-success" id="stat-retr-enriched">-</h6>
+                        </div>
+                        <small class="text-muted">prioritas · tarif sesuai fungsi · <span id="stat-retr-enriched-area">-</span> m²</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="border rounded p-2 h-100">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small fw-semibold text-muted">Unenriched (tanpa fungsi)</span>
+                            <h6 class="mb-0" id="stat-retr-unenriched">-</h6>
+                        </div>
+                        <small class="text-muted">estimasi batas bawah · tarif Hunian</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div></div>
+
 <div class="card mb-3"><div class="card-body py-2 px-3">
     <div class="d-flex flex-wrap align-items-center gap-3 small">
         <span class="fw-semibold text-dark">PBG Tercatat di Database (Kab. Bandung):</span>
@@ -181,6 +218,28 @@
                     <option value="non_usaha">🟩 Non-Usaha (hunian/sosial)</option>
                 </select>
             </div>
+            <div class="col-xl-3 col-md-6 col-sm-12">
+                <label class="form-label mb-1 small">Cari Koordinat</label>
+                <div class="input-group input-group-sm">
+                    <input id="filter-coord-search" class="form-control form-control-sm" type="text" placeholder="lat, lng (mis. -7.008, 107.552)" autocomplete="off">
+                    <button class="btn btn-outline-primary" id="btn-coord-go" type="button" title="Pergi ke koordinat">
+                        <iconify-icon icon="solar:map-point-broken"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 col-sm-12 position-relative">
+                <label class="form-label mb-1 small">Cari Lokasi</label>
+                <div class="input-group input-group-sm">
+                    <input id="filter-place-search" class="form-control form-control-sm" type="text" placeholder="nama tempat / alamat (mis. Alun-alun Soreang)" autocomplete="off">
+                    <button class="btn btn-outline-primary" id="btn-place-go" type="button" title="Cari tempat (diutamakan dekat lokasi Anda)">
+                        <iconify-icon icon="solar:magnifer-broken"></iconify-icon>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btn-my-location" type="button" title="Lompat ke lokasi saya sekarang">
+                        <iconify-icon icon="solar:gps-broken"></iconify-icon>
+                    </button>
+                </div>
+                <div id="place-search-results" class="list-group position-absolute shadow-sm" style="z-index:1200; width:max(100%,260px); max-height:240px; overflow:auto; display:none;"></div>
+            </div>
             <div class="col-xl-2 col-md-4 col-sm-12 d-flex align-items-end gap-2">
                 <button class="btn btn-outline-secondary btn-sm flex-fill" id="btn-reset-view">
                     <iconify-icon icon="solar:refresh-broken" class="me-1"></iconify-icon>Reset
@@ -215,14 +274,22 @@
                     <span class="vt-mode-pill cluster" id="vt-mode-pill" title="Zoom in (≥14) untuk lihat polygon">Cluster</span>
                     <span class="badge bg-success bg-opacity-25 text-success border border-success" id="stat-refreshed" style="font-weight:500;font-size:11px" title="Tanggal aggregate stats terakhir di-refresh">🟢 Update: <span id="stat-refreshed-val">—</span></span>
                 </h5>
-                <div class="d-flex flex-wrap gap-2 small">
-                    <span class="fw-semibold">Polygon (zoom ≥14):</span>
-                    <span><span class="legend-dot" style="background:#2563eb"></span>Non-Usaha (solid)</span>
-                    <span><span class="legend-dot" style="background:#2563eb;border:2px dashed #1e3a8a;width:14px;height:10px;border-radius:2px"></span>Usaha (strip-strip)</span>
+                <div class="d-flex flex-wrap gap-2 small align-items-center">
+                    <span class="fw-semibold">Polygon (zoom ≥14) — warna = status izin:</span>
+                    <span><span class="legend-dot" style="background:#ef4444"></span>Tanpa Izin</span>
+                    <span><span class="legend-dot" style="background:#0d6efd"></span>PBG Terbit</span>
+                    <span><span class="legend-dot" style="background:#f59e0b"></span>Proses</span>
+                    <span><span class="legend-dot" style="background:#6b7280"></span>Ditolak/Batal</span>
+                    <span class="mx-1">│</span>
+                    <span class="fw-semibold">pola:</span>
+                    <span><span class="legend-dot" style="background:#6b7280;width:14px;height:10px;border-radius:2px"></span>Non-Usaha (solid)</span>
+                    <span><span class="legend-dot" style="background:#6b7280;border:2px dashed #374151;width:14px;height:10px;border-radius:2px"></span>Usaha (strip-strip)</span>
                     <span class="text-muted">· solid = PBG confirmed, pudar = predicted</span>
-                    <span class="mx-2">│</span>
-                    <span><span class="legend-dot" style="background:#0d6efd;border:2px solid #fff;box-shadow:0 0 0 1px #0d6efd"></span>PBG Terbit</span>
-                    <span><span class="legend-dot" style="background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 1px #f59e0b"></span>PBG Proses</span>
+                    <span class="mx-1">│</span>
+                    <span class="fw-semibold">Choropleth (zoom &lt;14):</span>
+                    <span><span class="legend-dot" style="background:#dc2626"></span>Padat tanpa izin</span>
+                    <span><span class="legend-dot" style="background:#f97316"></span>Sedang</span>
+                    <span><span class="legend-dot" style="background:#fde68a"></span>Rendah</span>
                 </div>
             </div>
             <div class="card-body p-0"><div id="satellite-map-wrapper"><div id="satellite-map"></div><div id="map-loading"><div class="spinner"></div><span>Memuat data...</span></div><div id="vt-hint" class="vt-hint"><iconify-icon icon="solar:zoom-in-broken" inline></iconify-icon> Zoom dalam ke level 14+ buat lihat outline polygon tiap bangunan</div></div></div>
@@ -331,6 +398,46 @@ document.addEventListener('DOMContentLoaded', function() {
     // Expose for headless QA scripts (Playwright). No-op in production usage.
     window.map = map;
 
+    // ------------ Overlay batas administrasi desa/kecamatan ------------
+    let __desaLayer = null, __desaVisible = false;
+    async function loadDesaBoundaries() {
+        if (__desaLayer) return __desaLayer;
+        try {
+            const res = await fetch('/geo/desa_web.geojson');
+            const gj = await res.json();
+            __desaLayer = L.geoJSON(gj, {
+                style: { color: '#f59e0b', weight: 1, fill: false, opacity: 0.85 },
+                onEachFeature: (f, layer) => {
+                    const p = f.properties || {};
+                    layer.bindTooltip(`Kec. ${p.kecamatan} — Ds. ${p.desa}`, { sticky: true });
+                    layer.on('mouseover', () => layer.setStyle({ weight: 3, color: '#d97706' }));
+                    layer.on('mouseout', () => layer.setStyle({ weight: 1, color: '#f59e0b' }));
+                },
+            });
+        } catch (e) { console.warn('[desa] load failed', e); }
+        return __desaLayer;
+    }
+    const DesaToggle = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function () {
+            const btn = L.DomUtil.create('button', 'btn btn-sm btn-light shadow-sm');
+            btn.type = 'button';
+            btn.id = 'btn-toggle-desa';
+            btn.innerHTML = '🗺️ Batas Desa';
+            btn.style.cssText = 'border:1px solid #bbb;font-size:12px;padding:4px 9px;cursor:pointer';
+            L.DomEvent.disableClickPropagation(btn);
+            btn.onclick = async () => {
+                const layer = await loadDesaBoundaries();
+                if (!layer) return;
+                if (__desaVisible) { map.removeLayer(layer); btn.classList.remove('btn-warning'); btn.classList.add('btn-light'); }
+                else { layer.addTo(map); btn.classList.remove('btn-light'); btn.classList.add('btn-warning'); }
+                __desaVisible = !__desaVisible;
+            };
+            return btn;
+        },
+    });
+    map.addControl(new DesaToggle());
+
     // Set minZoom dinamis agar viewport saat zoom-out paling jauh tetap pas di BS_BOUNDS
     // (bukan tile di luar BS yang kelihatan tapi ga bisa di-pan ke sana)
     function clampMinZoom() {
@@ -341,6 +448,161 @@ document.addEventListener('DOMContentLoaded', function() {
     clampMinZoom();
     map.fitBounds(BS_BOUNDS);
     window.addEventListener('resize', clampMinZoom);
+
+    // ------------ Coordinate search (lat,lng → zoom + temp marker) ------------
+    let __coordMarker = null;
+    function goToCoord(raw) {
+        const cleaned = String(raw || '').trim().replace(/[°NSEW]/gi, '');
+        // Accept "lat,lng", "lat lng", or "lat;lng"
+        const m = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*[,; \t]+\s*(-?\d+(?:\.\d+)?)$/);
+        if (!m) { alert('Format koordinat tidak valid.\nGunakan: lat, lng (contoh: -7.008, 107.552)'); return; }
+        const lat = parseFloat(m[1]); const lng = parseFloat(m[2]);
+        if (Number.isNaN(lat) || Number.isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            alert('Koordinat di luar rentang.'); return;
+        }
+        if (__coordMarker) { map.removeLayer(__coordMarker); }
+        __coordMarker = L.marker([lat, lng], { title: `${lat}, ${lng}` })
+            .addTo(map)
+            .bindPopup(
+                `<b>Koordinat dicari</b><br>${lat.toFixed(6)}, ${lng.toFixed(6)}<br>` +
+                `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">Buka di Google Maps</a>`
+            )
+            .openPopup();
+        map.setView([lat, lng], Math.max(map.getZoom(), 18));
+    }
+    document.getElementById('btn-coord-go')?.addEventListener('click', () => {
+        goToCoord(document.getElementById('filter-coord-search').value);
+    });
+    document.getElementById('filter-coord-search')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); goToCoord(e.currentTarget.value); }
+    });
+    // Click anywhere on map → fill the input with that lat,lng (quick copy UX)
+    map.on('click', (e) => {
+        const inp = document.getElementById('filter-coord-search');
+        if (inp) inp.value = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+    });
+    // Reset also clears the search marker
+    document.getElementById('btn-reset-view')?.addEventListener('click', () => {
+        if (__coordMarker) { map.removeLayer(__coordMarker); __coordMarker = null; }
+        const inp = document.getElementById('filter-coord-search');
+        if (inp) inp.value = '';
+        // also clear place search
+        if (__placeMarker) { map.removeLayer(__placeMarker); __placeMarker = null; }
+        const pinp = document.getElementById('filter-place-search');
+        if (pinp) pinp.value = '';
+        const pbox = document.getElementById('place-search-results');
+        if (pbox) { pbox.innerHTML = ''; pbox.style.display = 'none'; }
+    });
+
+    // ------------ Place search (name/address → geocode, biased to user's LIVE location) ------------
+    let __placeMarker = null;
+    let __userLoc = null;                 // {lat, lng, ts} cached briefly to avoid re-prompting
+    const USERLOC_TTL_MS = 60000;
+    const __escPlace = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // Resolve the user's current position at search time. Resolves null if denied/unavailable.
+    function getUserLocation(forceFresh = false) {
+        return new Promise((resolve) => {
+            if (!forceFresh && __userLoc && (performance.now() - __userLoc.ts) < USERLOC_TTL_MS) {
+                return resolve({ lat: __userLoc.lat, lng: __userLoc.lng });
+            }
+            if (!('geolocation' in navigator)) return resolve(null);
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    __userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: performance.now() };
+                    resolve({ lat: __userLoc.lat, lng: __userLoc.lng });
+                },
+                () => resolve(null),
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+            );
+        });
+    }
+
+    function gotoPlace(lat, lng, label) {
+        if (__placeMarker) { map.removeLayer(__placeMarker); }
+        __placeMarker = L.marker([lat, lng], { title: label })
+            .addTo(map)
+            .bindPopup(`<b>${__escPlace(label)}</b><br>${lat.toFixed(6)}, ${lng.toFixed(6)}<br>` +
+                `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">Buka di Google Maps</a>`)
+            .openPopup();
+        map.setView([lat, lng], Math.max(map.getZoom(), 17));
+    }
+
+    function renderPlaceResults(items) {
+        const box = document.getElementById('place-search-results');
+        if (!box) return;
+        if (!items || !items.length) {
+            box.innerHTML = '<div class="list-group-item small text-muted">Tidak ada hasil di sekitar lokasi Anda.</div>';
+            box.style.display = 'block';
+            return;
+        }
+        box.innerHTML = items.map((it, i) =>
+            `<button type="button" class="list-group-item list-group-item-action small py-1" data-i="${i}">` +
+            `<iconify-icon icon="solar:map-point-broken" class="me-1"></iconify-icon>${__escPlace(it.display_name)}` +
+            `</button>`
+        ).join('');
+        box.style.display = 'block';
+        box.querySelectorAll('button[data-i]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const it = items[parseInt(btn.dataset.i, 10)];
+                gotoPlace(parseFloat(it.lat), parseFloat(it.lon), it.display_name);
+                box.style.display = 'none';
+            });
+        });
+    }
+
+    async function searchPlace(query) {
+        query = String(query || '').trim();
+        if (query.length < 3) { alert('Ketik minimal 3 huruf nama tempat / alamat.'); return; }
+        const btn = document.getElementById('btn-place-go');
+        const prev = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+        try {
+            // Bias to user's LIVE location at search time; fall back to current map center if denied.
+            const loc = await getUserLocation();
+            const center = loc || { lat: map.getCenter().lat, lng: map.getCenter().lng };
+            const d = 0.35; // ~38 km box: prefer-but-not-restrict (bounded=0)
+            const viewbox = [center.lng - d, center.lat + d, center.lng + d, center.lat - d].join(',');
+            const url = 'https://nominatim.openstreetmap.org/search'
+                + '?format=jsonv2&addressdetails=0&limit=6&countrycodes=id&accept-language=id'
+                + '&bounded=0&viewbox=' + encodeURIComponent(viewbox)
+                + '&q=' + encodeURIComponent(query);
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            renderPlaceResults(await res.json());
+        } catch (err) {
+            console.error('Place search failed', err);
+            alert('Pencarian lokasi gagal. Coba lagi.');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+        }
+    }
+
+    document.getElementById('btn-place-go')?.addEventListener('click', () => {
+        searchPlace(document.getElementById('filter-place-search').value);
+    });
+    document.getElementById('filter-place-search')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); searchPlace(e.currentTarget.value); }
+    });
+    document.getElementById('btn-my-location')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btn-my-location');
+        const prev = btn.innerHTML; btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        const loc = await getUserLocation(true); // force a fresh fix
+        btn.disabled = false; btn.innerHTML = prev;
+        if (!loc) { alert('Tidak bisa mengambil lokasi Anda.\nPastikan izin lokasi aktif & koneksi aman (HTTPS).'); return; }
+        gotoPlace(loc.lat, loc.lng, 'Lokasi Anda sekarang');
+    });
+    // Hide the results dropdown when clicking outside it
+    document.addEventListener('click', (e) => {
+        const box = document.getElementById('place-search-results');
+        if (!box) return;
+        if (e.target.closest('#place-search-results') ||
+            e.target.closest('#filter-place-search') ||
+            e.target.closest('#btn-place-go')) return;
+        box.style.display = 'none';
+    });
 
     // Satellite imagery. Google Hybrid (lyrs=y = imagery + roads + labels)
     // is the primary source: 4-subdomain CDN, ~250 ms/tile in parallel,
@@ -421,7 +683,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Semua 31 kecamatan Kab Bandung
     const KAB_BANDUNG = new Set(['Arjasari','Baleendah','Banjaran','Bojongsoang','Cangkuang','Cicalengka','Cikancung','Cilengkrang','Cileunyi','Cimaung','Cimenyan','Ciparay','Ciwidey','Dayeuhkolot','Ibun','Katapang','Kertasari','Kutawaringin','Majalaya','Margaasih','Margahayu','Nagreg','Pacet','Pameungpeuk','Pangalengan','Paseh','Pasirjambu','Rancabali','Rancaekek','Soreang','Solokanjeruk']);
-    fetch('/data/kecamatan_kab_bandung.geojson')
+    // Batas kecamatan resmi: dissolve dari BATAS_KECAMATAN_DESA (280 desa → 31 kec),
+    // bukan lagi file lama kasar /data/kecamatan_kab_bandung.geojson.
+    fetch('/geo/kecamatan_web.geojson')
       .then(r => r.json())
       .then(gj => {
         L.geoJSON(gj, {
@@ -563,6 +827,81 @@ document.addEventListener('DOMContentLoaded', function() {
     let polygonLayer = null;
     let _highlightedId = null;
 
+    // ------------ Tap a polygon → rich property-info popup ------------
+    const __rp = (v) => (v == null || v === '' ? null : 'Rp ' + Number(v).toLocaleString('id-ID'));
+    const __num = (v) => (v == null || v === '' ? null : Number(v).toLocaleString('id-ID'));
+    const __BIZ_STATUS = {
+        OPERATIONAL: '🟢 Beroperasi',
+        CLOSED_TEMPORARILY: '🟡 Tutup sementara',
+        CLOSED_PERMANENTLY: '🔴 Tutup permanen',
+    };
+    function __infoRow(label, val) {
+        if (val == null || val === '') return '';
+        return `<div style="display:flex;gap:6px;margin:2px 0;font-size:12px;line-height:1.35">` +
+            `<span style="color:#6b7280;min-width:78px;flex:0 0 78px">${label}</span>` +
+            `<span style="color:#111827;font-weight:500">${val}</span></div>`;
+    }
+    function buildBuildingPopupHtml(d) {
+        const title = d.name_building || d.place_name || ('Bangunan #' + d.id);
+        const izin = d.status_izin || '—';
+        const badge = d.status_izin === 'Berizin'
+            ? `<span style="background:#dcfce7;color:#166534;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600">Berizin</span>`
+            : `<span style="background:#fee2e2;color:#991b1b;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600">${__escPlace(izin)}</span>`;
+        const fungsi = d.function_type || d.building_type_name || d.place_type;
+        const lokasi = [d.kecamatan, d.kelurahan].filter(Boolean).join(', ');
+        const luas = __num(d.best_area);
+        const biz = d.business_status ? (__BIZ_STATUS[d.business_status] || d.business_status) : null;
+        const rating = d.rating != null ? `★ ${d.rating}` : null;
+        const gmaps = (d.latitude && d.longitude)
+            ? `<a href="https://www.google.com/maps?q=${d.latitude},${d.longitude}" target="_blank" rel="noopener" style="font-size:11px">Buka di Google Maps</a>`
+            : '';
+        return `
+            <div style="min-width:240px;max-width:280px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+                <b style="font-size:13px">${__escPlace(title)}</b>${badge}
+              </div>
+              ${__infoRow('Fungsi', fungsi ? __escPlace(fungsi) : null)}
+              ${__infoRow('Luas', luas ? luas + ' m²' : null)}
+              ${__infoRow('Potensi', __rp(d.potensi_retribusi_rp))}
+              ${__infoRow('Lokasi', lokasi ? __escPlace(lokasi) : null)}
+              ${__infoRow('Alamat', (d.building_address || d.place_address) ? __escPlace(d.building_address || d.place_address) : null)}
+              ${__infoRow('Pemilik', d.owner_name ? __escPlace(d.owner_name) : null)}
+              ${__infoRow('No. PBG', d.registration_number ? __escPlace(d.registration_number) : null)}
+              ${__infoRow('Status PBG', d.pbg_status_name ? __escPlace(d.pbg_status_name) : null)}
+              ${(d.place_name && d.place_name !== d.name_building) ? __infoRow('Google', __escPlace(d.place_name)) : ''}
+              ${__infoRow('Operasional', biz)}
+              ${__infoRow('Rating', rating)}
+              <div style="margin-top:6px;border-top:1px solid #eee;padding-top:5px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:#9ca3af">#${d.id} · ${__escPlace(d.detection_source || '')}</span>
+                ${gmaps}
+              </div>
+            </div>`;
+    }
+    async function openBuildingPopup(latlng, id) {
+        // Always open the popup immediately at the tapped point (fallback: map
+        // center) so the user gets instant feedback even on touch devices or a
+        // slow link — never leave a tap with no visible response.
+        const popup = L.popup({ maxWidth: 300, autoPan: true })
+            .setLatLng(latlng || map.getCenter())
+            .setContent('<div style="min-width:200px;font-size:12px;color:#6b7280">Memuat info properti…</div>')
+            .openOn(map);
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 12000);
+            const r = await fetch(`${API}/${id}/info`, { headers: H, signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!r.ok) throw new Error('info HTTP ' + r.status);
+            const d = await r.json();
+            if (!latlng && d.latitude && d.longitude) popup.setLatLng([d.latitude, d.longitude]);
+            popup.setContent(buildBuildingPopupHtml(d));
+            popup.update();
+        } catch (err) {
+            console.warn('[polygon-click] info fetch failed', err);
+            popup.setContent('<div style="font-size:12px;color:#b91c1c">Gagal memuat info properti (#' + id + ').</div>');
+            popup.update();
+        }
+    }
+
     // Build the tile-URL template with filter query string. Only the filters
     // that the PostGIS tile function understands (Phase 7) are forwarded:
     // district + min_area. filter-data-source and filter-pbg-status carry
@@ -604,17 +943,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {},
             },
             vectorTileLayerStyles: {
-                // Semua polygon biru. Usaha dibedain dengan strip-strip
-                // (dashed border tebal); non-usaha solid. Confirmed PBG match
-                // = opacity penuh, predicted = opacity setengah.
+                // WARNA = status izin (props.status_color, precomputed di
+                // SyncBuildingsToPostgis): merah=tanpa izin, biru=PBG terbit,
+                // kuning=proses, abu=ditolak. POLA = jenis: usaha strip-strip
+                // (dashed tebal), non-usaha solid. OPACITY: confirmed PBG match
+                // penuh, predicted setengah.
                 buildings: (props) => {
                     const isUsaha = props.usage_category === 'usaha';
                     const isConfirmed = props.category_confidence === 'confirmed';
+                    const c = props.status_color || '#ef4444';
                     return {
                         fill: true,
-                        fillColor: '#2563eb',
-                        fillOpacity: isConfirmed ? 0.55 : 0.3,
-                        color: isUsaha ? '#1e3a8a' : '#1d4ed8',
+                        fillColor: c,
+                        fillOpacity: isConfirmed ? 0.55 : 0.35,
+                        color: c,
                         weight: isUsaha ? 2 : 1,
                         opacity: isConfirmed ? 1 : 0.7,
                         dashArray: isUsaha ? '3,3' : null,
@@ -642,6 +984,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 opacity: 1,
             });
             _highlightedId = id;
+
+            // Tap → rich property-info popup at the clicked point.
+            openBuildingPopup(e.latlng, id);
 
             selId = id;
             document.getElementById('verify-id').textContent = '#' + id;
@@ -675,6 +1020,8 @@ document.addEventListener('DOMContentLoaded', function() {
         polygonLayer = createPolygonLayer();
         polygonLayer.addTo(map);
         window.__sibedas_polygonLayer = polygonLayer;
+        // Headless-QA hook (same intent as window.map): drive the tap-info popup.
+        window.__sibedas_openBuildingPopup = openBuildingPopup;
     } else {
         console.warn('[vector-tiles] L.vectorGrid unavailable — polygon layer disabled.');
     }
@@ -796,6 +1143,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!r.ok) throw new Error(`stats HTTP ${r.status}`);
             const d = await r.json();
             const fmt = n => Number(n || 0).toLocaleString('id-ID');
+            const rp = n => {
+                n = Number(n) || 0;
+                if (n >= 1e12) return 'Rp ' + (n / 1e12).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' T';
+                if (n >= 1e9)  return 'Rp ' + (n / 1e9).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' M';
+                if (n >= 1e6)  return 'Rp ' + (n / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt';
+                if (n >= 1e3)  return 'Rp ' + (n / 1e3).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' rb';
+                return 'Rp ' + fmt(Math.round(n));
+            };
             document.getElementById('stat-total').textContent = fmt(d.total_detected);
             document.getElementById('stat-permit-valid').textContent = fmt(d.permit_valid);
             document.getElementById('stat-without-permit').textContent = fmt(d.without_permit);
@@ -803,6 +1158,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const br = `${fmt(d.unmatched)} tak match · ${fmt(d.match_orphan)} orphan · ${fmt(d.permit_rejected)} ditolak`;
             const el = document.getElementById('stat-without-breakdown');
             if (el) el.textContent = br;
+
+            // Potensi retribusi card — enriched (tarif fungsi) diutamakan, unenriched (Hunian) batas bawah.
+            document.getElementById('stat-retr-total').textContent = rp(d.without_permit_retribution);
+            document.getElementById('stat-retr-area').textContent = fmt(Math.round(d.without_permit_area_m2 || 0));
+            document.getElementById('stat-retr-enriched').textContent = rp(d.without_permit_enriched_retribution);
+            document.getElementById('stat-retr-enriched-area').textContent = fmt(Math.round(d.without_permit_enriched_area_m2 || 0));
+            document.getElementById('stat-retr-unenriched').textContent = rp(d.without_permit_unenriched_retribution);
 
             const ts = d.snapshot_refreshed_at;
             const tsEl = document.getElementById('snapshot-ts');
