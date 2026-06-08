@@ -139,23 +139,66 @@ class RequestAssignmentController extends Controller
      */
     private function applySearch($query, string $search)
     {
-        // Search in pbg_task columns
-        $query->where(function ($q) use ($search) {
+        $search = trim($search);
+        if ($search === '') return;
+
+        // Tokenize for per-word phonetic matching.
+        $tokens = array_values(array_filter(
+            preg_split('/\s+/', $search) ?: [],
+            fn ($t) => $t !== ''
+        ));
+
+        $query->where(function ($q) use ($search, $tokens) {
+            // 1) Substring LIKE — original behavior
             $q->where('name', 'LIKE', "%$search%")
               ->orWhere('registration_number', 'LIKE', "%$search%")
               ->orWhere('owner_name', 'LIKE', "%$search%")
               ->orWhere('address', 'LIKE', "%$search%");
+
+            // 2) Whole-string SOUNDEX — catches single-typo names (e.g. "suhairi" → "suhaeri")
+            $q->orWhereRaw('SOUNDEX(name) = SOUNDEX(?)', [$search])
+              ->orWhereRaw('SOUNDEX(owner_name) = SOUNDEX(?)', [$search]);
+
+            // 3) Per-token AND — every token must match somewhere in name/owner_name.
+            //    Short tokens (<4 chars) require whole-word match to avoid "iri"
+            //    spuriously matching "Mandiri". Longer tokens allow per-word SOUNDEX
+            //    (catches typos like suhairi/suhaeri at any position in a multi-word name).
+            if (count($tokens) >= 2) {
+                $q->orWhere(function ($qq) use ($tokens) {
+                    foreach ($tokens as $tok) {
+                        $qq->where(function ($qqq) use ($tok) {
+                            if (mb_strlen($tok) < 4) {
+                                $qqq->whereRaw("CONCAT(' ', name, ' ') LIKE ?", ["% $tok %"])
+                                    ->orWhereRaw("CONCAT(' ', owner_name, ' ') LIKE ?", ["% $tok %"]);
+                            } else {
+                                $qqq->where('name', 'LIKE', "%$tok%")
+                                    ->orWhere('owner_name', 'LIKE', "%$tok%");
+                                foreach (['name', 'owner_name'] as $field) {
+                                    for ($i = 1; $i <= 4; $i++) {
+                                        $qqq->orWhereRaw(
+                                            "SOUNDEX(SUBSTRING_INDEX(SUBSTRING_INDEX($field, ' ', ?), ' ', -1)) = SOUNDEX(?)",
+                                            [$i, $tok]
+                                        );
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            }
         });
-        
-        // If search term exists, also find UUIDs from name_building search
-        $namesBuildingUuids = DB::table('pbg_task_details')
-            ->where('name_building', 'LIKE', "%$search%")
+
+        // name_building in pbg_task_details — same substring + soundex fallback
+        $detailUuids = DB::table('pbg_task_details')
+            ->where(function ($q) use ($search) {
+                $q->where('name_building', 'LIKE', "%$search%")
+                  ->orWhereRaw('SOUNDEX(name_building) = SOUNDEX(?)', [$search]);
+            })
             ->pluck('pbg_task_uid')
             ->toArray();
-        
-        // If we found matching name_building records, include them in the search
-        if (!empty($namesBuildingUuids)) {
-            $query->orWhereIn('uuid', $namesBuildingUuids);
+
+        if (!empty($detailUuids)) {
+            $query->orWhereIn('uuid', $detailUuids);
         }
     }
 

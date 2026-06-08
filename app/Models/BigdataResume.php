@@ -328,12 +328,20 @@ class BigdataResume extends Model
         $verified_sum = ($stats->waiting_click_dpmptsp_total ?? 0) + ($issuance_realization_pbg_total ?? 0) + ($stats->process_in_technical_office_total ?? 0);
         $potention_total = $verified_sum + $non_verified_sum;
 
-        $service_google_sheet = app(ServiceGoogleSheet::class);
+        try {
+            $service_google_sheet = app(ServiceGoogleSheet::class);
+            $spatial_count = $service_google_sheet->getSpatialPlanningWithCalculationCount() ?? 0;
+            $spatial_sum   = $service_google_sheet->getSpatialPlanningCalculationSum() ?? 0.00;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Spatial planning data unavailable (Google Sheets): " . $e->getMessage());
+            $spatial_count = 0;
+            $spatial_sum   = 0.00;
+        }
 
         return self::create([
             'import_datasource_id' => $import_datasource_id,
-            'spatial_count' => $service_google_sheet->getSpatialPlanningWithCalculationCount() ?? 0,
-            'spatial_sum' => $service_google_sheet->getSpatialPlanningCalculationSum() ?? 0.00,
+            'spatial_count' => $spatial_count,
+            'spatial_sum'   => $spatial_sum,
             'potention_count' => $potention_count,
             'potention_sum' => $potention_total,
             'non_verified_count' => $non_verified_count,

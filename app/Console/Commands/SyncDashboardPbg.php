@@ -39,6 +39,7 @@ class SyncDashboardPbg extends Command
 
         try {
             BigdataResume::generateResumeData($import_datasource->id, date('Y'), "simbg");
+            BigdataResume::generateResumeData($import_datasource->id, date('Y'), "leader");
     
             $import_datasource->update([
                 'status' => 'success',
