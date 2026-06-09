@@ -157,6 +157,17 @@ class OpenAIService
                 - NULL values in tracking fields (petugas, loket, posisi_berkas) mean data is not yet recorded by officers.
                 - Always state clearly when documents are missing or not yet uploaded, do NOT interpret NULL as 'complete' or 'no issues'.";
         }
+        if ($domain === 'pbg_status_history') {
+            $domainContext = "
+
+                IMPORTANT - pbg_status_history field interpretation rules:
+                - Each row is ONE stage in the application's timeline; present the result as a CHRONOLOGICAL TIMELINE (oldest → newest), ideally as a numbered/bulleted list of stages with their tanggal_mulai.
+                - status_tahap = stage name; tanggal_mulai = when it started; keterangan = officer note for that stage (show it only when present).
+                - status_aplikasi_terkini = the current overall status — state this clearly at the end as 'Posisi/Status terkini'.
+                - If status_tahap of the latest row is 'SK PBG Terbit' or 'Sertifikat SLF Terbit', the application is COMPLETE. If it is 'Permohonan Ditolak' or 'Permohonan Dibatalkan', the application was rejected/cancelled — say so explicitly.
+                - If the result is empty, say there is no recorded status history for that permohonan yet.
+                - Always answer in Bahasa Indonesia and mention the applicant name / registration number when available.";
+        }
 
         $response = $this->client->chat()->create([
             'model' => 'gpt-4o-mini',
@@ -322,6 +333,22 @@ class OpenAIService
                 - status_aplikasi = 'Perbaikan Dokumen' means the applicant must fix/resubmit documents
                 - catatan_kekurangan_dokumen and catatan_kekurangan_dokumen_payments contain officer notes on missing docs
                 NULL values in tracking fields mean the data has not been filled by officers yet, NOT that everything is complete.";
+        }
+        if ($classify === 'pbg_status_history') {
+            $extraContext = "
+                Important column semantics for pbg_status_history (v_pbg_status_history view):
+                - Each row = ONE status transition in an application's timeline. Many rows for the same registration_number = the full chronological history.
+                - status_tahap = the human-readable stage name (e.g. 'Verifikasi Kelengkapan Dokumen', 'Perbaikan Dokumen', 'Perhitungan Retribusi', 'SK PBG Terbit', 'Permohonan Ditolak').
+                - status_kode = the numeric status code behind status_tahap.
+                - tanggal_mulai = when that stage started; tanggal_selesai = its due/finish date (may be NULL).
+                - keterangan = officer note for that stage (NULL = no note).
+                - status_aplikasi_terkini = the application's latest/current overall status (same value on every row for that noreg).
+                CRITICAL SQL RULES — follow exactly:
+                1. NEVER use SELECT * — list columns explicitly.
+                2. To show a timeline for one applicant/noreg, ALWAYS add ORDER BY tanggal_mulai ASC, id ASC so stages read oldest → newest.
+                3. To get the timeline of a specific noreg: WHERE registration_number = 'X' ORDER BY tanggal_mulai ASC, id ASC LIMIT 50.
+                4. Do NOT add LIMIT 10 for a single-applicant timeline (it truncates the history) — use LIMIT 50.
+                5. When the user names a person, filter on nama_pemilik with the fuzzy SOUNDEX expansion described below.";
         }
 
         // Konversi chatHistory ke dalam format messages

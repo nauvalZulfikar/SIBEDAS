@@ -89,7 +89,8 @@ class ChatbotController extends Controller
             $validCategories = [
                 'reklame', 'business_or_industries', 'customers',
                 'pbg', 'retribusi', 'spatial_plannings',
-                'tourisms', 'umkms', 'pbg_tracking', 'dokumen_resume', 'dokumen_per_noreg'
+                'tourisms', 'umkms', 'pbg_tracking', 'dokumen_resume', 'dokumen_per_noreg',
+                'pbg_status_history'
             ];
 
             if (!in_array($classifyResponse, $validCategories)) {
