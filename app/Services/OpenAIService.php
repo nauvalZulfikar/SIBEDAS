@@ -41,7 +41,7 @@ class OpenAIService
         ];
 
         // Menambahkan chat history sebagai konteks
-        foreach ($chatHistory as $chat) {
+        foreach (($chatHistory ?? []) as $chat) {
             if (isset($chat['user'])) {
                 $messages[] = ['role' => 'user', 'content' => $chat['user']];
             }
@@ -386,7 +386,7 @@ class OpenAIService
         ];
 
         // Menambahkan chat history sebagai konteks
-        foreach ($chatHistory as $chat) {
+        foreach (($chatHistory ?? []) as $chat) {
             if (isset($chat['user'])) {
                 $messages[] = ['role' => 'user', 'content' => $chat['user']];
             }
