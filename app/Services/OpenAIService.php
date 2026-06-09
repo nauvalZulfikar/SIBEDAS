@@ -222,6 +222,7 @@ class OpenAIService
                     - pbg_tracking (tracking PBG application progress: missing documents, obstacles/kendala, findings/temuan, PTSP position, loket/helpdesk, officer in charge, document shortage notes, verification status by registration number)
                     - dokumen_per_noreg (detailed document status per registration number: which specific documents are missing, not compliant, or not yet uploaded for a given noreg — use this when user asks about specific registration number's document details)
                     - dokumen_resume (dashboard summary of document deficiencies: RAB/KRK/DLH shortage counts, verified vs non-verified totals, business vs non-business document statistics, overall PBG data summary)
+                    - pbg_status_history (the FULL timeline / step-by-step history of an application's status changes — 'posisi permohonan', 'histori permohonan', 'riwayat status', 'sudah sampai mana', 'tahapan proses', 'kapan SK terbit', 'urutan proses dari pengajuan sampai selesai' for a given noreg or applicant name. Use this when the user wants the SEQUENCE of stages over time, not just the single current status.)
 
                     DEFAULT — If the user is searching by a person's name, applicant name, or business name (e.g. 'cari X', 'siapa X', 'data X', possibly with typos), classify as `pbg`.
                     DEFAULT — If unsure, classify as `pbg`.
@@ -243,7 +244,7 @@ class OpenAIService
             'reklame', 'business_or_industries', 'customers',
             'pbg', 'retribusi', 'spatial_plannings',
             'tourisms', 'umkms', 'pbg_tracking',
-            'dokumen_resume', 'dokumen_per_noreg',
+            'dokumen_resume', 'dokumen_per_noreg', 'pbg_status_history',
         ];
 
         if (in_array($norm, $valid, true)) {

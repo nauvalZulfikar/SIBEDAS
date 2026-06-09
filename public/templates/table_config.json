@@ -251,5 +251,23 @@
             "dokumen_menunggu_verifikasi",
             "daftar_dokumen_bermasalah"
         ]
+    },
+    "pbg_status_history": {
+        "table_name": "v_pbg_status_history",
+        "list_column": [
+            "pbg_task_uuid",
+            "registration_number",
+            "document_number",
+            "nama_bangunan",
+            "nama_pemilik",
+            "alamat",
+            "status_aplikasi_terkini",
+            "status_kode",
+            "status_tahap",
+            "tanggal_mulai",
+            "tanggal_selesai",
+            "keterangan",
+            "petugas_uid"
+        ]
     }
 }
