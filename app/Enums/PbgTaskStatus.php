@@ -167,8 +167,77 @@ enum PbgTaskStatus: int
     public static function getRejected(): array
     {
         return [
-            self::PERMOHONAN_DITOLAK->value, 
+            self::PERMOHONAN_DITOLAK->value,
             self::PERMOHONAN_DIBATALKAN->value
         ];
+    }
+
+    /**
+     * Five-phase progress stepper used by the "Cek Posisi Permohonan" modal,
+     * mirroring SIMBG: Pengajuan → Verifikasi Teknis → Konsultasi → Retribusi → Selesai.
+     * Returns an ordered list of ['key','label'] pairs.
+     */
+    public static function getStepperPhases(): array
+    {
+        return [
+            ['key' => 'pengajuan',  'label' => 'Pengajuan'],
+            ['key' => 'verifikasi', 'label' => 'Verifikasi Teknis'],
+            ['key' => 'konsultasi', 'label' => 'Konsultasi'],
+            ['key' => 'retribusi',  'label' => 'Retribusi'],
+            ['key' => 'selesai',    'label' => 'Selesai'],
+        ];
+    }
+
+    /**
+     * Map a status int → stepper phase index (0-based), or null if unknown.
+     * Rejection statuses map to phase 0 and are flagged via isRejected().
+     */
+    public static function getStepperIndex(?int $status): ?int
+    {
+        return match ($status) {
+            self::VERIFIKASI_KELENGKAPAN->value,
+            self::PERBAIKAN_DOKUMEN->value,
+            self::PERMOHONAN_DITOLAK->value,
+            self::PERMOHONAN_DIBATALKAN->value => 0,
+
+            self::MENUNGGU_PENUGASAN_TPT_TPA->value,
+            self::MENUNGGU_PENUGASAN_TPT->value,
+            self::VERIFIKASI_DATA_TPT->value => 1,
+
+            self::MENUNGGU_JADWAL_KONSULTASI->value,
+            self::PELAKSANAAN_KONSULTASI->value,
+            self::PERBAIKAN_DOKUMEN_KONSULTASI->value => 2,
+
+            self::PERHITUNGAN_RETRIBUSI->value,
+            self::MENUNGGU_PEMBAYARAN_RETRIBUSI->value,
+            self::VERIFIKASI_PEMBAYARAN_RETRIBUSI->value,
+            self::RETRIBUSI_TIDAK_SESUAI->value,
+            self::PENERBITAN_SPPST->value,
+            self::PROSES_PENERBITAN_SKRD->value => 3,
+
+            self::VERIFIKASI_SK_PBG->value,
+            self::PENERBITAN_SK_PBG->value,
+            self::SK_PBG_TERBIT->value,
+            self::SERTIFIKAT_SLF_TERBIT->value => 4,
+
+            default => null,
+        };
+    }
+
+    public static function isRejected(?int $status): bool
+    {
+        return in_array($status, self::getRejected(), true);
+    }
+
+    /**
+     * Terminal-success statuses — the whole flow is finished, so the final
+     * stepper phase renders as "done" (green check) rather than "current".
+     */
+    public static function isCompleted(?int $status): bool
+    {
+        return in_array($status, [
+            self::SK_PBG_TERBIT->value,
+            self::SERTIFIKAT_SLF_TERBIT->value,
+        ], true);
     }
 }

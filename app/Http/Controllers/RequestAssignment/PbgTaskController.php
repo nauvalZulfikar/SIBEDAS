@@ -62,6 +62,7 @@ class PbgTaskController extends Controller
             'pbg_task_retributions.pbg_task_prasarana', 
             'pbg_task_detail',
             'pbg_status',
+            'pbg_statuses',
             'dataLists' => function($query) {
                 $query->orderBy('data_type')->orderBy('name');
             }

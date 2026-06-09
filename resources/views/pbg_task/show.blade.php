@@ -101,7 +101,11 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="d-flex justify-content-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
+                                data-bs-target="#modalStatusPermohonan">
+                                <i class="fas fa-route me-1"></i> Cek Posisi Permohonan
+                            </button>
                             <button type="button" id="btnUpdatePbgTask" class="btn btn-warning">
                                 <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
                                 Update
@@ -546,6 +550,118 @@
                         @endif
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ====================== MODAL: Cek Posisi Permohonan ====================== --}}
+@php
+    use App\Enums\PbgTaskStatus;
+    $phases = PbgTaskStatus::getStepperPhases();
+    $currentStatus = $data->pbg_status->status ?? null;
+    $currentIdx = PbgTaskStatus::getStepperIndex($currentStatus);
+    $isRejected = PbgTaskStatus::isRejected($currentStatus);
+    $isCompleted = PbgTaskStatus::isCompleted($currentStatus);
+    $history = $data->pbg_statuses ?? collect();
+    $fmt = function ($v) {
+        if (empty($v)) return '–';
+        try { return \Carbon\Carbon::parse($v)->translatedFormat('d F Y'); }
+        catch (\Throwable $e) { return '–'; }
+    };
+@endphp
+<div class="modal fade" id="modalStatusPermohonan" tabindex="-1" aria-labelledby="modalStatusPermohonanLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalStatusPermohonanLabel">
+                    <i class="fas fa-route me-1"></i> Status Permohonan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">No. Registrasi / Dokumen</small>
+                        <strong>{{ $data->registration_number ?? $data->document_number ?? '–' }}</strong>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <small class="text-muted d-block">Pemohon</small>
+                        <strong>{{ $data->owner_name ?? '–' }}</strong>
+                    </div>
+                </div>
+
+                {{-- Stepper --}}
+                <div class="status-stepper d-flex justify-content-between align-items-start my-4">
+                    @foreach($phases as $i => $phase)
+                        @php
+                            if ($currentIdx === null) { $state = 'pending'; }
+                            elseif ($i < $currentIdx) { $state = 'done'; }
+                            elseif ($i === $currentIdx) {
+                                if ($isRejected) { $state = 'rejected'; }
+                                elseif ($isCompleted) { $state = 'done'; }
+                                else { $state = 'current'; }
+                            }
+                            else { $state = 'pending'; }
+                        @endphp
+                        <div class="stepper-item {{ $state }}">
+                            <div class="stepper-circle">
+                                @if($state === 'done')
+                                    <i class="fas fa-check"></i>
+                                @elseif($state === 'rejected')
+                                    <i class="fas fa-times"></i>
+                                @else
+                                    {{ $i + 1 }}
+                                @endif
+                            </div>
+                            <div class="stepper-label">{{ $phase['label'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+
+                @if($isRejected)
+                    <div class="alert alert-danger py-2">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        {{ $data->pbg_status->status_name ?? 'Permohonan ditolak/dibatalkan' }}.
+                    </div>
+                @endif
+
+                {{-- History table --}}
+                <h6 class="mt-4 mb-2">Histori Permohonan</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:48px">No</th>
+                                <th>Status</th>
+                                <th style="width:150px">Tanggal Mulai</th>
+                                <th style="width:150px">Tanggal Selesai</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($history as $i => $row)
+                                <tr>
+                                    <td>{{ $i + 1 }}</td>
+                                    <td>{{ $row->status_name ?? '–' }}</td>
+                                    <td>{{ $fmt($row->data_created_at ?? $row->created_at) }}</td>
+                                    <td>{{ $fmt($row->due_date ?? $row->data_due_date) }}</td>
+                                    <td>{!! $row->note ? e($row->note) : '<span class="text-muted">–</span>' !!}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        Belum ada histori status untuk permohonan ini.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>

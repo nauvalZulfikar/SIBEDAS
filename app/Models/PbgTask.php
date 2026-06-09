@@ -79,6 +79,17 @@ class PbgTask extends Model
     }
 
     /**
+     * Full status history for this task (mirrors SIMBG "Cek Posisi Permohonan").
+     * Ordered oldest → newest so the timeline/stepper reads top-to-bottom.
+     */
+    public function pbg_statuses()
+    {
+        return $this->hasMany(PbgStatus::class, 'pbg_task_uuid', 'uuid')
+            ->orderByRaw('COALESCE(data_created_at, due_date, created_at) asc')
+            ->orderBy('id', 'asc');
+    }
+
+    /**
      * Get only data lists with files
      */
     public function dataListsWithFiles()
