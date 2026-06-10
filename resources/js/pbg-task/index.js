@@ -207,6 +207,7 @@ class PbgTasks {
                 nowrap: true,
             },
             { label: "Alamat", key: "address", width: "180px" },
+            { label: "Kecamatan", key: "kecamatan", width: "120px" },
             {
                 label: "Koordinat",
                 key: "_koordinat",
@@ -413,6 +414,7 @@ class PbgTasks {
                     <td style="${td}">${item.registration_number || "-"}</td>
                     <td style="${tdnw}">${item.document_number || "-"}</td>
                     <td style="${td}">${item.address || "-"}</td>
+                    <td style="${tdnw}">${item.kecamatan || "-"}</td>
                     <td style="${tdnw}">${koord}</td>
                     <td style="${td}">${self.statusBadge(item.status, item.status_name)}</td>
                     <td style="${td}">${item.function_type || "-"}</td>

@@ -66,7 +66,7 @@ class RequestAssignmentController extends Controller
         $sortDir = $request->get('dir', 'asc') === 'desc' ? 'desc' : 'asc';
         $sortableColumns = [
             'id', 'name', 'owner_name', 'condition', 'registration_number',
-            'document_number', 'address', 'status_name', 'function_type',
+            'document_number', 'address', 'kecamatan', 'status_name', 'function_type',
             'consultation_type', 'task_created_at', 'start_date', 'due_date',
             'usulan_retribusi',
         ];

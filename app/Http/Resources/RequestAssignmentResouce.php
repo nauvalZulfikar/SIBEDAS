@@ -25,6 +25,7 @@ class RequestAssignmentResouce extends JsonResource
             'registration_number' => $this->registration_number,
             'document_number' => $this->document_number,
             'address' => $this->address,
+            'kecamatan' => $this->kecamatan,
             'status' => $this->status,
             'status_name' => $this->status_name,
             'slf_status' => $this->slf_status,
