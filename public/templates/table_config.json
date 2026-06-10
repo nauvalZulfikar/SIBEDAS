@@ -64,6 +64,8 @@
             "registration_number",
             "document_number",
             "address",
+            "kecamatan",
+            "kecamatan_source",
             "status_name",
             "slf_status_name",
             "function_type",

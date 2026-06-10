@@ -225,7 +225,7 @@ class OpenAIService
                     - reklame (ads or product/service promotions)
                     - business_or_industries (business or industries in general)
                     - customers (customers, consumers, or service users)
-                    - pbg (tasks related to Building Approval - general info, status, document number; ALSO use this when the user is searching for or asking about a SPECIFIC PERSON by name, e.g. 'cari rida nurhayati', 'siapa ahmad budi', 'data si fulan' — even with possible typos)
+                    - pbg (tasks related to Building Approval - general info, status, document number; ALSO use this when the user is searching for or asking about a SPECIFIC PERSON by name, e.g. 'cari rida nurhayati', 'siapa ahmad budi', 'data si fulan' — even with possible typos; ALSO use this for anything grouped by or filtered on KECAMATAN / wilayah / sub-district — e.g. 'berapa PBG per kecamatan', 'jumlah permohonan di kecamatan Soreang', 'sebaran PBG per wilayah', 'kecamatan mana paling banyak PBG'. Counting/distribution of applications by area = `pbg`, NOT pbg_status_history.)
                     - retribusi (retributions related to PBG)
                     - spatial_plannings (spatial planning)
                     - tourisms (tourism and tourist destinations)
@@ -349,6 +349,18 @@ class OpenAIService
                 3. To get the timeline of a specific noreg: WHERE registration_number = 'X' ORDER BY tanggal_mulai ASC, id ASC LIMIT 50.
                 4. Do NOT add LIMIT 10 for a single-applicant timeline (it truncates the history) — use LIMIT 50.
                 5. When the user names a person, filter on nama_pemilik with the fuzzy SOUNDEX expansion described below.";
+        }
+
+        if ($classify === 'pbg') {
+            $extraContext = "
+                Important column semantics for pbg (pbg_task table):
+                - kecamatan = the sub-district (one of the 31 official Kabupaten Bandung kecamatan, Title-Case, e.g. 'Soreang', 'Baleendah', 'Ciparay'). Populated for almost every row; only a handful are NULL.
+                - kecamatan_source = how it was derived: 'pip' (point-in-polygon on coordinates, authoritative) or 'address' (parsed from the address string). NULL when unresolved. Do NOT show kecamatan_source to the user unless they explicitly ask about data provenance.
+                KECAMATAN SQL RULES — follow exactly:
+                1. To count/aggregate applications per kecamatan: SELECT kecamatan, COUNT(*) AS total FROM pbg_task WHERE kecamatan IS NOT NULL GROUP BY kecamatan ORDER BY total DESC.
+                2. To filter by a specific kecamatan, match exactly and case-insensitively: WHERE kecamatan = 'Soreang' (the stored values are already canonical Title-Case; never use the leaky old address text).
+                3. When the user names a kecamatan that might be typo'd, also allow LIKE: WHERE kecamatan LIKE 'Soreang%'.
+                4. kecamatan is a plain column on pbg_task — never JOIN another table to get it.";
         }
 
         // Konversi chatHistory ke dalam format messages
