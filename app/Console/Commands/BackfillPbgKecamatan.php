@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Backfills pbg_task.kecamatan using a hybrid strategy:
@@ -20,7 +21,9 @@ use Illuminate\Support\Facades\DB;
  */
 class BackfillPbgKecamatan extends Command
 {
-    protected $signature = 'pbg:backfill-kecamatan {--dry : Show the would-be counts without writing}';
+    protected $signature = 'pbg:backfill-kecamatan
+        {--dry : Show the would-be counts without writing}
+        {--address-only : Skip point-in-polygon, populate from address parsing only}';
 
     protected $description = 'Populate pbg_task.kecamatan via point-in-polygon (coords) with address fallback';
 
