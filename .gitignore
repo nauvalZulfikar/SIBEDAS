@@ -54,3 +54,4 @@ tmp/
 docs/spec.md
 docs/architecture.md
 .DS_Store
+graphify-out/
