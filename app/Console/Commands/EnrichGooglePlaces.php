@@ -89,11 +89,13 @@ class EnrichGooglePlaces extends Command
                 ->whereNotNull('longitude');
 
             if ($kecamatan) {
-                $query->where('kecamatan', 'LIKE', "%{$kecamatan}%");
+                // kecamatan_verified = point-in-polygon (truth). Kolom lama `kecamatan`
+                // bocor (KBB/Cianjur ter-label Kab Bandung) → JANGAN dipakai utk targeting.
+                $query->where('kecamatan_verified', 'LIKE', "%{$kecamatan}%");
             }
 
             $properties = $query->orderByDesc($orderCol)
-                ->select('id', 'latitude', 'longitude', 'estimated_area_m2', 'kecamatan', 'potensi_retribusi_rp')
+                ->select('id', 'latitude', 'longitude', 'estimated_area_m2', 'kecamatan_verified', 'potensi_retribusi_rp')
                 ->limit($batchSize)
                 ->get();
 
@@ -107,7 +109,7 @@ class EnrichGooglePlaces extends Command
 
             if ($dryRun) {
                 foreach ($properties as $p) {
-                    $this->line("  Would scrape: #{$p->id} | {$p->latitude},{$p->longitude} | {$p->kecamatan} | Rp " . number_format($p->potensi_retribusi_rp));
+                    $this->line("  Would scrape: #{$p->id} | {$p->latitude},{$p->longitude} | {$p->kecamatan_verified} | Rp " . number_format($p->potensi_retribusi_rp));
                 }
                 $this->totalProcessed += $properties->count();
             } else {
