@@ -46,9 +46,27 @@ class BackfillPbgKecamatan extends Command
             return $this->report($inList);
         }
 
+        // Guard: the point-in-polygon source only exists where the satellite
+        // boundary data is loaded (e.g. local). On environments without it
+        // (prod), a normal run would reset every row to NULL and then crash on
+        // the missing table — wiping any verified values that were replicated
+        // in. Refuse unless the caller explicitly opts into address-only.
+        $addressOnly = (bool) $this->option('address-only');
+        if (! Schema::hasTable('admin_boundaries_desa') && ! $addressOnly) {
+            $this->error('admin_boundaries_desa is missing — point-in-polygon unavailable here.');
+            $this->warn('Refusing to run: a reset would discard existing/replicated kecamatan values.');
+            $this->line('Re-run with --address-only to force address-based population, or run where the polygon table exists.');
+
+            return self::FAILURE;
+        }
+
         // 0) reset so the run reflects the current address/coords state.
         DB::statement('UPDATE pbg_task SET kecamatan = NULL, kecamatan_source = NULL');
 
+        if ($addressOnly) {
+            $this->warn('--address-only: skipping point-in-polygon.');
+            $pip = 0;
+        } else {
         // 1) point-in-polygon (authoritative). POINT(lng lat), polygons are SRID 0.
         $pip = DB::update("
             UPDATE pbg_task pt
@@ -65,6 +83,7 @@ class BackfillPbgKecamatan extends Command
                 pt.kecamatan_source = 'pip'
         ");
         $this->info("point-in-polygon: {$pip} rows");
+        }
 
         // 2) address fallback for everything PIP could not place.
         $addr = DB::update("
