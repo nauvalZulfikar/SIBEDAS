@@ -1,0 +1,212 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color:#1f2937; }
+  .slide { width:1280px; height:720px; padding:64px 72px; page-break-after:always;
+           position:relative; overflow:hidden; background:#ffffff; }
+  .pill { display:inline-block; border:1.5px solid #d62828; color:#d62828; font-size:13px;
+          letter-spacing:1.5px; font-weight:700; padding:5px 14px; border-radius:6px; margin-bottom:18px; }
+  .pill.solid { background:#fde2e4; border-color:#fde2e4; color:#9b1c2e; }
+  h1 { font-size:52px; font-weight:800; line-height:1.08; color:#1a1a1a; }
+  h2 { font-size:40px; font-weight:800; line-height:1.12; color:#1a1a1a; margin-bottom:10px; }
+  .red { color:#d62828; }
+  .sub { font-size:20px; color:#4b5563; margin-top:14px; line-height:1.45; max-width:1050px; }
+  .stat-num { font-size:64px; font-weight:800; color:#1a1a1a; line-height:1; }
+  .stat-lbl { font-size:22px; color:#1a1a1a; margin-top:8px; font-weight:600; }
+  .stat-cap { font-size:15px; color:#6b7280; margin-top:4px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:36px 80px; margin-top:36px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; margin-top:30px; }
+  .card { border:1px solid #f0d4d8; border-radius:12px; padding:22px 24px; }
+  .card .ic { color:#d62828; font-size:26px; margin-bottom:8px; }
+  .card h3 { font-size:21px; color:#1a1a1a; margin-bottom:6px; }
+  .card p { font-size:15px; color:#6b7280; line-height:1.4; }
+  .note { position:absolute; left:72px; right:72px; bottom:48px; background:#fff8e1;
+          border-radius:10px; padding:16px 20px; font-size:16px; color:#3a3a3a; }
+  .note.blue { background:#e7f0ff; }
+  .cover { background:#fde2e4; }
+  .cover .left { position:absolute; left:0; top:0; width:42%; height:100%; background:#f7c9cf;
+                 display:flex; align-items:center; justify-content:center; }
+  .cover .blk { width:62%; height:62%; background:
+       repeating-linear-gradient(90deg,#7a1020 0 14%, #d62828 14% 24%, #f08a8a 24% 30%, transparent 30% 34%); opacity:.85; border-radius:8px; }
+  .cover .right { margin-left:46%; padding-top:150px; }
+  .flow { display:flex; align-items:center; justify-content:center; gap:0; margin-top:60px; }
+  .flow .step { width:230px; height:230px; border:9px solid #d62828; border-radius:50%;
+                display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .flow .step .e { font-size:46px; } .flow .step .t { font-size:20px; font-weight:700; margin-top:8px; }
+  .flow .arr { color:#d62828; font-size:46px; margin:0 -12px; z-index:2; }
+  table { width:100%; border-collapse:collapse; margin-top:24px; font-size:18px; }
+  th,td { border:1px solid #e3c9cd; padding:12px 16px; text-align:left; }
+  th { background:#fde2e4; color:#9b1c2e; font-size:16px; }
+  td.r,th.r { text-align:right; }
+  .big-money { font-size:46px; font-weight:800; }
+  .invest-card { background:#7a1020; color:#fff; border-radius:14px; padding:30px 32px; }
+  .invest-card .big-money { color:#fff; }
+  .tl { margin-top:20px; }
+  .tl .row { display:flex; align-items:flex-start; gap:18px; padding:12px 0; border-bottom:1px solid #f0e0e2; }
+  .tl .n { width:42px; height:42px; flex:none; background:#fde2e4; color:#9b1c2e; border-radius:50%;
+           display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; }
+  .tl .wk { font-size:20px; font-weight:700; color:#1a1a1a; }
+  .tl .ds { font-size:15px; color:#6b7280; }
+  .foot { position:absolute; right:24px; bottom:16px; font-size:12px; color:#c9a; }
+</style></head><body>
+
+<!-- 1. COVER -->
+<div class="slide cover">
+  <div class="left"><div class="blk"></div></div>
+  <div class="right">
+    <span class="pill solid">JUNI 2026</span>
+    <h1>Proposal Penawaran:<br>Revisi &amp; Penyempurnaan<br>Dashboard <span class="red">SIBEDAS</span></h1>
+    <p class="sub">Untuk DPUTR Kabupaten Bandung</p>
+    <p class="sub" style="font-style:italic;margin-top:22px">"Angka dashboard yang bisa dipertanggungjawabkan — setiap rupiah dapat ditelusuri."</p>
+  </div>
+  <div class="foot">Nauval Zulfikar · Konsultan GIS &amp; Full-Stack</div>
+</div>
+
+<!-- 2. LATAR BELAKANG -->
+<div class="slide">
+  <span class="pill">LATAR BELAKANG</span>
+  <h2>Angka dashboard belum terverifikasi.</h2>
+  <p class="sub">Audit teknis menemukan kesalahan atribusi wilayah yang sistematis pada data warisan pengembang sebelumnya — angka yang menjadi dasar keputusan retribusi.</p>
+  <div class="grid2">
+    <div><div class="stat-num red">±1,27 jt</div><div class="stat-lbl">Bangunan salah label wilayah</div><div class="stat-cap">579rb di luar wilayah ikut terhitung · 695rb di dalam wilayah malah hilang</div></div>
+    <div><div class="stat-num red">56%</div><div class="stat-lbl">Pemanggilan data terbuang</div><div class="stat-cap">20.358 dari 36.173 verifikasi mendarat di luar Kab. Bandung</div></div>
+    <div><div class="stat-num" style="font-size:46px;white-space:nowrap">Rp 75 M&nbsp;→&nbsp;<span class="red">53,7 M</span></div><div class="stat-lbl">Koreksi potensi Soreang</div><div class="stat-cap">Angka lama menggelembung karena label wilayah bocor</div></div>
+    <div><div class="stat-num">31</div><div class="stat-lbl">Kecamatan terdampak</div><div class="stat-cap">Seluruh wilayah memakai atribusi yang sama</div></div>
+  </div>
+  <div class="note">⚠ <strong>Angka yang keliru = keputusan penagihan yang keliru.</strong> Tanpa verifikasi batas administrasi, dashboard menampilkan potensi yang tidak dapat dipertanggungjawabkan di hadapan auditor.</div>
+</div>
+
+<!-- 3. SOLUSI -->
+<div class="slide">
+  <span class="pill">SOLUSI</span>
+  <h2>Audit → Perbaiki → Deploy</h2>
+  <p class="sub">Dari angka yang diragukan menjadi dashboard yang setiap nilainya dapat ditelusuri ke sumber data — lalu di-deploy aman di produksi.</p>
+  <div class="flow">
+    <div class="step"><div class="e">🔍</div><div class="t">AUDIT</div></div>
+    <div class="arr">▶</div>
+    <div class="step"><div class="e">🛠️</div><div class="t">PERBAIKI</div></div>
+    <div class="arr">▶</div>
+    <div class="step"><div class="e">🚀</div><div class="t">DEPLOY</div></div>
+  </div>
+  <div class="note blue">Setiap angka diverifikasi silang ke query, view, dan tabel sumbernya — lalu diuji visual sebelum serah terima. Tim DPUTR fokus pada keputusan, bukan meragukan data.</div>
+</div>
+
+<!-- 4. RUANG LINGKUP -->
+<div class="slide">
+  <span class="pill">RUANG LINGKUP</span>
+  <h2>Seluruh Dashboard, Tanpa Terkecuali</h2>
+  <div class="grid3">
+    <div class="card"><div class="ic">🏢</div><h3>Dashboard PBG</h3><p>Verifikasi jumlah permohonan, status, dan distribusi per wilayah.</p></div>
+    <div class="card"><div class="ic">💰</div><h3>Dashboard Retribusi</h3><p>Audit formula potensi, indeks, dan rekap nilai.</p></div>
+    <div class="card"><div class="ic">📋</div><h3>Rekonsiliasi PBB</h3><p>Validasi pencocokan PBG ↔ PBB per kecamatan/kelurahan.</p></div>
+    <div class="card"><div class="ic">🛰️</div><h3>Pemantauan Satelit</h3><p>Re-atribusi batas wilayah (point-in-polygon) &amp; statistik per kecamatan.</p></div>
+    <div class="card"><div class="ic">📊</div><h3>Ringkasan Eksekutif</h3><p>Konsistensi angka lintas-modul agar tidak saling bertentangan.</p></div>
+    <div class="card"><div class="ic">🚀</div><h3>Deployment Produksi</h3><p>Docker + Nginx + HTTPS/SSL + pemantauan dasar.</p></div>
+  </div>
+  <div class="note">Cakupan menyeluruh — bukan tambal sebagian. Hasil akhir: <strong>satu sumber kebenaran</strong> yang konsisten di semua layar.</div>
+</div>
+
+<!-- 5. CARA KERJA -->
+<div class="slide">
+  <span class="pill">CARA KERJA</span>
+  <h2>Metode Perbaikan</h2>
+  <div class="grid2" style="gap:24px 70px">
+    <div class="card"><div class="ic">📍</div><h3>Re-atribusi Spasial</h3><p>Koreksi pelabelan wilayah dengan metode titik-dalam-polygon terhadap batas administrasi resmi — menggantikan label bawaan yang bocor.</p></div>
+    <div class="card"><div class="ic">🧮</div><h3>Perbaikan Logika</h3><p>Koreksi formula retribusi, agregasi, dan view basis data hingga konsisten dengan aturan resmi.</p></div>
+    <div class="card"><div class="ic">🔄</div><h3>Regenerasi Statistik</h3><p>Membangun ulang seluruh snapshot/agregat dashboard berdasarkan data yang sudah dikoreksi.</p></div>
+    <div class="card"><div class="ic">✅</div><h3>Verifikasi Visual (QA)</h3><p>Setiap dashboard diuji di peramban + tangkapan layar sebagai bukti sebelum serah terima.</p></div>
+  </div>
+  <div class="note">Pendekatan <strong>berbasis bukti</strong>: bukan sekadar "terlihat benar", tetapi terbukti benar dan terdokumentasi.</div>
+</div>
+
+<!-- 6. NILAI -->
+<div class="slide">
+  <span class="pill">DAMPAK &amp; NILAI</span>
+  <h2>Rp 60 Juta Mengamankan <span class="red">Miliaran</span> Keputusan</h2>
+  <div class="grid2" style="margin-top:28px">
+    <div class="invest-card">
+      <div style="font-size:18px;opacity:.85">INVESTASI</div>
+      <div class="big-money">Rp 60 Jt</div>
+      <p style="margin-top:10px;font-size:16px;opacity:.9">Audit + perbaikan seluruh dashboard + deploy produksi</p>
+    </div>
+    <div>
+      <div style="font-size:18px;color:#6b7280">YANG DIAMANKAN (per 1 kecamatan)</div>
+      <div class="big-money red">Rp 53,7 Miliar</div>
+      <p style="margin-top:10px;font-size:16px;color:#4b5563">Potensi retribusi Soreang yang kini dapat dipertanggungjawabkan — × 31 kecamatan Kab. Bandung</p>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:30px">
+    <div><div class="stat-num red">&lt;0,2%</div><div class="stat-cap">Biaya jasa terhadap nilai data yang diamankan (1 kecamatan)</div></div>
+    <div><div class="stat-num">100%</div><div class="stat-cap">Angka dashboard dapat ditelusuri ke sumber data</div></div>
+  </div>
+</div>
+
+<!-- 7. STRUKTUR INVESTASI -->
+<div class="slide">
+  <span class="pill">STRUKTUR INVESTASI</span>
+  <h2>Rp 60 Juta — Paket Lengkap</h2>
+  <table>
+    <tr><th>Komponen Pekerjaan</th><th class="r">Nilai</th></tr>
+    <tr><td><strong>Audit menyeluruh</strong> seluruh dashboard</td><td class="r">Rp 15.000.000</td></tr>
+    <tr><td><strong>Perbaikan data-integrity</strong> &amp; re-atribusi spasial</td><td class="r">Rp 22.000.000</td></tr>
+    <tr><td><strong>Perbaikan logika</strong> retribusi &amp; rekonsiliasi</td><td class="r">Rp 13.000.000</td></tr>
+    <tr><td><strong>Deployment produksi</strong> + pengamanan + pemantauan</td><td class="r">Rp 10.000.000</td></tr>
+    <tr><td><strong>TOTAL PAKET INTI</strong></td><td class="r"><strong>Rp 60.000.000</strong></td></tr>
+  </table>
+  <div class="grid3" style="margin-top:26px">
+    <div class="card"><h3 class="red">Termin I — 40%</h3><p>Rp 24 jt · uang muka saat penandatanganan</p></div>
+    <div class="card"><h3 class="red">Termin II — 40%</h3><p>Rp 24 jt · setelah audit &amp; perbaikan diterima (UAT)</p></div>
+    <div class="card"><h3 class="red">Termin III — 20%</h3><p>Rp 12 jt · setelah deploy &amp; BAST</p></div>
+  </div>
+  <div class="note">Opsional: garansi &amp; pemeliharaan Rp 8–12 jt/bulan · dokumentasi teknis + handover Rp 6 jt. Belum termasuk PPN bila diperlukan.</div>
+</div>
+
+<!-- 8. TIMELINE -->
+<div class="slide">
+  <span class="pill">TIMELINE</span>
+  <h2>4 Minggu: Audit ke Produksi</h2>
+  <div class="tl">
+    <div class="row"><div class="n">1</div><div><div class="wk">Minggu 1 — Audit menyeluruh</div><div class="ds">Pemetaan seluruh sumber angka dashboard, identifikasi titik kesalahan → Laporan temuan</div></div></div>
+    <div class="row"><div class="n">2</div><div><div class="wk">Minggu 2–3 — Perbaikan &amp; regenerasi</div><div class="ds">Re-atribusi spasial, koreksi formula &amp; view, bangun ulang statistik</div></div></div>
+    <div class="row"><div class="n">3</div><div><div class="wk">Minggu 3–4 — Verifikasi &amp; QA</div><div class="ds">Uji silang angka + verifikasi visual setiap dashboard (bukti screenshot)</div></div></div>
+    <div class="row"><div class="n">4</div><div><div class="wk">Minggu 4 — Deploy &amp; serah terima</div><div class="ds">Deploy produksi (SSL), dokumentasi ringkas, BAST &amp; handover</div></div></div>
+  </div>
+  <div class="grid3" style="margin-top:24px">
+    <div class="card"><h3>⏱ 4 Minggu</h3><p>Total durasi proyek</p></div>
+    <div class="card"><h3>💳 3 Termin</h3><p>Pembayaran terstruktur per milestone</p></div>
+    <div class="card"><h3>🔒 30 Hari</h3><p>Garansi bugfix pasca handover</p></div>
+  </div>
+</div>
+
+<!-- 9. MENGAPA KAMI -->
+<div class="slide">
+  <span class="pill">MENGAPA KAMI</span>
+  <h2>Spesialis Tunggal, Tiga Keahlian</h2>
+  <div class="grid3">
+    <div class="card"><div class="ic">🗺️</div><h3>GIS</h3><p>Analisis spasial &amp; point-in-polygon — inti dari koreksi atribusi wilayah.</p></div>
+    <div class="card"><div class="ic">⚙️</div><h3>Full-Stack</h3><p>Laravel/PHP + basis data — memperbaiki formula &amp; view langsung di kode.</p></div>
+    <div class="card"><div class="ic">🚀</div><h3>DevOps</h3><p>Docker, Nginx, SSL — deploy aman tanpa pihak ketiga tambahan.</p></div>
+  </div>
+  <div class="grid2" style="margin-top:34px">
+    <div><div class="stat-num red">1 penyedia</div><div class="stat-cap">Tiga keahlian dalam satu orang — menekan biaya &amp; waktu koordinasi</div></div>
+    <div><div class="stat-num">Paham SIBEDAS</div><div class="stat-cap">Sudah menelaah arsitekturnya &amp; mengetahui sumber ketidakakuratannya</div></div>
+  </div>
+</div>
+
+<!-- 10. CTA -->
+<div class="slide cover">
+  <div class="left"><div class="blk"></div></div>
+  <div class="right" style="padding-top:120px">
+    <span class="pill">LANGKAH SELANJUTNYA</span>
+    <h1>Dashboard yang<br>Bisa Dipercaya.</h1>
+    <p class="sub" style="margin-top:20px">Rp 60 juta untuk angka yang dapat dipertanggungjawabkan di seluruh 31 kecamatan — sebelum keputusan miliaran diambil di atas data yang keliru.</p>
+    <div style="margin-top:30px;font-size:18px;line-height:1.7;color:#1a1a1a">
+      <strong>Nauval Zulfikar</strong><br>
+      Konsultan Pengembang Perangkat Lunak (GIS &amp; Full-Stack)<br>
+      ☎ +62 821-1704-3831 &nbsp;·&nbsp; ✉ zulfikar.nauval1998@gmail.com
+    </div>
+    <p class="sub" style="margin-top:18px;font-size:15px">Penawaran berlaku 30 hari. Siap untuk demo &amp; diskusi teknis.</p>
+  </div>
+</div>
+
+</body></html>
