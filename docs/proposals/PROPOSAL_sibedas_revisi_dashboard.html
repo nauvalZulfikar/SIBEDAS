@@ -1,0 +1,147 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  body { font-family: Calibri, Arial, sans-serif; color:#1f2937; font-size:11pt; line-height:1.5; }
+  h1 { font-size:18pt; color:#1e3a8a; text-align:center; margin-bottom:2px;}
+  h2 { font-size:14pt; color:#1e3a8a; text-align:center; }
+  h3 { font-size:12.5pt; color:#1d4ed8; }
+  table { border-collapse:collapse; width:100%; margin:6px 0; }
+  th,td { border:1px solid #888; padding:5px 8px; vertical-align:top; }
+  th { background:#e8f0fe; }
+  td.r,th.r { text-align:right; }
+  blockquote { border-left:3px solid #93c5fd; padding-left:12px; color:#374151; }
+  del { color:#999; }
+  .price { font-size:20pt; color:#1e3a8a; font-weight:bold; margin:2px 0; }
+  .pagebreak { page-break-before: always; }
+  ul { margin-top:4px; }
+  .muted { color:#6b7280; font-size:10pt; }
+</style></head><body>
+
+<h1>PROPOSAL PENAWARAN JASA</h1>
+<h2>Revisi &amp; Penyempurnaan Sistem Dashboard SIBEDAS</h2>
+<h3 style="text-align:center;color:#1d4ed8">Perbaikan Akurasi Data Dashboard &amp; Deployment Produksi</h3>
+<p style="text-align:right"><em>Bandung, 19 Juni 2026</em></p>
+<hr>
+<p><strong>Kepada Yth.</strong> Kepala Dinas Pekerjaan Umum dan Tata Ruang (PUTR) Kabupaten Bandung</p>
+<p><strong>Dari:</strong> Nauval Zulfikar &mdash; Konsultan Pengembang Perangkat Lunak (GIS &amp; Full-Stack)</p>
+<hr>
+
+<h2>1. Latar Belakang</h2>
+<p>Sistem <strong>SIBEDAS</strong> (Sistem Informasi Bangunan dan Data Spasial) telah dibangun oleh pengembang sebelumnya sebagai platform pengelolaan Persetujuan Bangunan Gedung (PBG), perhitungan retribusi, rekonsiliasi PBB, serta pemantauan bangunan berbasis citra satelit.</p>
+<p>Dari hasil penelaahan teknis, ditemukan bahwa <strong>sejumlah angka pada dashboard belum akurat</strong> &mdash; terutama yang berkaitan dengan atribusi wilayah (kecamatan), perhitungan potensi retribusi, dan agregasi data antar-modul. Ketidakakuratan ini berisiko menyebabkan <strong>pengambilan keputusan penagihan retribusi yang keliru</strong>, mengingat nilai yang dipertaruhkan mencapai puluhan miliar rupiah per kecamatan.</p>
+<p>Selain itu, sistem membutuhkan <strong>deployment yang stabil dan teramankan</strong> di server produksi agar dapat diakses dan diandalkan oleh Dinas secara berkelanjutan.</p>
+
+<h2>2. Maksud dan Tujuan</h2>
+<ul>
+<li>Melakukan <strong>audit menyeluruh</strong> terhadap akurasi seluruh angka yang ditampilkan pada dashboard SIBEDAS.</li>
+<li><strong>Memperbaiki</strong> kesalahan perhitungan, atribusi wilayah, dan agregasi data hingga setiap angka dapat dipertanggungjawabkan dan ditelusuri sumbernya.</li>
+<li><strong>Men-deploy</strong> sistem hasil perbaikan ke server produksi dengan konfigurasi yang aman (HTTPS/SSL), stabil, dan terpantau.</li>
+<li>Menyerahkan sistem dalam kondisi <strong>terverifikasi</strong> dan terdokumentasi untuk operasional jangka panjang Dinas.</li>
+</ul>
+
+<h2>3. Ruang Lingkup Pekerjaan</h2>
+<p>Cakupan mencakup <strong>seluruh modul dashboard</strong> SIBEDAS, tanpa terkecuali:</p>
+<table>
+<tr><th>No</th><th>Modul Dashboard</th><th>Lingkup Perbaikan</th></tr>
+<tr><td>1</td><td><strong>Dashboard PBG</strong> (Persetujuan Bangunan Gedung)</td><td>Verifikasi jumlah permohonan, status, distribusi per wilayah, dan agregasi antar-status.</td></tr>
+<tr><td>2</td><td><strong>Dashboard Retribusi</strong></td><td>Audit &amp; perbaikan formula potensi retribusi, indeks, dan rekap nilai.</td></tr>
+<tr><td>3</td><td><strong>Dashboard Rekonsiliasi PBB</strong></td><td>Validasi pencocokan data PBG &harr; PBB per kecamatan/kelurahan.</td></tr>
+<tr><td>4</td><td><strong>Dashboard Pemantauan Satelit</strong></td><td>Perbaikan atribusi wilayah bangunan (verifikasi batas administrasi), statistik per kecamatan, dan estimasi luas.</td></tr>
+<tr><td>5</td><td><strong>Dashboard Ringkasan / Eksekutif</strong></td><td>Konsistensi angka lintas-modul agar tidak saling bertentangan.</td></tr>
+</table>
+
+<h3>Rincian aktivitas teknis</h3>
+<ul>
+<li><strong>Audit data-integrity</strong>: menelusuri setiap angka dashboard ke sumber data aslinya (query, view, dan tabel), mengidentifikasi titik kesalahan.</li>
+<li><strong>Re-atribusi spasial</strong>: koreksi pelabelan wilayah menggunakan metode <em>titik-dalam-polygon</em> (point-in-polygon) terhadap batas administrasi resmi &mdash; menggantikan label bawaan yang tidak akurat.</li>
+<li><strong>Perbaikan logika perhitungan</strong>: koreksi formula retribusi, agregasi, dan view basis data.</li>
+<li><strong>Regenerasi statistik</strong>: membangun ulang snapshot/agregat dashboard berdasarkan data yang sudah dikoreksi.</li>
+<li><strong>Quality Assurance</strong>: verifikasi visual setiap dashboard (uji di peramban + tangkapan layar) sebelum serah terima.</li>
+<li><strong>Deployment produksi</strong>: containerisasi (Docker), konfigurasi web server (Nginx), pengamanan HTTPS/SSL, serta pemantauan dasar (health-check).</li>
+</ul>
+
+<div class="pagebreak"></div>
+
+<h2>4. Metodologi</h2>
+<table>
+<tr><th>Tahap</th><th>Kegiatan</th><th>Output</th></tr>
+<tr><td><strong>A. Audit</strong></td><td>Telaah kode &amp; basis data warisan pengembang sebelumnya; pemetaan seluruh sumber angka dashboard.</td><td>Laporan temuan akurasi</td></tr>
+<tr><td><strong>B. Perbaikan</strong></td><td>Koreksi atribusi wilayah, formula, view, dan agregasi; regenerasi statistik.</td><td>Kode terkoreksi + data akurat</td></tr>
+<tr><td><strong>C. Verifikasi</strong></td><td>Uji silang angka hasil perbaikan vs sumber kebenaran; verifikasi visual per dashboard.</td><td>Bukti verifikasi (screenshot)</td></tr>
+<tr><td><strong>D. Deploy</strong></td><td>Penerapan ke server produksi, pengamanan SSL, pemantauan.</td><td>Sistem live &amp; teramankan</td></tr>
+<tr><td><strong>E. Serah Terima</strong></td><td>Dokumentasi teknis ringkas + Berita Acara Serah Terima (BAST).</td><td>Handover lengkap</td></tr>
+</table>
+
+<h2>5. Hasil yang Diserahkan (Deliverables)</h2>
+<ul>
+<li>Seluruh dashboard SIBEDAS dengan <strong>angka yang sudah terverifikasi akurat</strong> dan dapat ditelusuri sumbernya.</li>
+<li><strong>Laporan audit</strong> berisi temuan ketidakakuratan beserta perbaikannya.</li>
+<li>Sistem <strong>ter-deploy di server produksi</strong> dengan HTTPS/SSL aktif dan pemantauan dasar.</li>
+<li><strong>Bukti verifikasi visual</strong> (tangkapan layar) untuk setiap dashboard.</li>
+<li><strong>Dokumentasi teknis ringkas</strong> + Berita Acara Serah Terima (BAST).</li>
+</ul>
+
+<h2>6. Jangka Waktu Pelaksanaan</h2>
+<table>
+<tr><th>Minggu</th><th>1</th><th>2</th><th>3</th><th>4</th></tr>
+<tr><td>Audit menyeluruh</td><td>&#9632;</td><td></td><td></td><td></td></tr>
+<tr><td>Perbaikan &amp; regenerasi</td><td></td><td>&#9632;</td><td>&#9632;</td><td></td></tr>
+<tr><td>Verifikasi &amp; QA</td><td></td><td></td><td>&#9632;</td><td>&#9632;</td></tr>
+<tr><td>Deploy &amp; serah terima</td><td></td><td></td><td></td><td>&#9632;</td></tr>
+</table>
+<p class="muted">Estimasi total: <strong>4 (empat) minggu kerja</strong> sejak penandatanganan kesepakatan dan akses sistem diberikan.</p>
+
+<h2>7. Penawaran Harga</h2>
+<p>Penawaran disusun sebagai layanan <strong>konsultan spesialis tunggal</strong> (GIS + Full-Stack + DevOps), mencakup keseluruhan ruang lingkup pada Bagian 3.</p>
+<table>
+<tr><th>Komponen Pekerjaan</th><th class="r">Nilai</th></tr>
+<tr><td>Audit menyeluruh seluruh dashboard</td><td class="r">Rp 15.000.000</td></tr>
+<tr><td>Perbaikan data-integrity &amp; re-atribusi spasial</td><td class="r">Rp 22.000.000</td></tr>
+<tr><td>Perbaikan logika retribusi &amp; rekonsiliasi</td><td class="r">Rp 13.000.000</td></tr>
+<tr><td>Deployment produksi + pengamanan + pemantauan</td><td class="r">Rp 10.000.000</td></tr>
+<tr><td><strong>TOTAL PAKET INTI</strong></td><td class="r"><strong>Rp 60.000.000</strong></td></tr>
+</table>
+<p class="price" style="text-align:center">Rp 60.000.000</p>
+<p style="text-align:center" class="muted">(enam puluh juta rupiah) &mdash; harga paket inti, belum termasuk PPN apabila diperlukan.</p>
+
+<h3>Layanan Tambahan (Opsional)</h3>
+<table>
+<tr><th>Layanan</th><th class="r">Nilai</th></tr>
+<tr><td>Garansi &amp; pemeliharaan (per bulan, setelah serah terima)</td><td class="r">Rp 8.000.000 &ndash; 12.000.000</td></tr>
+<tr><td>Dokumentasi teknis lengkap + sesi alih pengetahuan (handover)</td><td class="r">Rp 6.000.000</td></tr>
+</table>
+
+<h3>Termin Pembayaran</h3>
+<table>
+<tr><th>Termin</th><th>Tahap</th><th class="r">Porsi</th></tr>
+<tr><td>I</td><td>Uang muka saat penandatanganan</td><td class="r">40% &mdash; Rp 24.000.000</td></tr>
+<tr><td>II</td><td>Setelah audit &amp; perbaikan diterima (UAT)</td><td class="r">40% &mdash; Rp 24.000.000</td></tr>
+<tr><td>III</td><td>Setelah deploy &amp; BAST</td><td class="r">20% &mdash; Rp 12.000.000</td></tr>
+</table>
+
+<div class="pagebreak"></div>
+
+<h2>8. Justifikasi Nilai</h2>
+<blockquote>
+Akurasi angka dashboard bukan sekadar persoalan teknis &mdash; ia menjadi dasar keputusan penagihan retribusi senilai <strong>puluhan miliar rupiah</strong>. Sebagai gambaran, satu kecamatan saja (Soreang) memiliki potensi retribusi bangunan belum berizin sebesar <strong>&plusmn; Rp 53,7 miliar</strong> setelah dihitung dengan atribusi wilayah yang benar. Apabila angka dashboard keliru, keputusan bernilai miliaran ikut keliru.
+<br><br>
+Biaya jasa perbaikan ini setara <strong>kurang dari 0,2%</strong> dari nilai potensi data yang diselamatkan untuk satu kecamatan &mdash; dan SIBEDAS mencakup <strong>seluruh 31 kecamatan</strong> Kabupaten Bandung.
+</blockquote>
+
+<h2>9. Mengapa Kami</h2>
+<ul>
+<li><strong>Spesialisasi langka</strong>: kombinasi GIS (analisis spasial / point-in-polygon), Full-Stack (Laravel/PHP), dan DevOps (Docker, Nginx, SSL) dalam satu penyedia &mdash; menekan biaya koordinasi.</li>
+<li><strong>Pemahaman domain</strong>: telah menelaah arsitektur SIBEDAS (modul PBG, retribusi, rekonsiliasi, satelit) dan memahami sumber-sumber ketidakakuratannya.</li>
+<li><strong>Berbasis bukti</strong>: setiap angka yang diperbaiki diverifikasi silang ke sumber data dan didokumentasikan &mdash; bukan sekadar &ldquo;terlihat benar&rdquo;.</li>
+</ul>
+
+<h2>10. Penutup</h2>
+<p>Kami berkomitmen menyerahkan sistem SIBEDAS dengan angka dashboard yang <strong>akurat, terverifikasi, dan terdokumentasi</strong>, serta ter-deploy secara aman di server produksi. Kami siap mendiskusikan penyesuaian ruang lingkup maupun jadwal sesuai kebutuhan Dinas.</p>
+<p>Atas perhatian dan kesempatan yang diberikan, kami ucapkan terima kasih.</p>
+<br>
+<p>Hormat kami,</p>
+<br><br>
+<p><strong>Nauval Zulfikar</strong><br>
+Konsultan Pengembang Perangkat Lunak (GIS &amp; Full-Stack)<br>
+&#9742; +62 821-1704-3831<br>
+&#9993; zulfikar.nauval1998@gmail.com</p>
+
+</body></html>
